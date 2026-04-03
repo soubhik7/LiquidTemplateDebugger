@@ -1,5 +1,9 @@
 # DotLiquid Template Debugger — Working Principle & Architecture
 
+## How It Works (In Brief)
+
+> This application takes a **Liquid template** and its **input data** (JSON/XML), parses the template into individual executable elements (tags, outputs, literals) using a regex-based tokenizer, and then walks through them **one element at a time** — like a code debugger stepping through instructions. At each step, it evaluates expressions, applies filters, tracks every variable's current value and origin (where it came from in the source data), and builds up the rendered output incrementally. The entire engine is exposed via a local REST API, letting a browser-based frontend visualize the template, variables, output, breakpoints, and watches in real time.
+
 ## Table of Contents
 
 1. [Overview](#overview)
