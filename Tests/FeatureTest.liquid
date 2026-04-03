@@ -1,0 +1,9 @@
+Boolean Test:
+Active: {{ is_active }}
+Enabled: {{ is_enabled }}
+Disabled: {{ is_disabled }}
+
+DateTime Test:
+Date: {{ order_date | date: "%Y-%m-%d" }}
+Time: {{ order_date | date: "%H:%M:%S" }}
+Full: {{ order_date | date: "%Y-%m-%d %H:%M:%S" }}

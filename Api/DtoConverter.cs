@@ -141,6 +141,8 @@ public static class DtoConverter
             null => "nil",
             bool b => b.ToString().ToLowerInvariant(),
             string s => s,
+            DateTime dt => dt.ToString("yyyy-MM-ddTHH:mm:ss"),
+            DateTimeOffset dto => dto.ToString("yyyy-MM-ddTHH:mm:sszzz"),
             Hash h => $"{{Hash: {h.Keys.Count()} keys}}",
             IList<object> l => $"[Array: {l.Count} items]",
             _ => value.ToString() ?? "nil"
@@ -160,6 +162,8 @@ public static class DtoConverter
             null => null,
             string s => s,
             bool b => b,
+            DateTime dt => dt.ToString("yyyy-MM-ddTHH:mm:ss"),
+            DateTimeOffset dto => dto.ToString("yyyy-MM-ddTHH:mm:sszzz"),
             int i => i,
             long l => l,
             double d => d,

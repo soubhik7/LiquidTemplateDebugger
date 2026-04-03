@@ -70,6 +70,12 @@ public class HashJsonConverter : JsonConverter<Hash>
             case bool b:
                 writer.WriteBooleanValue(b);
                 break;
+            case DateTime dt:
+                writer.WriteStringValue(dt.ToString("yyyy-MM-ddTHH:mm:ss"));
+                break;
+            case DateTimeOffset dto:
+                writer.WriteStringValue(dto.ToString("yyyy-MM-ddTHH:mm:sszzz"));
+                break;
             case int i:
                 writer.WriteNumberValue(i);
                 break;

@@ -165,11 +165,19 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .empty-state .icon { font-size:40px; opacity:0.3; }
 .empty-state p { font-size:13px; }
 
+/* Search highlighting */
+.search-highlight { background:rgba(229,192,123,0.3); border-radius:2px; padding:0 2px; }
+.search-match-count { font-size:10px; color:var(--text-muted); margin-left:4px; }
+
 /* Animations */
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 .animate-in { animation:fadeIn 0.2s ease; }
 .pulse { animation:pulse 1s infinite; }
+
+/* Copy button feedback */
+@keyframes copySuccess { 0%{transform:scale(1)} 50%{transform:scale(1.1)} 100%{transform:scale(1)} }
+.copy-success { animation:copySuccess 0.3s ease; }
 
 /* Resizer */
 .resizer-h, .resizer-v { position:absolute; z-index:5; }
@@ -204,7 +212,12 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
   <div id="main">
     <!-- Template Panel -->
     <div class="panel" id="template-panel">
-      <div class="panel-header">Template <span class="badge" id="tpl-info"></span></div>
+      <div class="panel-header">
+        Template <span class="badge" id="tpl-info"></span>
+        <div style="margin-left:auto;display:flex;gap:4px;">
+          <input type="text" id="template-search" placeholder="Search template..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInTemplate()">
+        </div>
+      </div>
       <div class="panel-body" id="template-body">
         <div class="empty-state"><div class="icon">📄</div><p>Load a template to start debugging</p></div>
       </div>
@@ -222,7 +235,13 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
     <!-- Output Panel -->
     <div class="panel" id="output-panel">
       <div class="scope-breadcrumb" id="scope-bar"></div>
-      <div class="panel-header">Output</div>
+      <div class="panel-header">
+        Output
+        <div style="margin-left:auto;display:flex;gap:4px;">
+          <input type="text" id="output-search" placeholder="Search output..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInOutput()">
+          <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="copyOutput()" title="Copy output to clipboard">📋 Copy</button>
+        </div>
+      </div>
       <div class="panel-body" id="output-body">
         <div class="empty-state"><div class="icon">📝</div><p>Output will appear here as you step</p></div>
       </div>
@@ -662,6 +681,133 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'F5' && e.ctrlKey && e.shiftKey) { e.preventDefault(); doReset(); }
   else if (e.key === 'F5') { e.preventDefault(); doStep('continue'); }
 });
+
+// --- Copy functionality ---
+async function copyOutput() {
+  const body = document.getElementById('output-body');
+  const text = body.innerText || body.textContent || '';
+  
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.classList.add('copy-success');
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.classList.remove('copy-success');
+    }, 2000);
+  } catch (err) {
+    alert('Failed to copy to clipboard: ' + err.message);
+  }
+}
+
+// --- Search functionality ---
+let templateSearchMatches = [];
+let outputSearchMatches = [];
+let currentTemplateMatch = -1;
+let currentOutputMatch = -1;
+
+function searchInTemplate() {
+  const searchTerm = document.getElementById('template-search').value;
+  const body = document.getElementById('template-body');
+  
+  // Clear previous highlights
+  templateSearchMatches = [];
+  currentTemplateMatch = -1;
+  
+  if (!searchTerm || !state || !state.isLoaded) {
+    renderTemplate();
+    return;
+  }
+  
+  // Re-render template with highlights
+  renderTemplate();
+  
+  // Find and highlight matches
+  const lines = body.querySelectorAll('.line-content');
+  let matchCount = 0;
+  
+  lines.forEach((line, index) => {
+    const text = line.textContent || '';
+    const regex = new RegExp(escapeRegex(searchTerm), 'gi');
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+      matchCount++;
+      templateSearchMatches.push({ lineIndex: index, start: match.index, length: searchTerm.length });
+    }
+    
+    if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+      const highlighted = text.replace(
+        new RegExp(escapeRegex(searchTerm), 'gi'),
+        match => `<span class="search-highlight">${match}</span>`
+      );
+      line.innerHTML = highlighted;
+    }
+  });
+  
+  // Update search count
+  const header = document.querySelector('#template-panel .panel-header');
+  let countSpan = header.querySelector('.search-match-count');
+  if (!countSpan) {
+    countSpan = document.createElement('span');
+    countSpan.className = 'search-match-count';
+    header.appendChild(countSpan);
+  }
+  countSpan.textContent = matchCount > 0 ? `${matchCount} matches` : '';
+}
+
+function searchInOutput() {
+  const searchTerm = document.getElementById('output-search').value;
+  const body = document.getElementById('output-body');
+  
+  // Clear previous highlights
+  outputSearchMatches = [];
+  currentOutputMatch = -1;
+  
+  if (!searchTerm || !state || !state.isLoaded) {
+    renderOutput();
+    return;
+  }
+  
+  // Re-render output
+  renderOutput();
+  
+  // Get the text content
+  const text = body.textContent || '';
+  const regex = new RegExp(escapeRegex(searchTerm), 'gi');
+  let match;
+  let matchCount = 0;
+  
+  while ((match = regex.exec(text)) !== null) {
+    matchCount++;
+    outputSearchMatches.push({ start: match.index, length: searchTerm.length });
+  }
+  
+  // Highlight matches
+  if (matchCount > 0) {
+    const highlighted = text.replace(
+      new RegExp(escapeRegex(searchTerm), 'gi'),
+      match => `<span class="search-highlight">${escapeHtml(match)}</span>`
+    );
+    body.innerHTML = highlighted;
+  }
+  
+  // Update search count
+  const header = document.querySelector('#output-panel .panel-header');
+  let countSpan = header.querySelector('.search-match-count');
+  if (!countSpan) {
+    countSpan = document.createElement('span');
+    countSpan.className = 'search-match-count';
+    header.appendChild(countSpan);
+  }
+  countSpan.textContent = matchCount > 0 ? `${matchCount} matches` : '';
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // --- Init ---
 (async function init() {

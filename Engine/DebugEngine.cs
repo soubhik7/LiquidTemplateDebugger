@@ -217,10 +217,25 @@ public class DebugEngine
     {
         var expression = element.Expression ?? "";
         var result = EvaluateExpression(expression);
-        var rendered = result?.ToString() ?? "";
+        var rendered = FormatOutputValue(result);
 
         _state.OutputSoFar += rendered;
         _state.LastOutputChunk = rendered;
+    }
+
+    /// <summary>
+    /// Format a value for output, handling special types like booleans and dates.
+    /// </summary>
+    private string FormatOutputValue(object? value)
+    {
+        if (value == null) return "";
+        
+        // Handle boolean values - output as lowercase
+        if (value is bool b)
+            return b ? "true" : "false";
+        
+        // For other types, use default ToString()
+        return value.ToString() ?? "";
     }
 
     private void ExecuteTag(TemplateElement element)
@@ -346,7 +361,7 @@ public class DebugEngine
                 else if (el.ElementType == TemplateElementType.Output)
                 {
                     var val = EvaluateExpression(el.Expression ?? "");
-                    capturedContent.Append(val?.ToString() ?? "");
+                    capturedContent.Append(FormatOutputValue(val));
                 }
             }
             idx++;
@@ -652,8 +667,9 @@ public class DebugEngine
         else if (_state.Variables.ContainsKey(varName) && _state.Variables[varName].CurrentValue is long longVal)
             current = (int)longVal;
 
-        _state.OutputSoFar += current.ToString();
-        _state.LastOutputChunk = current.ToString();
+        var rendered = FormatOutputValue(current);
+        _state.OutputSoFar += rendered;
+        _state.LastOutputChunk = rendered;
 
         _state.Variables[varName] = new TrackedVariable
         {
@@ -675,8 +691,9 @@ public class DebugEngine
             current = (int)longVal;
 
         current--;
-        _state.OutputSoFar += current.ToString();
-        _state.LastOutputChunk = current.ToString();
+        var rendered = FormatOutputValue(current);
+        _state.OutputSoFar += rendered;
+        _state.LastOutputChunk = rendered;
 
         _state.Variables[varName] = new TrackedVariable
         {
@@ -890,6 +907,7 @@ public class DebugEngine
             "uniq" => UniqValue(input),
             "join" => JoinValue(input, filterArgs),
             "split" => SplitValue(input, filterArgs),
+            "slice" => SliceValue(input, filterArgs),
             "replace" => ReplaceValue(input, filterArgs),
             "replace_first" => ReplaceFirstValue(input, filterArgs),
             "remove" => RemoveValue(input, filterArgs),
@@ -1104,6 +1122,55 @@ public class DebugEngine
         var other = EvaluateExpression(args);
         if (other is IList<object> list2) return list1.Concat(list2).ToList();
         return input;
+    }
+
+    private object? SliceValue(object? input, string? args)
+    {
+        if (args == null) return input;
+        
+        // Parse arguments: slice can take offset and optional length
+        // Examples: slice: 0, 10 or slice: 5
+        var parts = args.Split(',').Select(p => p.Trim()).ToList();
+        
+        if (input is IList<object> list)
+        {
+            // Array slicing
+            if (!int.TryParse(parts[0], out var offset)) return input;
+            
+            // Handle negative offset (from end)
+            if (offset < 0) offset = list.Count + offset;
+            if (offset < 0 || offset >= list.Count) return new List<object>();
+            
+            if (parts.Count > 1 && int.TryParse(parts[1], out var length))
+            {
+                length = Math.Max(0, length);
+                var endIndex = Math.Min(offset + length, list.Count);
+                return list.Skip(offset).Take(endIndex - offset).ToList();
+            }
+            
+            // No length specified, return single element
+            return list[offset];
+        }
+        else
+        {
+            // String slicing
+            var str = input?.ToString() ?? "";
+            if (!int.TryParse(parts[0], out var offset)) return input;
+            
+            // Handle negative offset (from end)
+            if (offset < 0) offset = str.Length + offset;
+            if (offset < 0 || offset >= str.Length) return "";
+            
+            if (parts.Count > 1 && int.TryParse(parts[1], out var length))
+            {
+                length = Math.Max(0, length);
+                var endIndex = Math.Min(offset + length, str.Length);
+                return str.Substring(offset, endIndex - offset);
+            }
+            
+            // No length specified, return single character
+            return str[offset].ToString();
+        }
     }
 
     private static object? FormatDate(object? input, string? args)
