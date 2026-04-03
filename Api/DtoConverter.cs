@@ -126,6 +126,7 @@ public static class DtoConverter
         return new WatchDto(
             Id: w.Id,
             Expression: w.Expression,
+            DisplayExpression: w.DisplayExpression ?? w.Expression,
             CurrentValue: FormatValue(w.LastValue),
             TypeName: w.LastValue?.GetType().Name ?? "null",
             HasChanged: w.HasChanged

@@ -76,6 +76,7 @@ public record BreakpointDto(
 public record WatchDto(
     int Id,
     string Expression,
+    string DisplayExpression,
     string? CurrentValue,
     string? TypeName,
     bool HasChanged

@@ -21,6 +21,10 @@ if (args.Length == 1 && args[0] == "--formattest")
 {
     return FormatTransformationTest.Run();
 }
+if (args.Length == 1 && args[0] == "--soldtopartytest")
+{
+    return SoldToPartyFeatureTest.Run();
+}
 
 // Parse port from args
 var port = 5050;
@@ -43,12 +47,13 @@ for (int i = 0; i < args.Length; i++)
         Console.WriteLine("  LiquidTemplateDebugger [options] [<template-file> <data-file> [format]]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("  --port <port>     Port to listen on (default: 5050)");
-        Console.WriteLine("  --test            Run smoke tests and exit");
-        Console.WriteLine("  --bugtest         Run bug reproduction tests and exit");
-        Console.WriteLine("  --xmltest         Run complex XML to XML transformation test and exit");
-        Console.WriteLine("  --formattest      Run format transformation tests and exit");
-        Console.WriteLine("  --help, -h        Show this help");
+        Console.WriteLine("  --port <port>          Port to listen on (default: 5050)");
+        Console.WriteLine("  --test                 Run smoke tests and exit");
+        Console.WriteLine("  --bugtest              Run bug reproduction tests and exit");
+        Console.WriteLine("  --xmltest              Run complex XML to XML transformation test and exit");
+        Console.WriteLine("  --formattest           Run format transformation tests and exit");
+        Console.WriteLine("  --soldtopartytest      Run soldToParty.location feature test and exit");
+        Console.WriteLine("  --help, -h             Show this help");
         Console.WriteLine();
         Console.WriteLine("If template and data files are provided, they are pre-loaded into the session.");
         return 0;

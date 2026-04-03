@@ -100,6 +100,7 @@ public class WatchExpression
 {
     public int Id { get; set; }
     public string Expression { get; set; } = string.Empty;
+    public string? DisplayExpression { get; set; }
     public object? LastValue { get; set; }
     public bool HasChanged { get; set; }
 }

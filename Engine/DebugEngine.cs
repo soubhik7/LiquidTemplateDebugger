@@ -611,9 +611,10 @@ public class DebugEngine
             if (_state.ScopeStack.Count > 1)
                 _state.ScopeStack.RemoveAt(_state.ScopeStack.Count - 1);
 
-            // Clean up loop variable
+            // Clean up loop variable from both tracked variables and local assignments
             _state.Variables.Remove(loopState.VariableName);
             _state.Variables.Remove("forloop");
+            _localAssignments.Remove(loopState.VariableName);
         }
     }
 
@@ -635,6 +636,9 @@ public class DebugEngine
             ScopeDepth = _state.ScopeStack.Count,
             ScopeTag = "for"
         };
+
+        // Also add to local assignments so watches can resolve it
+        _localAssignments[loopState.VariableName] = currentItem;
 
         // Set forloop helper object
         var forloop = Hash.FromDictionary(new Dictionary<string, object>
@@ -809,23 +813,7 @@ public class DebugEngine
         // Navigate nested paths
         for (int i = 1; i < segments.Length && current != null; i++)
         {
-            var segment = segments[i].Trim();
-
-            // Handle array index: items[0]
-            var arrMatch = Regex.Match(segment, @"^(\w+)\[(\d+)\]$");
-            if (arrMatch.Success)
-            {
-                segment = arrMatch.Groups[1].Value;
-                var idx = int.Parse(arrMatch.Groups[2].Value);
-                current = GetMember(current, segment);
-                if (current is IList<object> list && idx < list.Count)
-                    current = list[idx];
-                else if (current is System.Collections.IList ilist && idx < ilist.Count)
-                    current = ilist[idx];
-                continue;
-            }
-
-            current = GetMember(current, segment);
+            current = ResolvePathSegment(current, segments[i].Trim());
         }
 
         // Handle array index on root: items[0]
@@ -848,6 +836,202 @@ public class DebugEngine
         }
 
         return current;
+    }
+
+    private static object? ResolvePathSegment(object? current, string segment)
+    {
+        if (current == null) return null;
+
+        if (Regex.IsMatch(segment, @"^\[(\d+)\]$"))
+        {
+            var idx = int.Parse(segment[1..^1]);
+            if (current is IList<object> directList && idx < directList.Count)
+                return directList[idx];
+            if (current is System.Collections.IList directIList && idx < directIList.Count)
+                return directIList[idx];
+            return null;
+        }
+
+        var arrMatch = Regex.Match(segment, @"^(\w+)\[(\d+)\]$");
+        if (arrMatch.Success)
+        {
+            var member = arrMatch.Groups[1].Value;
+            var idx = int.Parse(arrMatch.Groups[2].Value);
+            current = GetMember(current, member);
+            if (current is IList<object> list && idx < list.Count)
+                return list[idx];
+            if (current is System.Collections.IList ilist && idx < ilist.Count)
+                return ilist[idx];
+            return null;
+        }
+
+        return GetMember(current, segment);
+    }
+
+    private string NormalizeWatchExpression(string expression)
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+            return expression;
+
+        var parts = SplitByPipes(expression);
+        var baseExpr = parts[0].Trim();
+
+        if (TryResolveVariablePath(baseExpr, out _))
+            return expression;
+
+        var expandedBaseExpr = ExpandScopedWatchPath(baseExpr);
+        if (string.Equals(expandedBaseExpr, baseExpr, StringComparison.Ordinal))
+            return expression;
+
+        if (parts.Count == 1)
+            return expandedBaseExpr;
+
+        return string.Join(" | ", new[] { expandedBaseExpr }.Concat(parts.Skip(1).Select(p => p.Trim())));
+    }
+
+    private string ExpandScopedWatchPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return path;
+
+        var segments = path.Split('.');
+        var rootName = segments[0].Trim();
+
+        if (!_state.Variables.TryGetValue(rootName, out var variable) || variable.Origin == null)
+            return path;
+
+        var originPath = variable.Origin.SourcePath;
+        if (string.IsNullOrWhiteSpace(originPath) ||
+            originPath.StartsWith("assign@line:", StringComparison.OrdinalIgnoreCase) ||
+            originPath.Equals(rootName, StringComparison.OrdinalIgnoreCase))
+        {
+            return path;
+        }
+
+        var remainingSegments = segments.Skip(1);
+        var expandedSegments = new[] { originPath }.Concat(remainingSegments);
+        return string.Join(".", expandedSegments);
+    }
+
+    private string GetWatchDisplayExpression(string expression)
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+            return expression;
+
+        var parts = SplitByPipes(expression);
+        var baseExpr = parts[0].Trim();
+        var displayBaseExpr = GetScopedDisplayPath(baseExpr);
+
+        if (parts.Count == 1)
+            return displayBaseExpr;
+
+        return string.Join(" | ", new[] { displayBaseExpr }.Concat(parts.Skip(1).Select(p => p.Trim())));
+    }
+
+    private string GetScopedDisplayPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return path;
+
+        var segments = path.Split('.');
+        foreach (var variable in _state.Variables.Values
+                     .OrderByDescending(v => v.Name.Length)
+                     .ThenByDescending(v => v.ScopeDepth))
+        {
+            if (variable.CurrentValue == null)
+                continue;
+
+            if (!TryResolveVariablePath(variable.Name, out var candidateValue))
+                continue;
+
+            if (!ReferenceEquals(candidateValue, variable.CurrentValue) && !Equals(candidateValue, variable.CurrentValue))
+                continue;
+
+            if (segments.Length == 0)
+                continue;
+
+            if (!TryResolvePathFromValue(variable.CurrentValue, segments, 0, out var matchedSegments))
+                continue;
+
+            if (matchedSegments <= 0)
+                continue;
+
+            var remainingSegments = segments.Skip(matchedSegments);
+            var aliasSegments = new[] { variable.Name }.Concat(remainingSegments);
+            return string.Join(".", aliasSegments);
+        }
+
+        return path;
+    }
+
+    private bool TryResolveVariablePath(string path, out object? value)
+    {
+        value = null;
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        var segments = path.Split('.');
+        var rootName = segments[0].Trim();
+
+        if (_state.Variables.ContainsKey(rootName))
+            value = _state.Variables[rootName].CurrentValue;
+        else if (_localAssignments.ContainsKey(rootName))
+            value = _localAssignments[rootName];
+        else if (_inputData.ContainsKey(rootName))
+            value = _inputData[rootName];
+        else
+            return false;
+
+        for (int i = 1; i < segments.Length && value != null; i++)
+        {
+            value = ResolvePathSegment(value, segments[i].Trim());
+        }
+
+        return true;
+    }
+
+    private static bool TryResolvePathFromValue(object? current, string[] segments, int index, out int matchedSegments)
+    {
+        matchedSegments = 0;
+        if (current == null)
+            return false;
+
+        if (index >= segments.Length)
+        {
+            matchedSegments = 0;
+            return true;
+        }
+
+        if (TryResolvePathFromValue(ResolvePathSegment(current, segments[index].Trim()), segments, index + 1, out var childMatched))
+        {
+            matchedSegments = childMatched + 1;
+            return true;
+        }
+
+        if (current is IList<object> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (TryResolvePathFromValue(list[i], segments, index, out childMatched))
+                {
+                    matchedSegments = childMatched;
+                    return true;
+                }
+            }
+        }
+        else if (current is System.Collections.IList ilist)
+        {
+            foreach (var item in ilist)
+            {
+                if (TryResolvePathFromValue(item, segments, index, out childMatched))
+                {
+                    matchedSegments = childMatched;
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static object? GetMember(object? obj, string member)
@@ -1505,16 +1689,24 @@ public class DebugEngine
 
     public WatchExpression AddWatch(string expression)
     {
-        var watch = new WatchExpression { Id = _nextWatchId++, Expression = expression };
+        var normalizedExpression = NormalizeWatchExpression(expression);
+        var watch = new WatchExpression
+        {
+            Id = _nextWatchId++,
+            Expression = normalizedExpression,
+            DisplayExpression = GetWatchDisplayExpression(normalizedExpression)
+        };
+
         try
         {
-            watch.LastValue = EvaluateExpression(expression);
+            watch.LastValue = EvaluateExpression(normalizedExpression);
         }
         catch
         {
             // If initial evaluation fails, set to null
             watch.LastValue = null;
         }
+
         _watches.Add(watch);
         return watch;
     }
