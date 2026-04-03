@@ -126,7 +126,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .wb-list li { display:flex; align-items:center; gap:6px; padding:5px 10px; font-size:12px; border-bottom:1px solid rgba(59,59,84,0.3); }
 .wb-list li:hover { background:var(--bg-hover); }
 .wb-list .wb-expr { font-family:var(--font-mono); color:var(--text); flex:1; }
-.wb-list .wb-val { font-family:var(--font-mono); color:var(--text-dim); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wb-list .wb-val { font-family:var(--font-mono); color:var(--text-dim); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .wb-list .wb-changed { color:var(--yellow); font-weight:700; }
 .wb-list .wb-remove { color:var(--text-muted); cursor:pointer; font-size:14px; }
 .wb-list .wb-remove:hover { color:var(--red); }
@@ -535,7 +535,7 @@ function renderWatches() {
   const list = document.getElementById('watch-list');
   if (!state || !state.watches || !state.watches.length) { list.innerHTML = '<li style="color:var(--text-muted);justify-content:center;">No watches</li>'; return; }
   list.innerHTML = state.watches.map(w =>
-    `<li><span class="wb-expr">${escapeHtml(w.expression)}</span><span class="wb-val ${w.hasChanged?'wb-changed':''}">${escapeHtml(w.currentValue||'nil')}</span><span class="wb-remove" onclick="removeWatch(${w.id})">✕</span></li>`
+    `<li><span class="wb-expr">${escapeHtml(w.expression)}</span><span class="wb-val ${w.hasChanged?'wb-changed':''}" title="${escapeHtml(w.typeName||'')}: ${escapeHtml(w.currentValue||'nil')}">${escapeHtml(w.currentValue||'nil')} <span style="color:var(--text-muted);font-size:10px;">(${escapeHtml(w.typeName||'')})</span></span><span class="wb-remove" onclick="removeWatch(${w.id})">✕</span></li>`
   ).join('');
 }
 

@@ -801,6 +801,8 @@ public class DebugEngine
         // Check tracked variables first
         if (_state.Variables.ContainsKey(rootName))
             current = _state.Variables[rootName].CurrentValue;
+        else if (_localAssignments.ContainsKey(rootName))
+            current = _localAssignments[rootName];
         else if (_inputData.ContainsKey(rootName))
             current = _inputData[rootName];
 
@@ -834,6 +836,8 @@ public class DebugEngine
             var idx = int.Parse(rootArrMatch.Groups[2].Value);
             if (_state.Variables.ContainsKey(name))
                 current = _state.Variables[name].CurrentValue;
+            else if (_localAssignments.ContainsKey(name))
+                current = _localAssignments[name];
             else if (_inputData.ContainsKey(name))
                 current = _inputData[name];
 
@@ -1439,8 +1443,16 @@ public class DebugEngine
             // Check condition if any
             if (bp.Condition != null)
             {
-                try { return EvaluateCondition(bp.Condition); }
-                catch { return true; }
+                try
+                {
+                    return EvaluateCondition(bp.Condition);
+                }
+                catch
+                {
+                    // If condition evaluation fails, don't break (return false)
+                    // This prevents breaking on invalid conditions
+                    return false;
+                }
             }
             return true;
         }
@@ -1461,9 +1473,17 @@ public class DebugEngine
     {
         foreach (var watch in _watches)
         {
-            var newValue = EvaluateExpression(watch.Expression);
-            watch.HasChanged = !Equals(watch.LastValue, newValue);
-            watch.LastValue = newValue;
+            try
+            {
+                var newValue = EvaluateExpression(watch.Expression);
+                watch.HasChanged = !Equals(watch.LastValue, newValue);
+                watch.LastValue = newValue;
+            }
+            catch
+            {
+                // If evaluation fails, keep the last value and mark as unchanged
+                watch.HasChanged = false;
+            }
         }
     }
 
@@ -1486,14 +1506,28 @@ public class DebugEngine
     public WatchExpression AddWatch(string expression)
     {
         var watch = new WatchExpression { Id = _nextWatchId++, Expression = expression };
-        watch.LastValue = EvaluateExpression(expression);
+        try
+        {
+            watch.LastValue = EvaluateExpression(expression);
+        }
+        catch
+        {
+            // If initial evaluation fails, set to null
+            watch.LastValue = null;
+        }
         _watches.Add(watch);
         return watch;
     }
 
     public bool RemoveWatch(int id) => _watches.RemoveAll(w => w.Id == id) > 0;
 
-    public object? Evaluate(string expression) => EvaluateExpression(expression);
+    public object? Evaluate(string expression)
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+            return null;
+        
+        return EvaluateExpression(expression);
+    }
 
     /// <summary>
     /// Evaluate an expression step by step through the filter pipeline.

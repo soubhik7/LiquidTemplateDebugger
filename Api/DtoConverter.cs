@@ -127,6 +127,7 @@ public static class DtoConverter
             Id: w.Id,
             Expression: w.Expression,
             CurrentValue: FormatValue(w.LastValue),
+            TypeName: w.LastValue?.GetType().Name ?? "null",
             HasChanged: w.HasChanged
         );
     }

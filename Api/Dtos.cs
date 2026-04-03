@@ -77,6 +77,7 @@ public record WatchDto(
     int Id,
     string Expression,
     string? CurrentValue,
+    string? TypeName,
     bool HasChanged
 );
 
