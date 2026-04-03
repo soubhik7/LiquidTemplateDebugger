@@ -1,0 +1,21 @@
+Order Summary for {{ content.customer.name }}
+Email: {{ content.customer.email | downcase }}
+Tier: {{ content.customer.tier | upcase }}
+==============================
+{% for item in content.items %}
+  {{ item.name }} - ${{ item.price }} x {{ item.quantity }}
+{% endfor %}
+------------------------------
+{% assign total = 0 %}
+{% for item in content.items %}
+  {% assign line_total = item.price | times: item.quantity %}
+  {% assign total = total | plus: line_total %}
+{% endfor %}
+Subtotal: ${{ total }}
+{% if content.discount_percent > 0 %}
+  {% assign discount_amount = total | times: content.discount_percent | divided_by: 100 %}
+  Discount ({{ content.discount_percent }}%): -${{ discount_amount }}
+  {% assign total = total | minus: discount_amount %}
+{% endif %}
+Total: ${{ total }}
+Shipping: {{ content.shipping | capitalize }}

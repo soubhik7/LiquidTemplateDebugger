@@ -40,7 +40,7 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"name\": \"World\"}", "json");
-            var engine = new DebugEngine("Hello {{ name }}!", hash, origins);
+            var engine = new DebugEngine("Hello {{ content.name }}!", hash, origins);
 
             Assert(!engine.State.IsComplete, "Not complete initially");
             Assert(engine.Elements.Count == 3, "Has 3 elements");
@@ -48,7 +48,7 @@ public static class SmokeTest
             engine.Step(StepAction.StepNext); // literal "Hello "
             Assert(engine.State.OutputSoFar == "Hello ", "After step 1: output is 'Hello '");
 
-            engine.Step(StepAction.StepNext); // output {{ name }}
+            engine.Step(StepAction.StepNext); // output {{ content.name }}
             Assert(engine.State.OutputSoFar == "Hello World", "After step 2: output is 'Hello World'");
 
             engine.Step(StepAction.StepNext); // literal "!"
@@ -62,10 +62,10 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"greeting\": \"Hello\"}", "json");
-            var engine = new DebugEngine("{% assign msg = greeting %}{{ msg }}", hash, origins);
+            var engine = new DebugEngine("{% assign msg = content.greeting %}{{ msg }}", hash, origins);
 
-            Assert(engine.State.Variables.ContainsKey("greeting"), "greeting variable exists from input");
-            Assert(engine.State.Variables["greeting"].ScopeTag == "input", "greeting origin is 'input'");
+            Assert(engine.State.Variables.ContainsKey("content"), "content wrapper variable exists from input");
+            Assert(engine.State.Variables["content"].ScopeTag == "input", "content origin is 'input'");
 
             // Step through assign tag
             engine.Step(StepAction.StepNext);
@@ -80,7 +80,7 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"items\": [\"A\", \"B\", \"C\"]}", "json");
-            var engine = new DebugEngine("{% for item in items %}{{ item }}{% endfor %}", hash, origins);
+            var engine = new DebugEngine("{% for item in content.items %}{{ item }}{% endfor %}", hash, origins);
 
             // Run to completion
             engine.Step(StepAction.Continue);
@@ -94,7 +94,7 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"text\": \"hello world\"}", "json");
-            var engine = new DebugEngine("{{ text | upcase }}", hash, origins);
+            var engine = new DebugEngine("{{ content.text | upcase }}", hash, origins);
 
             engine.Step(StepAction.Continue);
             Assert(engine.State.OutputSoFar == "HELLO WORLD", "upcase filter works");
@@ -104,7 +104,7 @@ public static class SmokeTest
         // Test 6: Breakpoints
         Console.WriteLine("[Test 6] Breakpoints");
         {
-            var template = "Line1\n{{ name }}\nLine3";
+            var template = "Line1\n{{ content.name }}\nLine3";
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"name\": \"Test\"}", "json");
             var engine = new DebugEngine(template, hash, origins);
@@ -121,12 +121,13 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"x\": 10}", "json");
-            var engine = new DebugEngine("{% assign x = 20 %}{{ x }}", hash, origins);
+            var engine = new DebugEngine("{% assign x = content.x %}{% assign x = 20 %}{{ x }}", hash, origins);
 
             var watch = engine.AddWatch("x");
+            engine.Step(StepAction.StepNext); // first assign
             Assert(watch.LastValue?.ToString() == "10", "Initial watch value is 10");
 
-            engine.Step(StepAction.StepNext); // assign
+            engine.Step(StepAction.StepNext); // second assign
             Assert(engine.Watches[0].HasChanged, "Watch detects change after assign");
         }
         Console.WriteLine();
@@ -139,8 +140,8 @@ public static class SmokeTest
                 "{\"user\": {\"name\": \"Alice\", \"age\": 30}, \"tags\": [\"a\", \"b\"]}",
                 "json");
 
-            Assert(origins.ContainsKey("user.name"), "Tracks origin of user.name");
-            Assert(origins["user.name"].OriginalValue?.ToString() == "Alice", "Origin value is correct");
+            Assert(origins.ContainsKey("content.user.name"), "Tracks origin of content.user.name");
+            Assert(origins["content.user.name"].OriginalValue?.ToString() == "Alice", "Origin value is correct");
         }
         Console.WriteLine();
 
@@ -151,7 +152,7 @@ public static class SmokeTest
             var xml = "<root><name>Bob</name><age>25</age></root>";
             var (hash, origins) = loader.LoadFromString(xml, "xml");
 
-            Assert(origins.ContainsKey("root.name"), "Tracks origin of root.name");
+            Assert(origins.ContainsKey("content.root.name"), "Tracks origin of content.root.name");
         }
         Console.WriteLine();
 
@@ -160,7 +161,7 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"show\": true}", "json");
-            var engine = new DebugEngine("{% if show %}YES{% endif %}", hash, origins);
+            var engine = new DebugEngine("{% if content.show %}YES{% endif %}", hash, origins);
 
             engine.Step(StepAction.Continue);
             Assert(engine.State.OutputSoFar.Contains("YES"), "Conditional output rendered");
@@ -172,7 +173,7 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"name\": \"DotLiquid\"}", "json");
-            var engine = new DebugEngine("Hello {{ name }}!", hash, origins);
+            var engine = new DebugEngine("Hello {{ content.name }}!", hash, origins);
 
             var fullRender = engine.GetFullRender();
             Assert(fullRender == "Hello DotLiquid!", "DotLiquid renders correctly");
@@ -184,7 +185,7 @@ public static class SmokeTest
         {
             var loader = new InputDataLoader();
             var (hash, origins) = loader.LoadFromString("{\"items\": [\"x\", \"y\"]}", "json");
-            var engine = new DebugEngine("{% for item in items %}{{ item }}{% endfor %}Done", hash, origins);
+            var engine = new DebugEngine("{% for item in content.items %}{{ item }}{% endfor %}Done", hash, origins);
 
             engine.Step(StepAction.StepOver); // Should skip entire for block
             Assert(engine.State.OutputSoFar.Contains("xy"), "Step over executes the for block");

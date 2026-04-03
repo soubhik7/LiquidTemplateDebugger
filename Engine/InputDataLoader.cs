@@ -31,7 +31,7 @@ public class InputDataLoader
     {
         var normalizedFormat = string.IsNullOrWhiteSpace(format) ? "TEXT" : format.Trim().ToUpperInvariant();
 
-        return normalizedFormat switch
+        var (hash, origins) = normalizedFormat switch
         {
             "JSON" => LoadJson(content, "JSON"),
             "XML" => LoadXml(content, "XML"),
@@ -39,6 +39,9 @@ public class InputDataLoader
             "TEXT" => LoadKeyValue(content, "TEXT"),
             _ => throw new InvalidOperationException($"Unsupported input format '{format}'. Supported formats: JSON, XML, CSV, TEXT.")
         };
+
+        // Wrap the data in a "content" property similar to Azure Logic Apps Liquid transformation
+        return WrapInContentProperty(hash, origins);
     }
 
     private (Hash hash, Dictionary<string, ValueOrigin> origins) LoadJson(string json, string format)
@@ -446,4 +449,49 @@ public class InputDataLoader
         };
     }
 
+    /// <summary>
+    /// Wraps the input data in a "content" property, similar to Azure Logic Apps Liquid transformation.
+    /// This allows templates to access data as {{ content.propertyName }} instead of {{ propertyName }}.
+    /// </summary>
+    private (Hash hash, Dictionary<string, ValueOrigin> origins) WrapInContentProperty(
+        Hash originalHash,
+        Dictionary<string, ValueOrigin> originalOrigins)
+    {
+        // Create new origins dictionary with "content." prefix
+        var wrappedOrigins = new Dictionary<string, ValueOrigin>(StringComparer.OrdinalIgnoreCase);
+        
+        // Add origin for the content wrapper itself
+        wrappedOrigins["content"] = new ValueOrigin
+        {
+            SourcePath = "content",
+            SourceFormat = "wrapper",
+            OriginalValue = "{Content Wrapper}"
+        };
+
+        // Prefix all existing origins with "content."
+        foreach (var kvp in originalOrigins)
+        {
+            var newPath = $"content.{kvp.Key}";
+            var origin = kvp.Value;
+            
+            // Update the source path to include content prefix
+            wrappedOrigins[newPath] = new ValueOrigin
+            {
+                SourcePath = newPath,
+                SourceFormat = origin.SourceFormat,
+                OriginalValue = origin.OriginalValue,
+                SourceLineNumber = origin.SourceLineNumber
+            };
+        }
+
+        // Wrap the hash in a content property
+        var wrappedDict = new Dictionary<string, object>
+        {
+            ["content"] = originalHash
+        };
+
+        var wrappedHash = Hash.FromDictionary(wrappedDict);
+        
+        return (wrappedHash, wrappedOrigins);
+    }
 }

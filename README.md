@@ -9,6 +9,7 @@ A step-by-step debugger for [DotLiquid](https://github.com/dotliquid/dotliquid) 
 🎯 **Breakpoints & watches** - Pause execution and monitor values
 📊 **Data origin tracking** - Trace values back to their source
 🔄 **Format transformations** - Convert between JSON, XML, CSV, and text
+🔗 **Azure Logic Apps compatible** - Input data wrapped in `content` property
 🌐 **Web-based UI** - Modern browser interface
 🧪 **Comprehensive testing** - Built-in test suite
 
@@ -35,6 +36,34 @@ dotnet run -- --test
 ```
 
 **Supported input formats:** JSON, XML, CSV, key=value text (auto-detected from file extension, or pass `json`/`xml`/`csv`/`text` as the third argument).
+
+### Azure Logic Apps Compatibility
+
+This debugger follows the **Azure Logic Apps Liquid template transformation** pattern, where input data is automatically wrapped in a `content` property. This means:
+
+- Input data like `{"name": "John"}` becomes accessible as `{{ content.name }}`
+- All variables from input must be accessed via the `content` prefix
+- This matches the standard behavior of Liquid transformations in Azure Logic Apps
+
+**Example:**
+
+```json
+// Input data
+{
+  "customer": {
+    "name": "Alice",
+    "email": "alice@example.com"
+  }
+}
+```
+
+```liquid
+// Template - access via content wrapper
+Order for {{ content.customer.name }}
+Email: {{ content.customer.email }}
+```
+
+See `samples/order-content-wrapper.liquid` for a complete example.
 
 ## Format Transformations
 
@@ -96,36 +125,38 @@ id,name,price,category
 }
 ```
 
-**`samples/order.liquid`** — template:
+**`samples/order-content-wrapper.liquid`** — template (Azure Logic Apps compatible):
 
 ```liquid
-Order Summary for {{ customer.name }}
-Email: {{ customer.email | downcase }}
-Tier: {{ customer.tier | upcase }}
+Order Summary for {{ content.customer.name }}
+Email: {{ content.customer.email | downcase }}
+Tier: {{ content.customer.tier | upcase }}
 ==============================
-{% for item in items %}
+{% for item in content.items %}
   {{ item.name }} - ${{ item.price }} x {{ item.quantity }}
 {% endfor %}
 ------------------------------
 {% assign total = 0 %}
-{% for item in items %}
+{% for item in content.items %}
   {% assign line_total = item.price | times: item.quantity %}
   {% assign total = total | plus: line_total %}
 {% endfor %}
 Subtotal: ${{ total }}
-{% if discount_percent > 0 %}
-  {% assign discount_amount = total | times: discount_percent | divided_by: 100 %}
-  Discount ({{ discount_percent }}%): -${{ discount_amount }}
+{% if content.discount_percent > 0 %}
+  {% assign discount_amount = total | times: content.discount_percent | divided_by: 100 %}
+  Discount ({{ content.discount_percent }}%): -${{ discount_amount }}
   {% assign total = total | minus: discount_amount %}
 {% endif %}
 Total: ${{ total }}
-Shipping: {{ shipping | capitalize }}
+Shipping: {{ content.shipping | capitalize }}
 ```
+
+**Note:** All input data is accessed via the `content` wrapper, matching Azure Logic Apps behavior.
 
 ### 2. Start the Debugger
 
 ```
-dotnet run -- samples/order.liquid samples/order.json
+dotnet run -- samples/order-content-wrapper.liquid samples/order.json
 ```
 
 Output:
@@ -137,7 +168,7 @@ Output:
   ╚══════════════════════════════════════════════╝
 
 Type 'help' for available commands.
-Loaded template: samples/order.liquid
+Loaded template: samples/order-content-wrapper.liquid
 Loaded data: samples/order.json (.json)
 Template has 45 elements across 22 lines
 
@@ -156,16 +187,16 @@ Use `step` (or `s`) to execute one element at a time:
 ```
 dbg> step
 [Output] Line 1
->  1| Order Summary for {{ customer.name }}
-   2| Email: {{ customer.email | downcase }}
-   3| Tier: {{ customer.tier | upcase }}
+>  1| Order Summary for {{ content.customer.name }}
+   2| Email: {{ content.customer.email | downcase }}
+   3| Tier: {{ content.customer.tier | upcase }}
   Output: "Order Summary for "
 
 dbg> step
 [Literal] Line 1
->  1| Order Summary for {{ customer.name }}
-   2| Email: {{ customer.email | downcase }}
-   3| Tier: {{ customer.tier | upcase }}
+>  1| Order Summary for {{ content.customer.name }}
+   2| Email: {{ content.customer.email | downcase }}
+   3| Tier: {{ content.customer.tier | upcase }}
   Output: "Alice Johnson"
 ```
 
@@ -176,11 +207,10 @@ Each step shows the element type (`[Literal]`, `[Output]`, `[Tag]`), the current
 ```
 dbg> vars
 Variables:
-  customer         [INPUT]    (Hash) {Hash: 3 keys}
-  discount_percent [INPUT]    (Int64) 10
-  items            [INPUT]    (List`1) [Array: 3 items]
-  shipping         [INPUT]    (String) "express"
+  content          [INPUT]    (Hash) {Hash: 4 keys}
 ```
+
+The `content` variable contains all input data as nested properties.
 
 Variables are color-coded by source:
 - `[INPUT]` — from input data
@@ -191,17 +221,19 @@ Variables are color-coded by source:
 ### 5. Inspect a Variable
 
 ```
-dbg> inspect customer
-Inspecting: customer
+dbg> inspect content.customer
+Inspecting: content.customer
 ----------------------------------------
   Scope:  input (depth: 0)
-  Origin: customer (input)
+  Origin: content.customer (input)
   Type:   Hash
   Value:
     name: Alice Johnson
     email: alice@example.com
     tier: gold
 ```
+
+Access nested properties using dot notation: `content.customer.name`, `content.items`, etc.
 
 Deep-inspect nested objects, arrays, and their full structure.
 
@@ -211,11 +243,11 @@ Use `il` (inspect-line) to see every expression on the current line at once:
 
 ```
 dbg> il
-  Line 2: Email: {{ customer.email | downcase }}
+  Line 2: Email: {{ content.customer.email | downcase }}
 
-  { customer.email | downcase }  customer.email = "alice@example.com"
+  { content.customer.email | downcase }  content.customer.email = "alice@example.com"
     after filters: "alice@example.com"
-    origin: customer [FROM INPUT]
+    origin: content.customer [FROM INPUT]
 ```
 
 This shows the raw value, the result after filters, and where the data came from.
@@ -296,10 +328,10 @@ Trace for 'total':
 Evaluate any Liquid expression on the fly:
 
 ```
-dbg> eval customer.name | upcase
+dbg> eval content.customer.name | upcase
 => "ALICE JOHNSON"
 
-dbg> eval items.size
+dbg> eval content.items.size
 => 3
 
 dbg> eval total | divided_by: 2
