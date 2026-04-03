@@ -1,0 +1,13 @@
+{% comment %}
+  CSV to JSON Transformation Template
+  Converts CSV data to JSON array format
+{% endcomment %}
+[
+{% for item in rows %}
+  {
+  {% for prop in item %}
+    "{{ prop[0] }}": {% if prop[1] == blank %}"{{ prop[1] }}"{% else %}{{ prop[1] | json }}{% endif %}{% unless forloop.last %},{% endunless %}
+  {% endfor %}
+  }{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]

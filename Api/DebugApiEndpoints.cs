@@ -1,4 +1,5 @@
 using LiquidTemplateDebugger.Models;
+using LiquidTemplateDebugger.Engine;
 
 namespace LiquidTemplateDebugger.Api;
 
@@ -221,6 +222,74 @@ public static class DebugApiEndpoints
                 return Results.BadRequest(new { error = "No session loaded." });
 
             return Results.Ok(new { output = manager.Engine.GetFullRender() });
+        });
+
+        // Convert current output to different format
+        app.MapPost("/api/convert", (ConvertFormatRequest request, DebugSessionManager manager) =>
+        {
+            if (!manager.IsLoaded || manager.Engine == null)
+                return Results.BadRequest(new { error = "No session loaded." });
+
+            try
+            {
+                var converter = new FormatConverter();
+                var currentOutput = manager.Engine.State.OutputSoFar;
+                var inputFormat = request.InputFormat ?? "TEXT";
+                var outputFormat = request.OutputFormat ?? "TEXT";
+                
+                var converted = converter.ConvertOutput(currentOutput, outputFormat, inputFormat);
+                
+                return Results.Ok(new {
+                    output = converted,
+                    inputFormat = inputFormat,
+                    outputFormat = outputFormat
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // Direct format transformation (load, render, convert in one call)
+        app.MapPost("/api/transform", (TransformRequest request, DebugSessionManager manager) =>
+        {
+            try
+            {
+                // Load the data
+                var loader = new InputDataLoader();
+                var (hash, origins) = loader.LoadFromString(request.DataContent, request.InputFormat);
+                
+                // Create a temporary engine to render
+                var engine = new DebugEngine(request.TemplateContent, hash, origins);
+                
+                // Run to completion
+                while (!engine.State.IsComplete && string.IsNullOrEmpty(engine.State.ErrorMessage))
+                {
+                    engine.Step(StepAction.Continue);
+                }
+                
+                if (!string.IsNullOrEmpty(engine.State.ErrorMessage))
+                {
+                    return Results.BadRequest(new { error = engine.State.ErrorMessage });
+                }
+                
+                // Convert rendered output to requested format using the declared source format.
+                var converter = new FormatConverter();
+                var output = engine.State.OutputSoFar;
+                var result = converter.ConvertOutput(output, request.OutputFormat, request.InputFormat);
+                
+                return Results.Ok(new {
+                    output = result,
+                    inputFormat = request.InputFormat,
+                    outputFormat = request.OutputFormat,
+                    templateUsed = !string.IsNullOrWhiteSpace(request.TemplateContent)
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
     }
 

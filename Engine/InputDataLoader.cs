@@ -1,13 +1,13 @@
+using System.Globalization;
 using System.Xml.Linq;
 using DotLiquid;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using LiquidTemplateDebugger.Models;
+using Newtonsoft.Json.Linq;
 
 namespace LiquidTemplateDebugger.Engine;
 
 /// <summary>
-/// Loads input data from various formats (JSON, XML, key=value) and converts
+/// Loads input data from various formats (JSON, XML, CSV, key=value) and converts
 /// to DotLiquid Hash objects with origin tracking.
 /// </summary>
 public class InputDataLoader
@@ -20,74 +20,86 @@ public class InputDataLoader
         {
             ".json" => "JSON",
             ".xml" => "XML",
+            ".csv" => "CSV",
             _ => "TEXT"
         };
 
-        return format switch
-        {
-            "JSON" => LoadJson(content, format),
-            "XML" => LoadXml(content, format),
-            _ => LoadKeyValue(content, format)
-        };
+        return LoadFromString(content, format);
     }
 
     public (Hash hash, Dictionary<string, ValueOrigin> origins) LoadFromString(string content, string format)
     {
-        return format.ToUpperInvariant() switch
+        var normalizedFormat = string.IsNullOrWhiteSpace(format) ? "TEXT" : format.Trim().ToUpperInvariant();
+
+        return normalizedFormat switch
         {
             "JSON" => LoadJson(content, "JSON"),
             "XML" => LoadXml(content, "XML"),
-            _ => LoadKeyValue(content, "TEXT")
+            "CSV" => LoadCsv(content, "CSV"),
+            "TEXT" => LoadKeyValue(content, "TEXT"),
+            _ => throw new InvalidOperationException($"Unsupported input format '{format}'. Supported formats: JSON, XML, CSV, TEXT.")
         };
     }
 
     private (Hash hash, Dictionary<string, ValueOrigin> origins) LoadJson(string json, string format)
     {
         var origins = new Dictionary<string, ValueOrigin>(StringComparer.OrdinalIgnoreCase);
-        var jObj = JObject.Parse(json);
-        var dict = new Dictionary<string, object?>();
+        var token = JToken.Parse(json);
 
-        FlattenAndTrackJson(jObj, "", dict, origins, format);
+        if (token is not JObject jObj)
+        {
+            token = new JObject { ["value"] = token };
+            jObj = (JObject)token;
+        }
 
-        var hash = Hash.FromDictionary(ConvertToLiquidCompatible(jObj));
+        FlattenAndTrackJson(jObj, string.Empty, origins, format);
+        var hash = Hash.FromDictionary(ConvertObjectDictionary(jObj));
         return (hash, origins);
     }
 
-    private void FlattenAndTrackJson(JToken token, string path, Dictionary<string, object?> dict,
-        Dictionary<string, ValueOrigin> origins, string format)
+    private void FlattenAndTrackJson(JToken token, string path, Dictionary<string, ValueOrigin> origins, string format)
     {
         switch (token)
         {
             case JObject obj:
+                if (!string.IsNullOrEmpty(path))
+                {
+                    origins[path] = new ValueOrigin
+                    {
+                        SourcePath = path,
+                        SourceFormat = format,
+                        OriginalValue = "{Object}"
+                    };
+                }
+
                 foreach (var prop in obj.Properties())
                 {
                     var childPath = string.IsNullOrEmpty(path) ? prop.Name : $"{path}.{prop.Name}";
-                    FlattenAndTrackJson(prop.Value, childPath, dict, origins, format);
+                    FlattenAndTrackJson(prop.Value, childPath, origins, format);
                 }
                 break;
 
             case JArray arr:
-                for (int i = 0; i < arr.Count; i++)
-                {
-                    var childPath = $"{path}[{i}]";
-                    FlattenAndTrackJson(arr[i], childPath, dict, origins, format);
-                }
                 origins[path] = new ValueOrigin
                 {
                     SourcePath = path,
                     SourceFormat = format,
                     OriginalValue = $"[Array: {arr.Count} items]"
                 };
+
+                for (int i = 0; i < arr.Count; i++)
+                {
+                    var childPath = $"{path}[{i}]";
+                    FlattenAndTrackJson(arr[i], childPath, origins, format);
+                }
                 break;
 
-            default:
-                var value = ((JValue)token).Value;
-                dict[path] = value;
+            case JValue value:
                 origins[path] = new ValueOrigin
                 {
                     SourcePath = path,
                     SourceFormat = format,
-                    OriginalValue = value
+                    OriginalValue = value.Value
                 };
                 break;
         }
@@ -96,60 +108,76 @@ public class InputDataLoader
     private (Hash hash, Dictionary<string, ValueOrigin> origins) LoadXml(string xml, string format)
     {
         var origins = new Dictionary<string, ValueOrigin>(StringComparer.OrdinalIgnoreCase);
-        var doc = XDocument.Parse(xml);
-        var dict = new Dictionary<string, object>();
+        var doc = XDocument.Parse(xml, LoadOptions.PreserveWhitespace);
 
-        if (doc.Root != null)
-        {
-            var converted = ConvertXmlElement(doc.Root, doc.Root.Name.LocalName, origins, format);
-            if (converted is Dictionary<string, object> rootDict)
-            {
-                var hash = Hash.FromDictionary(rootDict);
-                return (hash, origins);
-            }
-            else
-            {
-                var wrapper = new Dictionary<string, object> { [doc.Root.Name.LocalName] = converted };
-                var hash = Hash.FromDictionary(wrapper);
-                return (hash, origins);
-            }
-        }
+        if (doc.Root == null)
+            return (Hash.FromDictionary(new Dictionary<string, object>()), origins);
 
-        return (Hash.FromDictionary(dict), origins);
+        var rootPath = doc.Root.Name.LocalName;
+        var converted = ConvertXmlElement(doc.Root, rootPath, origins, format);
+        var wrapper = new Dictionary<string, object?> { [rootPath] = converted };
+
+        return (Hash.FromDictionary(ConvertDictionaryToHashFriendly(wrapper)), origins);
     }
 
-    private object ConvertXmlElement(XElement element, string path,
-        Dictionary<string, ValueOrigin> origins, string format)
+    private object? ConvertXmlElement(XElement element, string path, Dictionary<string, ValueOrigin> origins, string format)
     {
         var children = element.Elements().ToList();
+        var hasAttributes = element.HasAttributes;
+        var directText = string.Concat(element.Nodes().OfType<XText>().Select(t => t.Value)).Trim();
 
-        if (children.Count == 0)
+        if (children.Count == 0 && !hasAttributes)
         {
-            var value = element.Value;
+            var scalar = ParseLooseScalar(element.Value);
             origins[path] = new ValueOrigin
             {
                 SourcePath = path,
                 SourceFormat = format,
-                OriginalValue = value
+                OriginalValue = scalar
             };
-            return value;
+            return scalar;
         }
 
-        var dict = new Dictionary<string, object>();
-        var grouped = children.GroupBy(e => e.Name.LocalName);
-
-        foreach (var group in grouped)
+        origins[path] = new ValueOrigin
         {
-            var items = group.ToList();
-            var childPath = $"{path}.{group.Key}";
+            SourcePath = path,
+            SourceFormat = format,
+            OriginalValue = "{Element}"
+        };
 
-            if (items.Count > 1)
+        var dict = new Dictionary<string, object?>();
+
+        foreach (var attr in element.Attributes())
+        {
+            var attrKey = $"@{attr.Name.LocalName}";
+            var attrPath = $"{path}.{attrKey}";
+            var attrValue = attr.Value;
+            dict[attrKey] = attrValue;
+            origins[attrPath] = new ValueOrigin
             {
-                var list = new List<object>();
+                SourcePath = attrPath,
+                SourceFormat = format,
+                OriginalValue = attrValue
+            };
+        }
+
+        foreach (var group in children.GroupBy(e => e.Name.LocalName))
+        {
+            var childPath = $"{path}.{group.Key}";
+            var items = group.ToList();
+
+            if (items.Count == 1)
+            {
+                dict[group.Key] = ConvertXmlElement(items[0], childPath, origins, format);
+            }
+            else
+            {
+                var list = new List<object?>();
                 for (int i = 0; i < items.Count; i++)
                 {
                     list.Add(ConvertXmlElement(items[i], $"{childPath}[{i}]", origins, format));
                 }
+
                 dict[group.Key] = list;
                 origins[childPath] = new ValueOrigin
                 {
@@ -158,22 +186,16 @@ public class InputDataLoader
                     OriginalValue = $"[Array: {items.Count} items]"
                 };
             }
-            else
-            {
-                dict[group.Key] = ConvertXmlElement(items[0], childPath, origins, format);
-            }
         }
 
-        // Also include attributes
-        foreach (var attr in element.Attributes())
+        if (!string.IsNullOrEmpty(directText))
         {
-            var attrPath = $"{path}.@{attr.Name.LocalName}";
-            dict[$"@{attr.Name.LocalName}"] = attr.Value;
-            origins[attrPath] = new ValueOrigin
+            dict["#text"] = ParseLooseScalar(directText);
+            origins[$"{path}.#text"] = new ValueOrigin
             {
-                SourcePath = attrPath,
+                SourcePath = $"{path}.#text",
                 SourceFormat = format,
-                OriginalValue = attr.Value
+                OriginalValue = directText
             };
         }
 
@@ -183,38 +205,209 @@ public class InputDataLoader
     private (Hash hash, Dictionary<string, ValueOrigin> origins) LoadKeyValue(string text, string format)
     {
         var origins = new Dictionary<string, ValueOrigin>(StringComparer.OrdinalIgnoreCase);
-        var dict = new Dictionary<string, object>();
+        var dict = new Dictionary<string, object?>();
 
-        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        int lineNum = 0;
-        foreach (var line in lines)
+        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        var valueLines = new List<string>();
+
+        for (int i = 0; i < lines.Length; i++)
         {
-            lineNum++;
-            var trimmed = line.Trim();
+            var rawLine = lines[i];
+            var trimmed = rawLine.Trim();
+
             if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
                 continue;
 
-            var eqIdx = trimmed.IndexOf('=');
+            var eqIdx = rawLine.IndexOf('=');
             if (eqIdx > 0)
             {
-                var key = trimmed[..eqIdx].Trim();
-                var value = trimmed[(eqIdx + 1)..].Trim();
-                dict[key] = value;
+                var key = rawLine[..eqIdx].Trim();
+                var value = rawLine[(eqIdx + 1)..].Trim();
+                var parsedValue = ParseLooseScalar(value);
+                dict[key] = parsedValue;
                 origins[key] = new ValueOrigin
                 {
                     SourcePath = key,
                     SourceFormat = format,
-                    OriginalValue = value,
-                    SourceLineNumber = lineNum
+                    OriginalValue = parsedValue,
+                    SourceLineNumber = i + 1
                 };
+            }
+            else
+            {
+                valueLines.Add(rawLine);
             }
         }
 
-        var hash = Hash.FromDictionary(dict);
-        return (hash, origins);
+        if (valueLines.Count > 0 || dict.Count == 0)
+        {
+            var scalarText = string.Join(Environment.NewLine, valueLines).Trim();
+            dict["value"] = scalarText;
+            origins["value"] = new ValueOrigin
+            {
+                SourcePath = "value",
+                SourceFormat = format,
+                OriginalValue = scalarText
+            };
+        }
+
+        return (Hash.FromDictionary(ConvertDictionaryToHashFriendly(dict)), origins);
     }
 
-    private static Dictionary<string, object> ConvertToLiquidCompatible(JObject obj)
+    private (Hash hash, Dictionary<string, ValueOrigin> origins) LoadCsv(string csv, string format)
+    {
+        var origins = new Dictionary<string, ValueOrigin>(StringComparer.OrdinalIgnoreCase);
+        var records = ParseCsvRecords(csv);
+
+        if (records.Count == 0)
+            return (Hash.FromDictionary(new Dictionary<string, object>()), origins);
+
+        var headers = records[0]
+            .Select((header, index) => string.IsNullOrWhiteSpace(header) ? $"column{index + 1}" : header.Trim())
+            .ToList();
+
+        var rows = new List<object>();
+        for (int i = 1; i < records.Count; i++)
+        {
+            var record = records[i];
+            var row = new Dictionary<string, object?>();
+
+            for (int j = 0; j < headers.Count; j++)
+            {
+                var key = headers[j];
+                var value = j < record.Count ? ParseCsvValue(record[j]) : null;
+                row[key] = value;
+
+                var path = $"rows[{i - 1}].{key}";
+                origins[path] = new ValueOrigin
+                {
+                    SourcePath = path,
+                    SourceFormat = format,
+                    OriginalValue = value,
+                    SourceLineNumber = i + 1
+                };
+            }
+
+            rows.Add(Hash.FromDictionary(ConvertDictionaryToHashFriendly(row)));
+        }
+
+        origins["rows"] = new ValueOrigin
+        {
+            SourcePath = "rows",
+            SourceFormat = format,
+            OriginalValue = $"[Array: {rows.Count} items]"
+        };
+
+        var dict = new Dictionary<string, object>
+        {
+            ["rows"] = rows
+        };
+
+        return (Hash.FromDictionary(dict), origins);
+    }
+
+    private List<List<string>> ParseCsvRecords(string csv)
+    {
+        var records = new List<List<string>>();
+        var currentRecord = new List<string>();
+        var currentField = new System.Text.StringBuilder();
+        var normalized = csv.Replace("\r\n", "\n").Replace('\r', '\n');
+        var inQuotes = false;
+
+        for (int i = 0; i < normalized.Length; i++)
+        {
+            var c = normalized[i];
+
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < normalized.Length && normalized[i + 1] == '"')
+                {
+                    currentField.Append('"');
+                    i++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+
+                continue;
+            }
+
+            if (c == ',' && !inQuotes)
+            {
+                currentRecord.Add(currentField.ToString());
+                currentField.Clear();
+                continue;
+            }
+
+            if (c == '\n' && !inQuotes)
+            {
+                currentRecord.Add(currentField.ToString());
+                currentField.Clear();
+
+                if (currentRecord.Any(field => !string.IsNullOrEmpty(field)))
+                    records.Add(currentRecord);
+
+                currentRecord = new List<string>();
+                continue;
+            }
+
+            currentField.Append(c);
+        }
+
+        currentRecord.Add(currentField.ToString());
+        if (currentRecord.Any(field => !string.IsNullOrEmpty(field)))
+            records.Add(currentRecord);
+
+        if (inQuotes)
+            throw new InvalidOperationException("CSV input parsing failed: unmatched quote detected.");
+
+        return records;
+    }
+
+    private object? ParseCsvValue(string value)
+    {
+        var trimmed = value.Trim();
+
+        if (trimmed.Length == 0)
+            return null;
+
+        if (string.Equals(trimmed, "null", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (bool.TryParse(trimmed, out var boolVal))
+            return boolVal;
+
+        if (long.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longVal))
+            return longVal;
+
+        if (decimal.TryParse(trimmed, NumberStyles.Number, CultureInfo.InvariantCulture, out var decimalVal))
+            return decimalVal;
+
+        return trimmed;
+    }
+
+    private object? ParseLooseScalar(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        if (string.Equals(value, "null", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (bool.TryParse(value, out var boolVal))
+            return boolVal;
+
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longVal))
+            return longVal;
+
+        if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var decimalVal))
+            return decimalVal;
+
+        return value;
+    }
+
+    private static Dictionary<string, object> ConvertObjectDictionary(JObject obj)
     {
         var dict = new Dictionary<string, object>();
         foreach (var prop in obj.Properties())
@@ -228,10 +421,29 @@ public class InputDataLoader
     {
         return token switch
         {
-            JObject obj => Hash.FromDictionary(ConvertToLiquidCompatible(obj)),
+            JObject obj => Hash.FromDictionary(ConvertObjectDictionary(obj)),
             JArray arr => arr.Select(ConvertJToken).ToList(),
             JValue val => val.Value ?? "",
             _ => token.ToString()
         };
     }
+
+    private static Dictionary<string, object> ConvertDictionaryToHashFriendly(Dictionary<string, object?> source)
+    {
+        return source.ToDictionary(
+            kvp => kvp.Key,
+            kvp => ConvertToHashFriendlyValue(kvp.Value));
+    }
+
+    private static object ConvertToHashFriendlyValue(object? value)
+    {
+        return value switch
+        {
+            null => "",
+            Dictionary<string, object?> dict => Hash.FromDictionary(ConvertDictionaryToHashFriendly(dict)),
+            IList<object?> list => list.Select(ConvertToHashFriendlyValue).ToList(),
+            _ => value
+        };
+    }
+
 }

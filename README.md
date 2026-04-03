@@ -1,6 +1,16 @@
 # DotLiquid Template Debugger
 
-A step-by-step debugger for [DotLiquid](https://github.com/dotliquid/dotliquid) templates. Inspect variables, set breakpoints, trace data origins, and watch values change — all from your terminal.
+A step-by-step debugger for [DotLiquid](https://github.com/dotliquid/dotliquid) templates with comprehensive **format transformation** capabilities. Inspect variables, set breakpoints, trace data origins, and transform data between JSON, XML, CSV, and text formats.
+
+## Features
+
+✨ **Step-by-step debugging** - Execute templates line by line
+🔍 **Variable inspection** - Deep dive into data structures
+🎯 **Breakpoints & watches** - Pause execution and monitor values
+📊 **Data origin tracking** - Trace values back to their source
+🔄 **Format transformations** - Convert between JSON, XML, CSV, and text
+🌐 **Web-based UI** - Modern browser interface
+🧪 **Comprehensive testing** - Built-in test suite
 
 ## Prerequisites
 
@@ -24,7 +34,44 @@ dotnet run
 dotnet run -- --test
 ```
 
-**Supported input formats:** JSON, XML, key=value text (auto-detected from file extension, or pass `json`/`xml`/`text` as the third argument).
+**Supported input formats:** JSON, XML, CSV, key=value text (auto-detected from file extension, or pass `json`/`xml`/`csv`/`text` as the third argument).
+
+## Format Transformations
+
+The debugger now supports comprehensive data format transformations:
+
+- **CSV ↔ JSON** - Convert tabular data to/from JSON
+- **JSON ↔ XML** - Transform between JSON and XML structures
+- **XML ↔ XML** - Restructure XML documents
+- **CSV ↔ XML** - Convert CSV to XML and vice versa
+- **Any format → Text** - Generate custom text output
+
+See [FORMAT_TRANSFORMATIONS.md](FORMAT_TRANSFORMATIONS.md) for detailed examples and API usage.
+
+### Quick Example: CSV to JSON
+
+```bash
+# Using sample files
+dotnet run -- samples/csv-to-json.liquid samples/products.csv csv
+```
+
+**Input (products.csv):**
+```csv
+id,name,price,category
+1,Widget A,29.99,Electronics
+2,Widget B,49.99,Electronics
+```
+
+**Template (csv-to-json.liquid):**
+```liquid
+[
+{% for item in rows %}
+  {"id": {{ item.id }}, "name": "{{ item.name }}", "price": {{ item.price }}}{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]
+```
+
+**Output:** Properly formatted JSON array
 
 ## End-to-End Debugging Example
 

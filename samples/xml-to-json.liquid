@@ -1,0 +1,17 @@
+{% comment %}
+  XML to JSON Transformation Template
+  Converts XML data to JSON format
+{% endcomment %}
+{
+{% for prop in root %}
+  "{{ prop[0] }}": {% if prop[1].size %}[
+    {% for item in prop[1] %}
+    {
+      {% for field in item %}
+      "{{ field[0] }}": "{{ field[1] }}"{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    }{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+  ]{% else %}"{{ prop[1] }}"{% endif %}{% unless forloop.last %},{% endunless %}
+{% endfor %}
+}

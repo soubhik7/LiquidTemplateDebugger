@@ -130,3 +130,15 @@ public record EvalRequest(
 public record InspectRequest(
     string Name
 );
+
+public record ConvertFormatRequest(
+    string? OutputFormat,  // "json", "xml", "csv", or null for text
+    string? InputFormat    // Optional: hint about current format
+);
+
+public record TransformRequest(
+    string TemplateContent,
+    string DataContent,
+    string InputFormat,    // "json", "xml", "csv", "text"
+    string OutputFormat    // "json", "xml", "csv", "text"
+);
