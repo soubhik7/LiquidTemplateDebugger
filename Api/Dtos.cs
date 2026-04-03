@@ -1,0 +1,132 @@
+namespace LiquidTemplateDebugger.Api;
+
+// --- Response DTOs ---
+
+public record FullStateDto(
+    bool IsLoaded,
+    string? TemplateSource,
+    List<TemplateElementDto> Elements,
+    DebugStateDto? State,
+    List<BreakpointDto> Breakpoints,
+    List<WatchDto> Watches
+);
+
+public record DebugStateDto(
+    int CurrentElementIndex,
+    int CurrentLine,
+    string CurrentExpression,
+    string CurrentElementType,
+    string OutputSoFar,
+    string? LastOutputChunk,
+    List<string> ScopeStack,
+    bool IsComplete,
+    string? ErrorMessage,
+    List<VariableDto> Variables
+);
+
+public record VariableDto(
+    string Name,
+    string CurrentValue,
+    object? RawValue,
+    string TypeName,
+    string ScopeTag,
+    int ScopeDepth,
+    OriginDto? Origin,
+    List<TransformationDto> Transformations
+);
+
+public record OriginDto(
+    string SourcePath,
+    string SourceFormat,
+    string? OriginalValue,
+    int? SourceLineNumber
+);
+
+public record TransformationDto(
+    string TransformationType,
+    string Description,
+    string? ValueBefore,
+    string? ValueAfter,
+    int AtLine,
+    string Expression
+);
+
+public record TemplateElementDto(
+    int Index,
+    int LineNumber,
+    int ColumnStart,
+    int ColumnEnd,
+    string RawText,
+    string ElementType,
+    string? TagName,
+    string? Expression,
+    int Depth,
+    int? ParentIndex,
+    List<int> ChildIndices
+);
+
+public record BreakpointDto(
+    int Id,
+    int Line,
+    string? Condition,
+    bool IsEnabled,
+    int HitCount
+);
+
+public record WatchDto(
+    int Id,
+    string Expression,
+    string? CurrentValue,
+    bool HasChanged
+);
+
+public record EvalResultDto(
+    string Expression,
+    string? Value,
+    string? TypeName,
+    string? Error
+);
+
+public record InspectResultDto(
+    string Name,
+    string? CurrentValue,
+    object? RawValue,
+    string? TypeName,
+    string? ScopeTag,
+    int? ScopeDepth,
+    OriginDto? Origin,
+    List<TransformationDto> Transformations,
+    string? Error
+);
+
+// --- Request DTOs ---
+
+public record LoadRequest(
+    string? TemplateContent,
+    string? DataContent,
+    string? Format,
+    string? TemplatePath,
+    string? DataPath
+);
+
+public record StepRequest(
+    string Action,     // "next", "into", "over", "out", "continue", "runToLine"
+    int? TargetLine
+);
+
+public record AddBreakpointRequest(
+    int Line,
+    string? Condition
+);
+
+public record AddWatchRequest(
+    string Expression
+);
+
+public record EvalRequest(
+    string Expression
+);
+
+public record InspectRequest(
+    string Name
+);

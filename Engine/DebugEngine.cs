@@ -1205,6 +1205,33 @@ public class DebugEngine
     public object? Evaluate(string expression) => EvaluateExpression(expression);
 
     /// <summary>
+    /// Evaluate an expression step by step through the filter pipeline.
+    /// Returns a list of (step description, intermediate value) pairs.
+    /// </summary>
+    public List<(string step, object? value)> EvaluateExpressionSteps(string expression)
+    {
+        var results = new List<(string step, object? value)>();
+
+        if (string.IsNullOrWhiteSpace(expression))
+            return results;
+
+        var parts = SplitByPipes(expression);
+        var baseExpr = parts[0].Trim();
+        var value = ResolveVariable(baseExpr);
+
+        results.Add((baseExpr, value));
+
+        for (int i = 1; i < parts.Count; i++)
+        {
+            var filterExpr = parts[i].Trim();
+            value = ApplyFilter(value, filterExpr);
+            results.Add((filterExpr, value));
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// Get the DotLiquid-rendered output of the full template for comparison.
     /// </summary>
     public string GetFullRender()
