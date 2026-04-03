@@ -38,44 +38,44 @@ The project is built with **C# / .NET 9** and the **DotLiquid** NuGet package, e
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Browser (Web UI)                             │
-│  index.html — Template viewer, variable inspector, output panel    │
+│  index.html — Template viewer, variable inspector, output panel     │
 └──────────────────────────┬──────────────────────────────────────────┘
                            │  HTTP REST (JSON)
                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     ASP.NET Minimal API                             │
-│  DebugApiEndpoints.cs — /api/load, /api/step, /api/state, etc.    │
-│  Dtos.cs — Request/response records                                │
-│  DtoConverter.cs — Engine models → JSON-safe DTOs                  │
-│  HashJsonConverter.cs — Custom serializer for DotLiquid Hash       │
+│  DebugApiEndpoints.cs — /api/load, /api/step, /api/state, etc.      │
+│  Dtos.cs — Request/response records                                 │
+│  DtoConverter.cs — Engine models → JSON-safe DTOs                   │
+│  HashJsonConverter.cs — Custom serializer for DotLiquid Hash        │
 └──────────────────────────┬──────────────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                   DebugSessionManager                               │
-│  Singleton — holds current DebugEngine instance                    │
-│  Manages load / reset / breakpoint+watch persistence               │
+│  Singleton — holds current DebugEngine instance                     │
+│  Manages load / reset / breakpoint+watch persistence                │
 └──────────────────────────┬──────────────────────────────────────────┘
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
-     ┌──────────────┐ ┌──────────┐ ┌──────────────┐
+     ┌──────────────┐ ┌──────────┐ ┌───────────────┐
      │TemplateParser│ │InputData │ │  DebugEngine  │
      │              │ │  Loader  │ │  (core)       │
      │Regex-based   │ │JSON/XML/ │ │Step execution │
      │tokenizer     │ │key=value │ │Variable track │
      │→ elements    │ │→ Hash +  │ │Breakpoints    │
      │with line/col │ │  Origins │ │Watches        │
-     └──────────────┘ └──────────┘ └──────────────┘
+     └──────────────┘ └──────────┘ └───────────────┘
                                           │
                                           ▼
-                                   ┌────────────┐
-                                   │  DotLiquid  │
-                                   │  (NuGet)    │
-                                   │  Used for   │
+                                   ┌──────────────┐
+                                   │  DotLiquid   │
+                                   │  (NuGet)     │
+                                   │  Used for    │
                                    │  full-render │
                                    │  comparison  │
-                                   └────────────┘
+                                   └──────────────┘
 ```
 
 ---
@@ -185,7 +185,7 @@ Each element type is executed differently:
 `EvaluateExpression(string)` handles the full Liquid expression pipeline:
 
 ```
-"product.name | upcase | truncate: 20"
+"product.name |    upcase      | truncate: 20"
      │                │               │
      ▼                ▼               ▼
   Resolve         Apply filter    Apply filter
