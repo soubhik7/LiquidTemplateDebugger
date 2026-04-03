@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<order id="ORD-2026-001" status="pending" priority="high">
+  <customer type="premium">
+    <name>Alice and Bob Corp</name>
+    <email>contact@alicebob.com</email>
+    <address>
+      <street>123 Main St</street>
+      <city>San Francisco</city>
+      <state>CA</state>
+      <zip>94102</zip>
+      <country>USA</country>
+    </address>
+    <phone type="mobile">+1-555-0123</phone>
+    <phone type="office">+1-555-0124</phone>
+  </customer>
+  <items>
+    <item sku="WDG-001" category="electronics">
+      <name>Smart Widget Pro</name>
+      <price currency="USD">299.99</price>
+      <quantity>2</quantity>
+      <discount>10</discount>
+      <tags>
+        <tag>featured</tag>
+        <tag>bestseller</tag>
+        <tag>new</tag>
+      </tags>
+    </item>
+    <item sku="GDG-002" category="accessories">
+      <name>Premium Gadget Deluxe</name>
+      <price currency="USD">149.50</price>
+      <quantity>1</quantity>
+      <discount>0</discount>
+      <tags>
+        <tag>premium</tag>
+      </tags>
+    </item>
+    <item sku="KIT-003" category="bundles">
+      <name>Starter Kit Basic</name>
+      <price currency="USD">89.99</price>
+      <quantity>3</quantity>
+      <discount>15</discount>
+      <tags>
+        <tag>bundle</tag>
+        <tag>value</tag>
+      </tags>
+    </item>
+  </items>
+  <shipping method="express" carrier="FedEx">
+    <cost>25.00</cost>
+    <estimated_days>2</estimated_days>
+  </shipping>
+  <payment method="credit_card" status="authorized">
+    <amount>1234.56</amount>
+    <currency>USD</currency>
+  </payment>
+  <notes>
+    <note timestamp="2026-04-01T10:30:00Z" author="sales">Customer requested gift wrapping</note>
+    <note timestamp="2026-04-02T14:15:00Z" author="warehouse">Items ready for shipment</note>
+  </notes>
+</order>
