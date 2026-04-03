@@ -9,6 +9,10 @@ if (args.Length == 1 && args[0] == "--test")
 {
     return SmokeTest.Run();
 }
+if (args.Length == 1 && args[0] == "--bugtest")
+{
+    return BugReproTest.Run();
+}
 
 // Parse port from args
 var port = 5050;

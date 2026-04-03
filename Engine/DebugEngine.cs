@@ -24,6 +24,20 @@ public class DebugEngine
     // For loop state tracking
     private readonly Stack<ForLoopState> _forLoopStack = new();
 
+    // Case/when value tracking
+    private readonly Stack<object?> _caseValueStack = new();
+
+    // Conditional execution stack: tracks whether the current code path is active.
+    // Each entry is (executing, branchTaken).
+    // 'executing' = should elements in this scope be run?
+    // 'branchTaken' = has any branch (if/elsif) in this conditional already matched?
+    private readonly Stack<(bool executing, bool branchTaken)> _executionStack = new();
+
+    /// <summary>
+    /// Returns true if we should currently be executing elements (all enclosing scopes are active).
+    /// </summary>
+    private bool IsExecuting => _executionStack.Count == 0 || _executionStack.All(e => e.executing);
+
     public DebugState State => _state;
     public IReadOnlyList<TemplateElement> Elements => _elements;
     public IReadOnlyList<Breakpoint> Breakpoints => _breakpoints;
@@ -142,6 +156,22 @@ public class DebugEngine
 
         try
         {
+            // Tags that control flow (if/else/elsif/endif/unless/endunless/case/when/endcase)
+            // must always be processed even when skipping, so the execution stack stays in sync.
+            if (element.ElementType == TemplateElementType.Tag)
+            {
+                var tagName = element.TagName?.ToLowerInvariant() ?? "";
+                if (IsFlowControlTag(tagName))
+                {
+                    ExecuteTag(element);
+                    return;
+                }
+            }
+
+            // For all other elements, skip if we're in a false branch
+            if (!IsExecuting)
+                return;
+
             switch (element.ElementType)
             {
                 case TemplateElementType.Literal:
@@ -167,6 +197,16 @@ public class DebugEngine
         }
     }
 
+    /// <summary>
+    /// Returns true for tags that affect conditional flow and must always be evaluated
+    /// even when inside a skipped branch, to keep the execution stack balanced.
+    /// </summary>
+    private static bool IsFlowControlTag(string tagName)
+    {
+        return tagName is "if" or "unless" or "elsif" or "else" or "endif" or "endunless"
+            or "case" or "when" or "endcase";
+    }
+
     private void ExecuteLiteral(TemplateElement element)
     {
         _state.OutputSoFar += element.RawText;
@@ -190,19 +230,39 @@ public class DebugEngine
 
         switch (tagName)
         {
+            // --- Flow control tags (always processed, even when skipping) ---
+            case "if":
+                ExecuteIf(args, element);
+                break;
+            case "unless":
+                ExecuteUnless(args, element);
+                break;
+            case "elsif":
+                ExecuteElsif(args, element);
+                break;
+            case "else":
+                ExecuteElse(element);
+                break;
+            case "endif":
+            case "endunless":
+                ExecuteEndIf(element);
+                break;
+            case "case":
+                ExecuteCase(args, element);
+                break;
+            case "when":
+                ExecuteWhen(args, element);
+                break;
+            case "endcase":
+                ExecuteEndCase(element);
+                break;
+
+            // --- All other tags: only run if we're in an active branch ---
             case "assign":
                 ExecuteAssign(args, element);
                 break;
             case "capture":
                 ExecuteCapture(args, element);
-                break;
-            case "if":
-            case "unless":
-                ExecuteConditional(tagName, args, element);
-                break;
-            case "elsif":
-            case "else":
-                // Handled by scope tracking
                 break;
             case "for":
                 ExecuteForStart(args, element);
@@ -210,10 +270,7 @@ public class DebugEngine
             case "endfor":
                 ExecuteForEnd(element);
                 break;
-            case "endif":
-            case "endunless":
             case "endcapture":
-            case "endcase":
                 if (_state.ScopeStack.Count > 1)
                     _state.ScopeStack.RemoveAt(_state.ScopeStack.Count - 1);
                 break;
@@ -222,12 +279,6 @@ public class DebugEngine
                 break;
             case "decrement":
                 ExecuteDecrement(args, element);
-                break;
-            case "case":
-                _state.ScopeStack.Add($"case:{args.Trim()}");
-                break;
-            case "when":
-                // Handled as part of case
                 break;
             case "break":
             case "continue":
@@ -310,17 +361,174 @@ public class DebugEngine
             ScopeDepth = _state.ScopeStack.Count - 1,
             ScopeTag = "capture"
         };
+
+        // Skip forward past the endcapture so elements aren't executed again
+        // idx is already 1 past the endcapture element
+        _state.CurrentElementIndex = idx - 1; // Point to endcapture; AdvanceToNext will move past it
     }
 
-    private void ExecuteConditional(string tagName, string args, TemplateElement element)
+    // ==================== Conditional Flow Control ====================
+
+    private void ExecuteIf(string args, TemplateElement element)
     {
         var condition = args.Trim();
+        bool result;
+
+        // If we're already skipping an outer block, push a "skip" frame and don't evaluate
+        if (!IsExecuting)
+        {
+            _executionStack.Push((false, true)); // skip, mark as "branch taken" so else won't fire
+            _state.ScopeStack.Add($"if:{condition}=skipped");
+            return;
+        }
+
+        result = EvaluateCondition(condition);
+        _executionStack.Push((result, result)); // executing if true, branchTaken if true
+        _state.ScopeStack.Add($"if:{condition}={result}");
+    }
+
+    private void ExecuteUnless(string args, TemplateElement element)
+    {
+        var condition = args.Trim();
+        bool result;
+
+        if (!IsExecuting)
+        {
+            _executionStack.Push((false, true));
+            _state.ScopeStack.Add($"unless:{condition}=skipped");
+            return;
+        }
+
+        result = !EvaluateCondition(condition); // unless is negated if
+        _executionStack.Push((result, result));
+        _state.ScopeStack.Add($"unless:{condition}={result}");
+    }
+
+    private void ExecuteElsif(string args, TemplateElement element)
+    {
+        if (_executionStack.Count == 0) return;
+
+        var (_, branchTaken) = _executionStack.Pop();
+
+        // If a previous branch was already taken, skip this one
+        if (branchTaken)
+        {
+            _executionStack.Push((false, true));
+            return;
+        }
+
+        // Check if we're inside a skipped outer scope
+        // (need to check remaining stack)
+        if (!IsExecutingWithout()) // all other frames are executing
+        {
+            _executionStack.Push((false, false));
+            return;
+        }
+
+        var condition = args.Trim();
         var result = EvaluateCondition(condition);
+        _executionStack.Push((result, result));
+    }
 
-        if (tagName == "unless")
-            result = !result;
+    private void ExecuteElse(TemplateElement element)
+    {
+        if (_executionStack.Count == 0) return;
 
-        _state.ScopeStack.Add($"{tagName}:{condition}={result}");
+        var (_, branchTaken) = _executionStack.Pop();
+
+        // If a previous branch was already taken, skip the else
+        if (branchTaken)
+        {
+            _executionStack.Push((false, true));
+            return;
+        }
+
+        // Check if outer scopes are active
+        if (!IsExecutingWithout())
+        {
+            _executionStack.Push((false, false));
+            return;
+        }
+
+        // No branch taken yet and outer scope is active → execute else
+        _executionStack.Push((true, true));
+    }
+
+    private void ExecuteEndIf(TemplateElement element)
+    {
+        if (_executionStack.Count > 0)
+            _executionStack.Pop();
+
+        if (_state.ScopeStack.Count > 1)
+            _state.ScopeStack.RemoveAt(_state.ScopeStack.Count - 1);
+    }
+
+    private void ExecuteCase(string args, TemplateElement element)
+    {
+        var expr = args.Trim();
+
+        if (!IsExecuting)
+        {
+            // Nested inside a skipped block
+            _executionStack.Push((false, true));
+            _state.ScopeStack.Add($"case:{expr}=skipped");
+            return;
+        }
+
+        var value = EvaluateExpression(expr);
+        // Store the case value for when tags to compare against
+        // We push a "skip" frame; 'when' tags will activate the right branch
+        _executionStack.Push((false, false));
+        _state.ScopeStack.Add($"case:{expr}");
+
+        // Store the case value for when evaluation
+        _caseValueStack.Push(value);
+    }
+
+    private void ExecuteWhen(string args, TemplateElement element)
+    {
+        if (_executionStack.Count == 0) return;
+
+        var (_, branchTaken) = _executionStack.Pop();
+
+        if (branchTaken)
+        {
+            // A previous when already matched
+            _executionStack.Push((false, true));
+            return;
+        }
+
+        if (!IsExecutingWithout() || _caseValueStack.Count == 0)
+        {
+            _executionStack.Push((false, false));
+            return;
+        }
+
+        var caseValue = _caseValueStack.Peek();
+        var whenValue = EvaluateExpression(args.Trim());
+        var matches = Equals(caseValue, whenValue);
+
+        _executionStack.Push((matches, matches));
+    }
+
+    private void ExecuteEndCase(TemplateElement element)
+    {
+        if (_executionStack.Count > 0)
+            _executionStack.Pop();
+        if (_caseValueStack.Count > 0)
+            _caseValueStack.Pop();
+
+        if (_state.ScopeStack.Count > 1)
+            _state.ScopeStack.RemoveAt(_state.ScopeStack.Count - 1);
+    }
+
+    /// <summary>
+    /// Check if all frames EXCEPT the top are executing.
+    /// Used by elsif/else to see if the outer scope is active.
+    /// </summary>
+    private bool IsExecutingWithout()
+    {
+        return _executionStack.All(e => e.executing);
     }
 
     private void ExecuteForStart(string args, TemplateElement element)
@@ -819,9 +1027,25 @@ public class DebugEngine
     {
         var s = input?.ToString() ?? "";
         var length = 50;
-        if (args != null && int.TryParse(args.Split(',')[0].Trim(), out var l)) length = l;
+        var ellipsis = "...";
+        if (args != null)
+        {
+            var argParts = args.Split(',');
+            if (int.TryParse(argParts[0].Trim(), out var l)) length = l;
+            if (argParts.Length > 1) ellipsis = EvaluateExpressionStatic(argParts[1].Trim()) ?? "...";
+        }
         if (s.Length <= length) return s;
-        return s[..length] + "...";
+        // DotLiquid includes the ellipsis in the total length
+        var truncLen = Math.Max(0, length - ellipsis.Length);
+        return s[..truncLen] + ellipsis;
+    }
+
+    private static string? EvaluateExpressionStatic(string expr)
+    {
+        expr = expr.Trim();
+        if ((expr.StartsWith('"') && expr.EndsWith('"')) || (expr.StartsWith('\'') && expr.EndsWith('\'')))
+            return expr[1..^1];
+        return expr;
     }
 
     private static object? TruncateWordsValue(object? input, string? args)
