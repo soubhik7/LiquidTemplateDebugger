@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Xml.Linq;
 using DotLiquid;
 using LiquidTemplateDebugger.Models;
+using LiquidTemplateDebugger.Engine.Interfaces;
 using Newtonsoft.Json.Linq;
 
 namespace LiquidTemplateDebugger.Engine;
@@ -10,7 +11,7 @@ namespace LiquidTemplateDebugger.Engine;
 /// Loads input data from various formats (JSON, XML, CSV, key=value) and converts
 /// to DotLiquid Hash objects with origin tracking.
 /// </summary>
-public class InputDataLoader
+public class InputDataLoader : IInputDataLoader
 {
     public (Hash hash, Dictionary<string, ValueOrigin> origins) LoadFromFile(string filePath)
     {
@@ -493,5 +494,56 @@ public class InputDataLoader
         var wrappedHash = Hash.FromDictionary(wrappedDict);
         
         return (wrappedHash, wrappedOrigins);
+    }
+    
+    /// <summary>
+    /// Get supported input formats.
+    /// </summary>
+    public IEnumerable<string> GetSupportedFormats()
+    {
+        return new[] { "JSON", "XML", "CSV", "TEXT" };
+    }
+    
+    /// <summary>
+    /// Detect format from content.
+    /// </summary>
+    public string DetectFormat(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return "TEXT";
+        
+        var trimmed = content.TrimStart();
+        
+        // Try JSON
+        if (trimmed.StartsWith("{") || trimmed.StartsWith("["))
+        {
+            try
+            {
+                JToken.Parse(content);
+                return "JSON";
+            }
+            catch { }
+        }
+        
+        // Try XML
+        if (trimmed.StartsWith("<"))
+        {
+            try
+            {
+                XDocument.Parse(content);
+                return "XML";
+            }
+            catch { }
+        }
+        
+        // Check for CSV (has commas and multiple lines)
+        if (content.Contains(',') && content.Contains('\n'))
+        {
+            var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length > 1)
+                return "CSV";
+        }
+        
+        return "TEXT";
     }
 }

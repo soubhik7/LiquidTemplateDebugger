@@ -1,12 +1,13 @@
 using System.Text.RegularExpressions;
 using LiquidTemplateDebugger.Models;
+using LiquidTemplateDebugger.Engine.Interfaces;
 
 namespace LiquidTemplateDebugger.Engine;
 
 /// <summary>
 /// Parses a Liquid template into individual debuggable elements with line/column tracking.
 /// </summary>
-public class TemplateParser
+public class TemplateParser : ITemplateParser
 {
     // Matches {{ output }}, {% tag %}, and {%- tag -%} variations
     private static readonly Regex LiquidTokenRegex = new(
@@ -171,6 +172,31 @@ public class TemplateParser
         }
 
         return elements;
+    }
+    
+    /// <summary>
+    /// Validate template syntax without full parsing.
+    /// </summary>
+    public ValidationResult ValidateSyntax(string templateContent)
+    {
+        try
+        {
+            Parse(templateContent);
+            return Models.ValidationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return Models.ValidationResult.Failure(ex.Message);
+        }
+    }
+    
+    /// <summary>
+    /// Get line and column information for a character position.
+    /// </summary>
+    public (int line, int column) GetPosition(string template, int charIndex)
+    {
+        var lineMap = BuildLineMap(template);
+        return GetLineAndColumn(lineMap, charIndex);
     }
 
     /// <summary>

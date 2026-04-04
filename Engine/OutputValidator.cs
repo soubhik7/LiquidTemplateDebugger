@@ -9,25 +9,23 @@ using LiquidTemplateDebugger.Models;
 
 namespace LiquidTemplateDebugger.Engine;
 
-public record ValidationResult(bool IsValid, string? ErrorMessage, int? SourceLineNumber);
-
 public static class OutputValidator
 {
-    public static ValidationResult Validate(string output, string format, List<OutputRangeMapping> mappings)
+    public static Models.ValidationResult Validate(string output, string format, List<OutputRangeMapping> mappings)
     {
         if (string.IsNullOrWhiteSpace(output))
-            return new ValidationResult(true, null, null);
+            return Models.ValidationResult.Success();
 
         return format.ToLowerInvariant() switch
         {
             "json" => ValidateJson(output, mappings),
             "xml" => ValidateXml(output, mappings),
             "csv" => ValidateCsv(output, mappings),
-            _ => new ValidationResult(false, $"Unknown validation format: {format}", null)
+            _ => Models.ValidationResult.Failure($"Unknown validation format: {format}")
         };
     }
 
-    private static ValidationResult ValidateJson(string output, List<OutputRangeMapping> mappings)
+    private static Models.ValidationResult ValidateJson(string output, List<OutputRangeMapping> mappings)
     {
         try
         {
@@ -37,21 +35,21 @@ public static class OutputValidator
             {
                 // Verify all tokens
             }
-            return new ValidationResult(true, null, null);
+            return Models.ValidationResult.Success();
         }
         catch (JsonReaderException ex)
         {
             int charIndex = GetAbsoluteIndex(output, ex.LineNumber, ex.LinePosition);
             int? templateLine = ResolveTemplateLine(charIndex, mappings);
-            return new ValidationResult(false, $"JSON Error: {ex.Message}", templateLine);
+            return Models.ValidationResult.Failure($"JSON Error: {ex.Message}", templateLine);
         }
         catch (Exception ex)
         {
-            return new ValidationResult(false, $"JSON Error: {ex.Message}", null);
+            return Models.ValidationResult.Failure($"JSON Error: {ex.Message}");
         }
     }
 
-    private static ValidationResult ValidateXml(string output, List<OutputRangeMapping> mappings)
+    private static Models.ValidationResult ValidateXml(string output, List<OutputRangeMapping> mappings)
     {
         try
         {
@@ -62,21 +60,21 @@ public static class OutputValidator
             {
                 // Verify all tags
             }
-            return new ValidationResult(true, null, null);
+            return Models.ValidationResult.Success();
         }
         catch (XmlException ex)
         {
             int charIndex = GetAbsoluteIndex(output, ex.LineNumber, ex.LinePosition);
             int? templateLine = ResolveTemplateLine(charIndex, mappings);
-            return new ValidationResult(false, $"XML Error: {ex.Message}", templateLine);
+            return Models.ValidationResult.Failure($"XML Error: {ex.Message}", templateLine);
         }
         catch (Exception ex)
         {
-            return new ValidationResult(false, $"XML Error: {ex.Message}", null);
+            return Models.ValidationResult.Failure($"XML Error: {ex.Message}");
         }
     }
 
-    private static ValidationResult ValidateCsv(string output, List<OutputRangeMapping> mappings)
+    private static Models.ValidationResult ValidateCsv(string output, List<OutputRangeMapping> mappings)
     {
         var lines = output.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
         int expectedCols = -1;
@@ -101,7 +99,7 @@ public static class OutputValidator
             {
                 // Usually position is at the start of the invalid line
                 int? templateLine = ResolveTemplateLine(absoluteIndex, mappings);
-                return new ValidationResult(false, $"CSV Error on line {i + 1}: {ex.Message}", templateLine);
+                return Models.ValidationResult.Failure($"CSV Error on line {i + 1}: {ex.Message}", templateLine);
             }
 
             absoluteIndex += line.Length;
@@ -117,7 +115,7 @@ public static class OutputValidator
             }
         }
 
-        return new ValidationResult(true, null, null);
+        return Models.ValidationResult.Success();
     }
 
     private static List<string> ParseCsvLine(string line)
