@@ -122,3 +122,27 @@ public class OutputRangeMapping
     public int Length { get; set; }
     public int TemplateLineNumber { get; set; }
 }
+
+/// <summary>
+/// Represents the result of a validation operation.
+/// </summary>
+public class ValidationResult
+{
+    public bool IsValid { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int? SourceLineNumber { get; set; }
+    
+    public ValidationResult() { }
+    
+    public ValidationResult(bool isValid, string? errorMessage = null, int? sourceLineNumber = null)
+    {
+        IsValid = isValid;
+        ErrorMessage = errorMessage;
+        SourceLineNumber = sourceLineNumber;
+    }
+    
+    public static ValidationResult Success() => new ValidationResult(true);
+    
+    public static ValidationResult Failure(string message, int? line = null) =>
+        new ValidationResult(false, message, line);
+}

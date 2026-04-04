@@ -306,6 +306,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
         <div class="panel-header">
           Input Data &nbsp;<span style="text-transform:none;font-weight:normal;color:var(--text-muted);" id="input-format-lbl"></span>
           <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+            <button class="btn" id="btn-beautify-input" style="padding:4px 8px;font-size:11px;height:24px;" onclick="beautifyInput()" title="Format/beautify input data">✨ Beautify</button>
             <button class="btn" id="btn-edit-data" style="padding:4px 8px;font-size:11px;height:24px;" onclick="toggleInputEdit()" title="Edit input data">✎ Edit</button>
           </div>
         </div>
@@ -327,6 +328,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
               <option value="csv">CSV</option>
             </select>
             <button class="btn" style="padding:4px 8px;font-size:11px;height:24px;" onclick="validateOutput()" title="Validate format against standard">✔ Validate</button>
+            <button class="btn" id="btn-beautify-output" style="padding:4px 8px;font-size:11px;height:24px;" onclick="beautifyOutput()" title="Format/beautify output">✨ Beautify</button>
             <input type="text" id="output-search" placeholder="Search output..." style="width:150px;font-size:11px;padding:3px 6px;height:24px;" oninput="searchInOutput()">
             <button class="btn" style="padding:4px 8px;font-size:11px;height:24px;" onclick="copyOutput(event)" title="Copy output to clipboard">📋 Copy</button>
           </div>
@@ -953,6 +955,248 @@ async function validateOutput() {
   }
 }
 
+// --- Beautify Functions ---
+async function beautifyInput() {
+  const editor = document.getElementById('data-editor');
+  const content = editor.value.trim();
+  const format = (state?.dataFormat || 'json').toLowerCase();
+  
+  if (!content) {
+    showToast('No input data to beautify', 'info');
+    return;
+  }
+  
+  try {
+    const beautified = await beautifyContent(content, format);
+    editor.value = beautified;
+    showToast(`Input formatted as ${format.toUpperCase()}`, 'success');
+  } catch (err) {
+    showToast(`Failed to beautify: ${err.message}`, 'error');
+  }
+}
+
+async function beautifyOutput() {
+  if (!state || !state.isLoaded || !state.state) {
+    showToast('No output to beautify', 'info');
+    return;
+  }
+  
+  const output = state.state.outputSoFar || '';
+  if (!output.trim()) {
+    showToast('Output is empty', 'info');
+    return;
+  }
+  
+  // Try to detect format from output content
+  const format = detectOutputFormat(output);
+  
+  try {
+    const beautified = await beautifyContent(output, format);
+    // Update the output display
+    const body = document.getElementById('output-body');
+    body.innerHTML = escapeHtml(beautified);
+    showToast(`Output formatted as ${format.toUpperCase()}`, 'success');
+  } catch (err) {
+    showToast(`Failed to beautify: ${err.message}`, 'error');
+  }
+}
+
+function detectOutputFormat(content) {
+  const trimmed = content.trim();
+  
+  // Check for JSON
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      JSON.parse(trimmed);
+      return 'json';
+    } catch (e) {}
+  }
+  
+  // Check for XML
+  if (trimmed.startsWith('<') && trimmed.includes('>')) {
+    return 'xml';
+  }
+  
+  // Check for CSV (has commas and multiple lines)
+  if (trimmed.includes(',') && trimmed.split('\n').length > 1) {
+    return 'csv';
+  }
+  
+  return 'text';
+}
+
+async function beautifyContent(content, format) {
+  switch (format) {
+    case 'json':
+      return beautifyJSON(content);
+    case 'xml':
+      return beautifyXML(content);
+    case 'csv':
+      return beautifyCSV(content);
+    default:
+      return content;
+  }
+}
+
+function beautifyJSON(content) {
+  try {
+    const parsed = JSON.parse(content);
+    return JSON.stringify(parsed, null, 2);
+  } catch (err) {
+    throw new Error('Invalid JSON format');
+  }
+}
+
+function beautifyXML(content) {
+  try {
+    // Parse and format XML
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(content, 'text/xml');
+    
+    // Check for parsing errors
+    const parserError = xmlDoc.querySelector('parsererror');
+    if (parserError) {
+      throw new Error('Invalid XML format');
+    }
+    
+    // Format XML with indentation
+    return formatXMLNode(xmlDoc.documentElement, 0);
+  } catch (err) {
+    throw new Error('Invalid XML format: ' + err.message);
+  }
+}
+
+function formatXMLNode(node, level) {
+  const indent = '  '.repeat(level);
+  const childIndent = '  '.repeat(level + 1);
+  
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent.trim();
+    return text ? text : '';
+  }
+  
+  if (node.nodeType === Node.COMMENT_NODE) {
+    return `${indent}<!--${node.textContent}-->`;
+  }
+  
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return '';
+  }
+  
+  let result = `${indent}<${node.nodeName}`;
+  
+  // Add attributes
+  if (node.attributes && node.attributes.length > 0) {
+    for (let i = 0; i < node.attributes.length; i++) {
+      const attr = node.attributes[i];
+      result += ` ${attr.name}="${attr.value}"`;
+    }
+  }
+  
+  // Check if element has children
+  const children = Array.from(node.childNodes).filter(child =>
+    child.nodeType === Node.ELEMENT_NODE ||
+    (child.nodeType === Node.TEXT_NODE && child.textContent.trim())
+  );
+  
+  if (children.length === 0) {
+    result += ' />';
+    return result;
+  }
+  
+  result += '>';
+  
+  // Check if only text content
+  if (children.length === 1 && children[0].nodeType === Node.TEXT_NODE) {
+    result += children[0].textContent.trim();
+    result += `</${node.nodeName}>`;
+    return result;
+  }
+  
+  // Format children
+  result += '\n';
+  for (const child of node.childNodes) {
+    const formatted = formatXMLNode(child, level + 1);
+    if (formatted) {
+      result += formatted + '\n';
+    }
+  }
+  result += `${indent}</${node.nodeName}>`;
+  
+  return result;
+}
+
+function beautifyCSV(content) {
+  try {
+    // Parse CSV and reformat with consistent spacing
+    const lines = content.trim().split('\n');
+    if (lines.length === 0) return content;
+    
+    // Parse each line
+    const rows = lines.map(line => parseCSVLine(line));
+    
+    // Find max width for each column
+    const columnWidths = [];
+    rows.forEach(row => {
+      row.forEach((cell, i) => {
+        const width = cell.length;
+        if (!columnWidths[i] || width > columnWidths[i]) {
+          columnWidths[i] = width;
+        }
+      });
+    });
+    
+    // Format rows with padding
+    return rows.map((row, rowIndex) => {
+      return row.map((cell, colIndex) => {
+        // Don't pad the last column
+        if (colIndex === row.length - 1) return escapeCSVCell(cell);
+        // Pad other columns for alignment
+        const needsQuotes = cell.includes(',') || cell.includes('"') || cell.includes('\n');
+        if (needsQuotes) return escapeCSVCell(cell);
+        return cell.padEnd(columnWidths[colIndex]);
+      }).join(', ');
+    }).join('\n');
+  } catch (err) {
+    throw new Error('Invalid CSV format');
+  }
+}
+
+function parseCSVLine(line) {
+  const cells = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  cells.push(current.trim());
+  return cells;
+}
+
+function escapeCSVCell(cell) {
+  if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+    return `"${cell.replace(/"/g, '""')}"`;
+  }
+  return cell;
+}
 
 // --- Load modal ---
 function showLoadModal() { document.getElementById('load-modal').classList.remove('hidden'); }

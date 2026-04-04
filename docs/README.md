@@ -2,6 +2,18 @@
 
 A step-by-step debugger for [DotLiquid](https://github.com/dotliquid/dotliquid) templates with comprehensive **format transformation** capabilities. Inspect variables, set breakpoints, trace data origins, and transform data between JSON, XML, CSV, and text formats.
 
+## 🏗️ Architecture
+
+This project follows a **robust, modular architecture** with:
+- ✅ **Interface-based programming** for testability and flexibility
+- ✅ **Dependency injection** for loose coupling
+- ✅ **Comprehensive security** with input validation and rate limiting
+- ✅ **Feature flags** for controlled rollouts
+- ✅ **CI/CD pipeline** with automated testing and deployment
+- ✅ **Monitoring & observability** with health checks and structured logging
+
+📚 **See [ARCHITECTURE.md](ARCHITECTURE.md) for complete architectural documentation**
+
 ## Features
 
 ✨ **Step-by-step debugging** - Execute templates line by line
@@ -405,6 +417,74 @@ dbg> set vars_on_step true      # show variables after each step (default: off)
 dbg> set scope_on_step true     # show scope after each step (default: on)
 dbg> set context_lines 4        # lines of context around current line (default: 2)
 ```
+
+
+## 📚 Architecture & Documentation
+
+This project implements a comprehensive, production-ready architecture. See the following documents for details:
+
+### Core Documentation
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, design patterns, and principles
+- **[INTERFACES.md](INTERFACES.md)** - Interface definitions and dependency injection guide
+- **[SECURITY.md](SECURITY.md)** - Security implementation, threat model, and best practices
+- **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide with 12-week plan
+- **[ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md)** - Executive summary of all architectural decisions
+
+### Key Features
+- ✅ **Modular Design** - Clear separation of concerns with interface-based programming
+- ✅ **Dependency Injection** - All services registered in DI container for testability
+- ✅ **Security First** - Input validation, rate limiting, audit logging
+- ✅ **Feature Flags** - Control feature rollout without code changes
+- ✅ **CI/CD Ready** - Automated build, test, security scan, and deployment
+- ✅ **Monitoring** - Health checks, structured logging, metrics collection
+- ✅ **Backward Compatible** - API versioning and migration strategies
+
+### Configuration
+The application uses a hierarchical configuration system:
+1. [`appsettings.json`](appsettings.json) - Base configuration
+2. [`appsettings.Development.json`](appsettings.Development.json) - Development overrides
+3. [`appsettings.Production.json`](appsettings.Production.json) - Production settings
+4. Environment variables - Runtime configuration
+5. Command-line arguments - Override any setting
+
+### Feature Flags
+Control features via configuration without code changes:
+```json
+{
+  "FeatureFlags": {
+    "EnableAdvancedDebugging": true,
+    "EnableFormatConversion": true,
+    "EnableMultiSession": false,
+    "EnableAuthentication": false
+  }
+}
+```
+
+### Development Setup
+```bash
+# Clone repository
+git clone <repository-url>
+cd LiquidTemplateDebugger
+
+# Restore dependencies
+dotnet restore
+
+# Build
+dotnet build
+
+# Run tests (when implemented)
+dotnet test
+
+# Run application
+dotnet run
+```
+
+### Contributing
+1. Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand the system design
+2. Follow [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for development workflow
+3. Ensure all tests pass and code coverage remains above 80%
+4. Follow security guidelines in [SECURITY.md](SECURITY.md)
+5. Submit pull requests with clear descriptions
 
 ## Project Structure
 

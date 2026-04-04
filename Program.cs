@@ -2,6 +2,10 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LiquidTemplateDebugger.Api;
+using LiquidTemplateDebugger.Engine;
+using LiquidTemplateDebugger.Engine.Interfaces;
+using LiquidTemplateDebugger.Configuration;
+using LiquidTemplateDebugger.Configuration.Interfaces;
 using LiquidTemplateDebugger.Tests;
 
 // Handle --test flag before building web host
@@ -73,8 +77,18 @@ for (int i = 0; i < args.Length; i++)
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Register core services with dependency injection
+builder.Services.AddSingleton<ITemplateParser, TemplateParser>();
+builder.Services.AddSingleton<IInputDataLoader, InputDataLoader>();
+builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
+
 // Register DebugSessionManager as singleton
 builder.Services.AddSingleton<DebugSessionManager>();
+
+// Add logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>

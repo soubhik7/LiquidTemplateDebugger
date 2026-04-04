@@ -156,3 +156,8 @@ public record TransformRequest(
 public record ValidateRequest(
     string Format // "json", "xml", "csv"
 );
+
+public record BeautifyRequest(
+    string Content,
+    string Format // "json", "xml", "csv", "text"
+);

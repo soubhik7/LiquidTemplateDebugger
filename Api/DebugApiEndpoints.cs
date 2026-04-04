@@ -1,5 +1,8 @@
 using LiquidTemplateDebugger.Models;
 using LiquidTemplateDebugger.Engine;
+using System.Text;
+using System.Xml.Linq;
+using Newtonsoft.Json;
 
 namespace LiquidTemplateDebugger.Api;
 
@@ -314,6 +317,122 @@ public static class DebugApiEndpoints
                 return Results.BadRequest(new { error = ex.Message });
             }
         });
+
+        // Beautify/Format content
+        app.MapPost("/api/beautify", (BeautifyRequest request) =>
+        {
+            try
+            {
+                var converter = new FormatConverter();
+                var format = request.Format?.ToLowerInvariant() ?? "json";
+                
+                string beautified = format switch
+                {
+                    "json" => BeautifyJson(request.Content),
+                    "xml" => BeautifyXml(request.Content),
+                    "csv" => BeautifyCsv(request.Content),
+                    _ => request.Content
+                };
+                
+                return Results.Ok(new {
+                    content = beautified,
+                    format = format
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+    }
+
+    private static string BeautifyJson(string content)
+    {
+        try
+        {
+            var parsed = JsonConvert.DeserializeObject(content);
+            return JsonConvert.SerializeObject(parsed, Formatting.Indented);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Invalid JSON: {ex.Message}");
+        }
+    }
+
+    private static string BeautifyXml(string content)
+    {
+        try
+        {
+            var doc = XDocument.Parse(content);
+            return doc.ToString();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Invalid XML: {ex.Message}");
+        }
+    }
+
+    private static string BeautifyCsv(string content)
+    {
+        try
+        {
+            // Simple CSV beautification - normalize line endings and trim whitespace
+            var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var normalized = new List<string>();
+            
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                
+                // Parse CSV cells and rebuild with consistent spacing
+                var cells = ParseCsvLine(line);
+                normalized.Add(string.Join(", ", cells));
+            }
+            
+            return string.Join(Environment.NewLine, normalized);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Invalid CSV: {ex.Message}");
+        }
+    }
+
+    private static List<string> ParseCsvLine(string line)
+    {
+        var cells = new List<string>();
+        var current = new StringBuilder();
+        var inQuotes = false;
+        
+        for (int i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    current.Append('"');
+                    i++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                    current.Append(c);
+                }
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                cells.Add(current.ToString().Trim());
+                current.Clear();
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+        
+        cells.Add(current.ToString().Trim());
+        return cells;
     }
 
     /// <summary>
