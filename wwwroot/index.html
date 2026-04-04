@@ -7,7 +7,7 @@
 <meta name="description" content="Visual step-through debugger for DotLiquid templates">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
+:root, [data-theme="dark"] {
   --bg: #1e1e2e; --bg-surface: #252536; --bg-panel: #2a2a3d; --bg-hover: #33334a;
   --bg-active: #3d3d5c; --border: #3b3b54; --border-light: #4a4a66;
   --text: #e0e0f0; --text-dim: #9090b0; --text-muted: #6a6a8a;
@@ -17,9 +17,21 @@
   --bp-red: #ff4b4b; --bp-red-glow: rgba(255,75,75,0.3);
   --current-line: rgba(229,192,123,0.12); --current-line-border: #e5c07b;
   --font-mono: 'JetBrains Mono', monospace; --font-ui: 'Inter', sans-serif;
-  --radius: 8px; --radius-sm: 4px; --transition: 0.15s ease;
+  --radius: 8px; --radius-sm: 4px; --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-* { margin:0; padding:0; box-sizing:border-box; }
+
+[data-theme="light"] {
+  --bg: #f8f9fa; --bg-surface: #ffffff; --bg-panel: #f1f3f5; --bg-hover: #e9ecef;
+  --bg-active: #dee2e6; --border: #ced4da; --border-light: #adb5bd;
+  --text: #212529; --text-dim: #495057; --text-muted: #868e96;
+  --accent: #5c7cfa; --accent-glow: #748ffc; --accent-bg: rgba(92,124,250,0.1);
+  --blue: #228be6; --purple: #be4bdb; --green: #40c057; --yellow: #f59f00;
+  --orange: #fd7e14; --red: #fa5252; --magenta: #e64980; --cyan: #15aabf;
+  --bp-red: #f03e3e; --bp-red-glow: rgba(240,62,62,0.2);
+  --current-line: rgba(245,159,0,0.15); --current-line-border: #f59f00;
+}
+* { margin:0; padding:0; box-sizing:border-box; transition: background-color var(--transition), border-color var(--transition), color var(--transition); }
+
 html, body { height:100%; font-family:var(--font-ui); background:var(--bg); color:var(--text); overflow:hidden; }
 button { font-family:var(--font-ui); cursor:pointer; border:none; outline:none; transition:all var(--transition); }
 input, textarea, select { font-family:var(--font-mono); background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 10px; outline:none; transition:border var(--transition); }
@@ -233,6 +245,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
       <button class="btn" id="btn-reset" onclick="doReset()" disabled>⟳ Reset <span class="shortcut">⌃⇧F5</span></button>
     </div>
     <div class="toolbar-status">
+      <button class="btn" id="btn-theme" onclick="toggleTheme()" title="Toggle Light/Dark Theme" style="margin-right: 12px; padding: 6px 10px;">🌓</button>
       <span id="status-badge" class="status-badge status-idle">No session</span>
     </div>
   </div>
@@ -242,8 +255,9 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
       <div class="panel" id="template-panel" style="flex:1;">
         <div class="panel-header">
           Template <span class="badge" id="tpl-info"></span>
-          <div style="margin-left:auto;display:flex;gap:4px;">
-            <input type="text" id="template-search" placeholder="Search template..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInTemplate()">
+          <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+            <input type="text" id="template-search" placeholder="Search template..." style="width:150px;font-size:11px;padding:3px 6px;height:24px;" oninput="searchInTemplate()">
+            <button class="btn" style="padding:4px 8px;font-size:11px;height:24px;" onclick="copyTemplate(event)" title="Copy template to clipboard">📋 Copy</button>
           </div>
         </div>
         <div class="panel-body" id="template-body">
@@ -364,6 +378,76 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 <script>
 let state = null;
 let expandedVars = new Set();
+
+// --- Theme Management ---
+function initTheme() {
+  const saved = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', saved);
+}
+initTheme();
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+}
+
+// --- Utils ---
+async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {}
+  }
+  // Fallback
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  textArea.style.top = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  let success = false;
+  try {
+    success = document.execCommand('copy');
+  } catch (err) {}
+  document.body.removeChild(textArea);
+  return success;
+}
+
+async function copyTemplate(e) {
+  if (!state || !state.templateSource) return;
+  const success = await copyToClipboard(state.templateSource);
+  if (success) {
+    const btn = e.target.closest('button');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.classList.add('copy-success');
+    setTimeout(() => {
+      btn.innerHTML = oldText;
+      btn.classList.remove('copy-success');
+    }, 2000);
+  }
+}
+
+async function copyOutput(e) {
+  const output = state?.state?.outputSoFar || '';
+  if (!output) return;
+  const success = await copyToClipboard(output);
+  if (success) {
+    const btn = e.target.closest('button');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.classList.add('copy-success');
+    setTimeout(() => {
+      btn.innerHTML = oldText;
+      btn.classList.remove('copy-success');
+    }, 2000);
+  }
+}
 
 // --- API helpers ---
 function showToast(message, type = 'info', title = '', duration = 6000) {
@@ -766,24 +850,23 @@ async function loadFromModal() {
   const tpl = document.getElementById('tpl-textarea').value;
   const data = document.getElementById('data-textarea').value;
   const format = document.getElementById('format-select').value;
-  if (!tpl || !data) { showToast('Please provide both template and data.', 'info'); return; }
+  if (!tpl || !data) return;
   try {
     const s = await api('POST', '/api/load', { templateContent: tpl, dataContent: data, format });
-    if (s.error) { showToast(s.error, 'error', 'Load Error'); return; }
+    if (s.error) return;
     // Update Input Panel
     document.getElementById('readonly-input').value = data;
     document.getElementById('input-format-lbl').textContent = '(' + format.toUpperCase() + ')';
     expandedVars.clear();
     hideLoadModal();
     applyState(s);
-    showToast('Template and data loaded successfully', 'success');
-  } catch(err) { showToast(err.message, 'error', 'Failed to load'); }
+  } catch(err) {}
 }
 
 async function loadSample() {
   try {
     const s = await api('POST', '/api/load-sample');
-    if (s.error) { showToast(s.error, 'error', 'Sample Load Error'); return; }
+    if (s.error) return;
     // Try to fetch sample data
     try {
       const res = await fetch('/samples/order.json');
@@ -795,8 +878,7 @@ async function loadSample() {
     expandedVars.clear();
     hideLoadModal();
     applyState(s);
-    showToast('Sample template loaded', 'success');
-  } catch(err) { showToast(err.message, 'error', 'Failed to load sample'); }
+  } catch(err) {}
 }
 
 // --- Keyboard shortcuts ---
@@ -809,25 +891,6 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'F5') { e.preventDefault(); doStep('continue'); }
 });
 
-// --- Copy functionality ---
-async function copyOutput(event) {
-  const body = document.getElementById('output-body');
-  const text = body.innerText || body.textContent || '';
-  
-  try {
-    await navigator.clipboard.writeText(text);
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '✓ Copied!';
-    btn.classList.add('copy-success');
-    setTimeout(() => {
-      btn.innerHTML = originalText;
-      btn.classList.remove('copy-success');
-    }, 2000);
-  } catch (err) {
-    showToast(err.message, 'error', 'Failed to copy');
-  }
-}
 
 // --- Search functionality ---
 let templateSearchMatches = [];
