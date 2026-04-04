@@ -54,6 +54,9 @@ public class DebugEngine
         public int CurrentIndex { get; set; }
         public int LoopStartElementIndex { get; set; }
         public int LoopEndElementIndex { get; set; }
+        public int ExecutionStackDepthAtStart { get; set; }
+        public int CaseValueStackDepthAtStart { get; set; }
+        public int ScopeStackDepthAtStart { get; set; }
     }
 
     public DebugEngine(string templateSource, Hash inputData, Dictionary<string, ValueOrigin> origins)
@@ -300,8 +303,10 @@ public class DebugEngine
                 ExecuteDecrement(args, element);
                 break;
             case "break":
+                ExecuteBreak();
+                break;
             case "continue":
-                // Loop control
+                ExecuteContinue();
                 break;
         }
     }
@@ -578,7 +583,10 @@ public class DebugEngine
             Items = items,
             CurrentIndex = 0,
             LoopStartElementIndex = _state.CurrentElementIndex,
-            LoopEndElementIndex = endForIdx
+            LoopEndElementIndex = endForIdx,
+            ExecutionStackDepthAtStart = _executionStack.Count,
+            CaseValueStackDepthAtStart = _caseValueStack.Count,
+            ScopeStackDepthAtStart = _state.ScopeStack.Count
         };
 
         _forLoopStack.Push(loopState);
@@ -620,6 +628,39 @@ public class DebugEngine
             _state.Variables.Remove("forloop");
             _localAssignments.Remove(loopState.VariableName);
         }
+    }
+
+    private void ExecuteBreak()
+    {
+        if (_forLoopStack.Count == 0) return;
+        var loop = _forLoopStack.Pop();
+
+        // Unwind stacks to the point before the loop started
+        while (_executionStack.Count > loop.ExecutionStackDepthAtStart) _executionStack.Pop();
+        while (_caseValueStack.Count > loop.CaseValueStackDepthAtStart) _caseValueStack.Pop();
+        while (_state.ScopeStack.Count > loop.ScopeStackDepthAtStart) _state.ScopeStack.RemoveAt(_state.ScopeStack.Count - 1);
+
+        // Jump PAST the endfor tag
+        _state.CurrentElementIndex = loop.LoopEndElementIndex; // AdvanceToNext will make it LoopEndElementIndex + 1
+
+        // Clean up loop variables (mirroring logic in ExecuteForEnd completion)
+        _state.Variables.Remove(loop.VariableName);
+        _state.Variables.Remove("forloop");
+        _localAssignments.Remove(loop.VariableName);
+    }
+
+    private void ExecuteContinue()
+    {
+        if (_forLoopStack.Count == 0) return;
+        var loop = _forLoopStack.Peek();
+
+        // Unwind stacks back to the loop iteration start (keeping the loop's own scope tag)
+        while (_executionStack.Count > loop.ExecutionStackDepthAtStart) _executionStack.Pop();
+        while (_caseValueStack.Count > loop.CaseValueStackDepthAtStart) _caseValueStack.Pop();
+        while (_state.ScopeStack.Count > loop.ScopeStackDepthAtStart + 1) _state.ScopeStack.RemoveAt(_state.ScopeStack.Count - 1);
+
+        // Jump TO the endfor tag
+        _state.CurrentElementIndex = loop.LoopEndElementIndex - 1; // AdvanceToNext will make it LoopEndElementIndex
     }
 
     private void SetForLoopVariable(ForLoopState loopState)
@@ -1075,7 +1116,7 @@ public class DebugEngine
         var match = Regex.Match(filterExpr, @"^(\w+)(?:\s*:\s*(.+))?$");
         if (!match.Success) return input;
 
-        var filterName = match.Groups[1].Value.ToLowerInvariant();
+        var filterName = match.Groups[1].Value.ToLowerInvariant().Replace("_", "");
         var filterArgs = match.Groups[2].Success ? match.Groups[2].Value.Trim() : null;
 
         return filterName switch
@@ -1086,12 +1127,12 @@ public class DebugEngine
             "strip" => input?.ToString()?.Trim(),
             "lstrip" => input?.ToString()?.TrimStart(),
             "rstrip" => input?.ToString()?.TrimEnd(),
-            "strip_html" => Regex.Replace(input?.ToString() ?? "", "<[^>]*>", ""),
-            "strip_newlines" => input?.ToString()?.Replace("\n", "")?.Replace("\r", ""),
-            "newline_to_br" => input?.ToString()?.Replace("\n", "<br />\n"),
+            "striphtml" => Regex.Replace(input?.ToString() ?? "", "<[^>]*>", ""),
+            "stripnewlines" => input?.ToString()?.Replace("\n", "")?.Replace("\r", ""),
+            "newlinetobr" => input?.ToString()?.Replace("\n", "<br />\n"),
             "escape" => System.Net.WebUtility.HtmlEncode(input?.ToString()),
-            "url_encode" => System.Net.WebUtility.UrlEncode(input?.ToString()),
-            "url_decode" => System.Net.WebUtility.UrlDecode(input?.ToString()),
+            "urlencode" => System.Net.WebUtility.UrlEncode(input?.ToString()),
+            "urldecode" => System.Net.WebUtility.UrlDecode(input?.ToString()),
             "size" => GetSize(input),
             "reverse" => ReverseValue(input),
             "first" => GetFirst(input),
@@ -1102,9 +1143,9 @@ public class DebugEngine
             "split" => SplitValue(input, filterArgs),
             "slice" => SliceValue(input, filterArgs),
             "replace" => ReplaceValue(input, filterArgs),
-            "replace_first" => ReplaceFirstValue(input, filterArgs),
+            "replacefirst" => ReplaceFirstValue(input, filterArgs),
             "remove" => RemoveValue(input, filterArgs),
-            "remove_first" => RemoveFirstValue(input, filterArgs),
+            "removefirst" => RemoveFirstValue(input, filterArgs),
             "append" => AppendValue(input, filterArgs),
             "prepend" => PrependValue(input, filterArgs),
             "truncate" => TruncateValue(input, filterArgs),
@@ -1113,12 +1154,12 @@ public class DebugEngine
             "plus" => MathOp(input, filterArgs, (a, b) => a + b),
             "minus" => MathOp(input, filterArgs, (a, b) => a - b),
             "times" => MathOp(input, filterArgs, (a, b) => a * b),
-            "divided_by" => MathOp(input, filterArgs, (a, b) => b != 0 ? a / b : 0),
+            "dividedby" => MathOp(input, filterArgs, (a, b) => b != 0 ? a / b : 0),
             "modulo" => MathOp(input, filterArgs, (a, b) => b != 0 ? a % b : 0),
             "abs" => input is IConvertible c ? Math.Abs(Convert.ToDouble(c)) : input,
             "ceil" => input is IConvertible c2 ? Math.Ceiling(Convert.ToDouble(c2)) : input,
             "floor" => input is IConvertible c3 ? Math.Floor(Convert.ToDouble(c3)) : input,
-            "round" => input is IConvertible c4 ? Math.Round(Convert.ToDouble(c4)) : input,
+            "round" => RoundValue(input, filterArgs),
             "map" => MapValue(input, filterArgs),
             "where" => WhereValue(input, filterArgs),
             "compact" => CompactValue(input),
@@ -1276,6 +1317,24 @@ public class DebugEngine
             var a = Convert.ToDouble(input);
             var b = args != null ? Convert.ToDouble(EvaluateExpression(args.Trim())) : 0;
             return op(a, b);
+        }
+        catch { return input; }
+    }
+
+    private object? RoundValue(object? input, string? args)
+    {
+        if (input == null) return null;
+        try
+        {
+            var val = Convert.ToDouble(input);
+            int precision = 0;
+            if (args != null)
+            {
+                var evaluatedArgs = EvaluateExpression(args.Trim());
+                if (evaluatedArgs != null)
+                    precision = Convert.ToInt32(evaluatedArgs);
+            }
+            return Math.Round(val, precision, MidpointRounding.AwayFromZero);
         }
         catch { return input; }
     }
