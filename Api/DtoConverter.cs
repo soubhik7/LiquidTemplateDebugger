@@ -18,6 +18,8 @@ public static class DtoConverter
             return new FullStateDto(
                 IsLoaded: false,
                 TemplateSource: null,
+                DataContent: null,
+                DataFormat: null,
                 Elements: new List<TemplateElementDto>(),
                 State: null,
                 Breakpoints: new List<BreakpointDto>(),
@@ -30,6 +32,8 @@ public static class DtoConverter
         return new FullStateDto(
             IsLoaded: true,
             TemplateSource: engine.TemplateSource,
+            DataContent: manager.DataContent,
+            DataFormat: manager.DataFormat,
             Elements: engine.Elements.Select((e, i) => ConvertElement(e, i)).ToList(),
             State: ConvertState(engine.State, engine),
             Breakpoints: engine.Breakpoints.Select(ConvertBreakpoint).ToList(),

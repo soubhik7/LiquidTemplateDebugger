@@ -490,6 +490,7 @@ async function api(method, path, body) {
 
 // --- State management ---
 function applyState(s) {
+  const isInitialLoad = !state && s && s.isLoaded;
   state = s;
   updateToolbar();
   renderTemplate();
@@ -498,6 +499,19 @@ function applyState(s) {
   renderWatches();
   renderBreakpoints();
   renderScopeBar();
+
+  if (isInitialLoad || (s && s.isLoaded && !document.getElementById('readonly-input').value)) {
+    renderInput();
+  }
+}
+
+function renderInput() {
+  if (!state || !state.isLoaded) return;
+  const inputEl = document.getElementById('readonly-input');
+  if (state.dataContent) {
+    inputEl.value = state.dataContent;
+    document.getElementById('input-format-lbl').textContent = '(' + (state.dataFormat || 'JSON').toUpperCase() + ')';
+  }
 }
 
 function updateToolbar() {
@@ -867,14 +881,6 @@ async function loadSample() {
   try {
     const s = await api('POST', '/api/load-sample');
     if (s.error) return;
-    // Try to fetch sample data
-    try {
-      const res = await fetch('/samples/order.json');
-      if (res.ok) {
-        document.getElementById('readonly-input').value = await res.text();
-        document.getElementById('input-format-lbl').textContent = '(JSON)';
-      }
-    } catch(e) {}
     expandedVars.clear();
     hideLoadModal();
     applyState(s);

@@ -1,14 +1,28 @@
 {
-  "customer": {
-    "name": "Soubhik Mukherjee",
-    "email": "soubhik@example.com",
-    "tier": "gold"
+  "user": {
+    "id": "u-1001",
+    "firstName": "  Soubhik ",
+    "lastName": "Mukherjee",
+    "email": "SOUBHIK@EXAMPLE.COM",
+    "role": "admin",
+    "status": "active",
+    "createdDate": "2026-01-15T10:30:00Z"
   },
+  "numbers": {
+    "price": 99.567,
+    "quantity": 3,
+    "discount": -10,
+    "tax": 18
+  },
+  "tags": "azure,logic,apps,liquid",
   "items": [
-    { "name": "Widget A", "price": 29.99, "quantity": 2 },
-    { "name": "Widget B", "price": 49.99, "quantity": 1 },
-    { "name": "Gadget C", "price": 15.50, "quantity": 3 }
+    { "id": 1, "name": "item1", "type": "A", "price": 10, "available": true },
+    { "id": 2, "name": "item2", "type": "B", "price": 20, "available": false },
+    { "id": 3, "name": "item3", "type": "A", "price": 30, "available": true }
   ],
-  "discount_percent": 10,
-  "shipping": "express"
+  "address": {
+    "city": "Bangalore",
+    "country": "India"
+  },
+  "emptyValue": null
 }

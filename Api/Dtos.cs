@@ -5,6 +5,8 @@ namespace LiquidTemplateDebugger.Api;
 public record FullStateDto(
     bool IsLoaded,
     string? TemplateSource,
+    string? DataContent,
+    string? DataFormat,
     List<TemplateElementDto> Elements,
     DebugStateDto? State,
     List<BreakpointDto> Breakpoints,
