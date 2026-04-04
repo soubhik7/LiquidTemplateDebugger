@@ -1059,8 +1059,11 @@ public class DebugEngine
 
         // Reflection fallback
         var prop = obj.GetType().GetProperty(member, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
-        if (prop != null)
-            return prop.GetValue(obj);
+        if (prop != null && prop.GetIndexParameters().Length == 0)
+        {
+            try { return prop.GetValue(obj); }
+            catch { }
+        }
 
         return null;
     }

@@ -49,7 +49,8 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .status-idle { background:rgba(144,144,176,0.1); color:var(--text-muted); }
 
 /* Main grid */
-#main { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; flex:1; overflow:hidden; }
+#main { display:flex; flex-direction:row; flex:1; overflow:hidden; }
+.col { display:flex; flex-direction:column; height:100%; overflow:hidden; }
 .panel { display:flex; flex-direction:column; border:1px solid var(--border); overflow:hidden; background:var(--bg-surface); }
 .panel-header { display:flex; align-items:center; padding:6px 12px; background:var(--bg-panel); border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0; gap:8px; }
 .panel-header .badge { font-size:10px; padding:1px 6px; border-radius:8px; background:var(--accent-bg); color:var(--accent); }
@@ -180,10 +181,10 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .copy-success { animation:copySuccess 0.3s ease; }
 
 /* Resizer */
-.resizer-h, .resizer-v { position:absolute; z-index:5; }
-.resizer-v { width:6px; cursor:col-resize; top:0; bottom:0; right:-3px; }
-.resizer-h { height:6px; cursor:row-resize; left:0; right:0; bottom:-3px; }
-.resizer-v:hover, .resizer-h:hover { background:var(--accent); opacity:0.3; }
+.resizer-v { width: 4px; cursor: col-resize; background: transparent; flex-shrink: 0; z-index: 10; transition: background 0.2s; }
+.resizer-h { height: 4px; cursor: row-resize; background: transparent; flex-shrink: 0; z-index: 10; transition: background 0.2s; }
+.resizer-v:hover, .resizer-v.dragging { background: var(--accent); }
+.resizer-h:hover, .resizer-h.dragging { background: var(--accent); }
 </style>
 </head>
 <body>
@@ -210,69 +211,86 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
   </div>
 
   <div id="main">
-    <!-- Template Panel -->
-    <div class="panel" id="template-panel">
-      <div class="panel-header">
-        Template <span class="badge" id="tpl-info"></span>
-        <div style="margin-left:auto;display:flex;gap:4px;">
-          <input type="text" id="template-search" placeholder="Search template..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInTemplate()">
-        </div>
-      </div>
-      <div class="panel-body" id="template-body">
-        <div class="empty-state"><div class="icon">📄</div><p>Load a template to start debugging</p></div>
-      </div>
-    </div>
-
-    <!-- Variables Panel -->
-    <div class="panel" id="vars-panel">
-      <div class="panel-header">Variables <span class="badge" id="vars-count"></span></div>
-      <div class="var-filter"><input type="text" id="var-search" placeholder="Filter variables..." oninput="renderVariables()"></div>
-      <div class="panel-body" id="vars-body">
-        <div class="empty-state"><div class="icon">📊</div><p>Variables will appear here</p></div>
-      </div>
-    </div>
-
-    <!-- Output Panel -->
-    <div class="panel" id="output-panel">
-      <div class="scope-breadcrumb" id="scope-bar"></div>
-      <div class="panel-header">
-        Output
-        <div style="margin-left:auto;display:flex;gap:4px;">
-          <input type="text" id="output-search" placeholder="Search output..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInOutput()">
-          <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="copyOutput()" title="Copy output to clipboard">📋 Copy</button>
-        </div>
-      </div>
-      <div class="panel-body" id="output-body">
-        <div class="empty-state"><div class="icon">📝</div><p>Output will appear here as you step</p></div>
-      </div>
-    </div>
-
-    <!-- Watches & Breakpoints Panel -->
-    <div class="panel" id="wb-panel">
-      <div class="panel-header">Watches & Breakpoints</div>
-      <div class="panel-body">
-        <div class="wb-tabs">
-          <div class="wb-tab active" onclick="switchWBTab('watches')">Watches</div>
-          <div class="wb-tab" onclick="switchWBTab('breakpoints')">Breakpoints</div>
-          <div class="wb-tab" onclick="switchWBTab('eval')">Evaluate</div>
-        </div>
-        <div class="wb-content">
-          <div class="wb-section active" id="sec-watches">
-            <div class="wb-add-row">
-              <input type="text" id="watch-input" placeholder="Expression to watch..." onkeydown="if(event.key==='Enter')addWatch()">
-              <button class="btn" onclick="addWatch()">+ Add</button>
-            </div>
-            <ul class="wb-list" id="watch-list"></ul>
+    <div class="col" style="width: 33.33%;" id="col1">
+      <div class="panel" id="template-panel" style="flex:1;">
+        <div class="panel-header">
+          Template <span class="badge" id="tpl-info"></span>
+          <div style="margin-left:auto;display:flex;gap:4px;">
+            <input type="text" id="template-search" placeholder="Search template..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInTemplate()">
           </div>
-          <div class="wb-section" id="sec-breakpoints">
-            <ul class="wb-list" id="bp-list"></ul>
+        </div>
+        <div class="panel-body" id="template-body">
+          <div class="empty-state"><div class="icon">📄</div><p>Load a template to start debugging</p></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="resizer-v" id="rv1"></div>
+    
+    <div class="col" style="width: 33.33%;" id="col2">
+      <div class="panel" id="input-panel" style="height: 50%;">
+        <div class="panel-header">Input Data &nbsp;<span style="text-transform:none;font-weight:normal;color:var(--text-muted);" id="input-format-lbl"></span></div>
+        <div class="panel-body" style="padding:0;">
+          <textarea id="readonly-input" readonly style="width:100%;height:100%;resize:none;border:none;background:var(--bg);color:var(--text-dim);font-family:var(--font-mono);font-size:12px;padding:10px;"></textarea>
+        </div>
+      </div>
+      
+      <div class="resizer-h" id="rh1"></div>
+      
+      <div class="panel" id="output-panel" style="flex: 1;">
+        <div class="scope-breadcrumb" id="scope-bar"></div>
+        <div class="panel-header">
+          Output
+          <div style="margin-left:auto;display:flex;gap:4px;">
+            <input type="text" id="output-search" placeholder="Search output..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInOutput()">
+            <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="copyOutput()" title="Copy output to clipboard">📋 Copy</button>
           </div>
-          <div class="wb-section" id="sec-eval">
-            <div class="wb-add-row">
-              <input type="text" id="eval-input" placeholder="Evaluate expression..." onkeydown="if(event.key==='Enter')evalExpr()">
-              <button class="btn" onclick="evalExpr()">Eval</button>
+        </div>
+        <div class="panel-body" id="output-body">
+          <div class="empty-state"><div class="icon">📝</div><p>Output will appear here as you step</p></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="resizer-v" id="rv2"></div>
+    
+    <div class="col" style="flex: 1;" id="col3">
+      <div class="panel" id="vars-panel" style="height: 60%;">
+        <div class="panel-header">Variables <span class="badge" id="vars-count"></span></div>
+        <div class="var-filter"><input type="text" id="var-search" placeholder="Filter variables..." oninput="renderVariables()"></div>
+        <div class="panel-body" id="vars-body">
+          <div class="empty-state"><div class="icon">📊</div><p>Variables will appear here</p></div>
+        </div>
+      </div>
+      
+      <div class="resizer-h" id="rh2"></div>
+      
+      <div class="panel" id="wb-panel" style="flex: 1;">
+        <div class="panel-header">Watches & Breakpoints</div>
+        <div class="panel-body">
+          <div class="wb-tabs">
+            <div class="wb-tab active" onclick="switchWBTab('watches')">Watches</div>
+            <div class="wb-tab" onclick="switchWBTab('breakpoints')">Breakpoints</div>
+            <div class="wb-tab" onclick="switchWBTab('eval')">Evaluate</div>
+          </div>
+          <div class="wb-content">
+            <div class="wb-section active" id="sec-watches">
+              <div class="wb-add-row">
+                <input type="text" id="watch-input" placeholder="Expression to watch..." onkeydown="if(event.key==='Enter')addWatch()">
+                <button class="btn" onclick="addWatch()">+ Add</button>
+              </div>
+              <ul class="wb-list" id="watch-list"></ul>
             </div>
-            <div id="eval-result" style="padding:8px 12px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);"></div>
+            <div class="wb-section" id="sec-breakpoints">
+              <ul class="wb-list" id="bp-list"></ul>
+            </div>
+            <div class="wb-section" id="sec-eval">
+              <div class="wb-add-row">
+                <input type="text" id="eval-input" placeholder="Evaluate expression..." onkeydown="if(event.key==='Enter')evalExpr()">
+                <button class="btn" onclick="evalExpr()">Eval</button>
+              </div>
+              <div id="eval-result" style="padding:8px 12px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -656,6 +674,9 @@ async function loadFromModal() {
   try {
     const s = await api('POST', '/api/load', { templateContent: tpl, dataContent: data, format });
     if (s.error) { alert('Error: ' + s.error); return; }
+    // Update Input Panel
+    document.getElementById('readonly-input').value = data;
+    document.getElementById('input-format-lbl').textContent = '(' + format.toUpperCase() + ')';
     expandedVars.clear();
     hideLoadModal();
     applyState(s);
@@ -666,6 +687,14 @@ async function loadSample() {
   try {
     const s = await api('POST', '/api/load-sample');
     if (s.error) { alert('Error: ' + s.error); return; }
+    // Try to fetch sample data
+    try {
+      const res = await fetch('/samples/order.json');
+      if (res.ok) {
+        document.getElementById('readonly-input').value = await res.text();
+        document.getElementById('input-format-lbl').textContent = '(JSON)';
+      }
+    } catch(e) {}
     expandedVars.clear();
     hideLoadModal();
     applyState(s);
@@ -809,8 +838,156 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// --- Setup Resizers ---
+function setupResizer(resizerId, prevId, nextId, isHorizontal) {
+  const resizer = document.getElementById(resizerId);
+  const prev = document.getElementById(prevId);
+  const next = document.getElementById(nextId);
+  if (!resizer || !prev || !next) return;
+
+  let startPos = 0;
+  let startPrevSize = 0;
+  let startNextSize = 0;
+
+  function onMouseMove(e) {
+    if (isHorizontal) {
+      const dy = e.clientY - startPos;
+      const total = startPrevSize + startNextSize;
+      const newPrev = Math.max(10, Math.min(total - 10, startPrevSize + dy));
+      prev.style.height = (newPrev / total * 100) + '%';
+      prev.style.flex = 'none';
+      next.style.flex = '1';
+    } else {
+      const dx = e.clientX - startPos;
+      const total = startPrevSize + startNextSize;
+      const newPrev = Math.max(10, Math.min(total - 10, startPrevSize + dx));
+      prev.style.width = (newPrev / total * 100) + '%';
+      prev.style.flex = 'none';
+      next.style.flex = '1'; // Actually flex:1 overrides width, so we should set both to width %
+      
+      const p1 = (newPrev / total) * 100;
+      const p2 = 100 - p1;
+      // Convert to flex basis
+      prev.style.width = p1 + '%';
+      next.style.width = p2 + '%';
+    }
+  }
+
+  function onMouseUp() {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = 'default';
+  }
+
+  resizer.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    resizer.classList.add('dragging');
+    document.body.style.cursor = isHorizontal ? 'row-resize' : 'col-resize';
+    startPos = isHorizontal ? e.clientY : e.clientX;
+    const prevRect = prev.getBoundingClientRect();
+    const nextRect = next.getBoundingClientRect();
+    startPrevSize = isHorizontal ? prevRect.height : prevRect.width;
+    startNextSize = isHorizontal ? nextRect.height : nextRect.width;
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+// Fixed setup for flex layouts
+function setupVerticalResizer(resizerId, prevId, nextId) {
+  const resizer = document.getElementById(resizerId);
+  const prev = document.getElementById(prevId);
+  const next = document.getElementById(nextId);
+  if (!resizer || !prev || !next) return;
+  
+  resizer.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+    resizer.classList.add('dragging');
+    
+    const container = prev.parentElement;
+    const containerWidth = container.clientWidth;
+    const startX = e.clientX;
+    const startPrevWidth = prev.getBoundingClientRect().width;
+    const startNextWidth = next.getBoundingClientRect().width;
+    
+    function onMouseMove(e) {
+      const dx = e.clientX - startX;
+      // We calculate percentage of container
+      const newPrevWidth = startPrevWidth + dx;
+      const newNextWidth = startNextWidth - dx;
+      
+      if (newPrevWidth > 50 && newNextWidth > 50) {
+         prev.style.flex = `0 0 ${(newPrevWidth / containerWidth) * 100}%`;
+         prev.style.width = 'auto'; // overriding inline styles 
+         next.style.flex = `0 0 ${(newNextWidth / containerWidth) * 100}%`;
+         next.style.width = 'auto';
+      }
+    }
+    
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      resizer.classList.remove('dragging');
+      document.body.style.cursor = 'default';
+    }
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function setupHorizontalResizer(resizerId, prevId, nextId) {
+  const resizer = document.getElementById(resizerId);
+  const prev = document.getElementById(prevId);
+  const next = document.getElementById(nextId);
+  if (!resizer || !prev || !next) return;
+  
+  resizer.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    document.body.style.cursor = 'row-resize';
+    resizer.classList.add('dragging');
+    
+    const container = prev.parentElement;
+    const containerHeight = container.clientHeight;
+    const startY = e.clientY;
+    const startPrevHeight = prev.getBoundingClientRect().height;
+    const startNextHeight = next.getBoundingClientRect().height;
+    
+    function onMouseMove(e) {
+      const dy = e.clientY - startY;
+      const newPrevHeight = startPrevHeight + dy;
+      const newNextHeight = startNextHeight - dy;
+      
+      if (newPrevHeight > 30 && newNextHeight > 30) {
+         prev.style.flex = `0 0 ${(newPrevHeight / containerHeight) * 100}%`;
+         prev.style.height = 'auto';
+         next.style.flex = `0 0 ${(newNextHeight / containerHeight) * 100}%`;
+         next.style.height = 'auto';
+      }
+    }
+    
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      resizer.classList.remove('dragging');
+      document.body.style.cursor = 'default';
+    }
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}
+
 // --- Init ---
 (async function init() {
+  setupVerticalResizer('rv1', 'col1', 'col2');
+  setupVerticalResizer('rv2', 'col2', 'col3');
+  setupHorizontalResizer('rh1', 'input-panel', 'output-panel');
+  setupHorizontalResizer('rh2', 'vars-panel', 'wb-panel');
+
   const s = await api('GET', '/api/state');
   if (s.isLoaded) { applyState(s); }
   else { showLoadModal(); }
