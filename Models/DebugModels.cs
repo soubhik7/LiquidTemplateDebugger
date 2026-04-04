@@ -91,6 +91,7 @@ public class DebugState
     public List<string> ScopeStack { get; } = new() { "root" };
     public bool IsComplete { get; set; }
     public string? ErrorMessage { get; set; }
+    public List<OutputRangeMapping> OutputMappings { get; } = new();
 }
 
 /// <summary>
@@ -113,4 +114,11 @@ public enum StepAction
     StepOut,      // Execute until current scope ends
     Continue,     // Continue until breakpoint or end
     RunToLine     // Run to a specific line
+}
+
+public class OutputRangeMapping
+{
+    public int StartIndex { get; set; }
+    public int Length { get; set; }
+    public int TemplateLineNumber { get; set; }
 }

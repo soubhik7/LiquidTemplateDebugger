@@ -241,9 +241,15 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
         <div class="scope-breadcrumb" id="scope-bar"></div>
         <div class="panel-header">
           Output
-          <div style="margin-left:auto;display:flex;gap:4px;">
-            <input type="text" id="output-search" placeholder="Search output..." style="width:150px;font-size:11px;padding:3px 6px;" oninput="searchInOutput()">
-            <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="copyOutput()" title="Copy output to clipboard">📋 Copy</button>
+          <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+            <select id="validate-format" style="font-size:11px;padding:3px 6px;height:24px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);outline:none;">
+              <option value="json">JSON</option>
+              <option value="xml">XML</option>
+              <option value="csv">CSV</option>
+            </select>
+            <button class="btn" style="padding:4px 8px;font-size:11px;height:24px;" onclick="validateOutput()" title="Validate format against standard">✔ Validate</button>
+            <input type="text" id="output-search" placeholder="Search output..." style="width:150px;font-size:11px;padding:3px 6px;height:24px;" oninput="searchInOutput()">
+            <button class="btn" style="padding:4px 8px;font-size:11px;height:24px;" onclick="copyOutput()" title="Copy output to clipboard">📋 Copy</button>
           </div>
         </div>
         <div class="panel-body" id="output-body">
@@ -636,6 +642,38 @@ async function evalExpr() {
   if (result.error) { el.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(result.error)}</span>`; }
   else { el.innerHTML = `<span style="color:var(--text-muted)">=&gt;</span> <span style="color:var(--text)">${escapeHtml(result.value||'nil')}</span> <span style="color:var(--text-muted)">(${escapeHtml(result.typeName||'')})</span>`; }
 }
+
+// --- Output Validation ---
+async function validateOutput() {
+  if (!state || !state.isLoaded) return;
+  const format = document.getElementById('validate-format').value;
+  try {
+    const result = await api('POST', '/api/validate', { format });
+    if (result.error) {
+      alert('Validation Error: ' + result.error);
+      return;
+    }
+    if (result.isValid) {
+      alert('✅ Output is valid ' + format.toUpperCase());
+    } else {
+      let msg = '❌ Validation Failed:\n' + result.errorMessage;
+      if (result.sourceLineNumber) {
+        msg += '\n\nIssue was likely introduced at template line: ' + result.sourceLineNumber;
+        const el = document.querySelector(`.template-line[data-line="${result.sourceLineNumber}"]`);
+        if (el) {
+          el.scrollIntoView({ block:'center', behavior:'smooth' });
+          el.style.transition = 'background-color 0.3s';
+          el.style.backgroundColor = 'rgba(255, 75, 75, 0.4)';
+          setTimeout(() => el.style.backgroundColor = '', 6000);
+        }
+      }
+      alert(msg);
+    }
+  } catch(err) {
+    alert('Failed to validate: ' + err.message);
+  }
+}
+
 
 // --- Load modal ---
 function showLoadModal() { document.getElementById('load-modal').classList.remove('hidden'); }

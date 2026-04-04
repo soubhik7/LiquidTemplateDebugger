@@ -209,8 +209,7 @@ public class DebugEngine
 
     private void ExecuteLiteral(TemplateElement element)
     {
-        _state.OutputSoFar += element.RawText;
-        _state.LastOutputChunk = element.RawText;
+        AppendOutput(element.RawText, element.LineNumber);
     }
 
     private void ExecuteOutput(TemplateElement element)
@@ -219,13 +218,9 @@ public class DebugEngine
         var result = EvaluateExpression(expression);
         var rendered = FormatOutputValue(result);
 
-        _state.OutputSoFar += rendered;
-        _state.LastOutputChunk = rendered;
+        AppendOutput(rendered, element.LineNumber);
     }
 
-    /// <summary>
-    /// Format a value for output, handling special types like booleans and dates.
-    /// </summary>
     private string FormatOutputValue(object? value)
     {
         if (value == null) return "";
@@ -236,6 +231,15 @@ public class DebugEngine
         
         // For other types, use default ToString()
         return value.ToString() ?? "";
+    }
+
+    private void AppendOutput(string chunk, int lineNumber)
+    {
+        if (string.IsNullOrEmpty(chunk)) return;
+        int start = _state.OutputSoFar.Length;
+        _state.OutputSoFar += chunk;
+        _state.LastOutputChunk = chunk;
+        _state.OutputMappings.Add(new OutputRangeMapping { StartIndex = start, Length = chunk.Length, TemplateLineNumber = lineNumber });
     }
 
     private void ExecuteTag(TemplateElement element)
@@ -672,8 +676,7 @@ public class DebugEngine
             current = (int)longVal;
 
         var rendered = FormatOutputValue(current);
-        _state.OutputSoFar += rendered;
-        _state.LastOutputChunk = rendered;
+        AppendOutput(rendered, element.LineNumber);
 
         _state.Variables[varName] = new TrackedVariable
         {
@@ -696,8 +699,7 @@ public class DebugEngine
 
         current--;
         var rendered = FormatOutputValue(current);
-        _state.OutputSoFar += rendered;
-        _state.LastOutputChunk = rendered;
+        AppendOutput(rendered, element.LineNumber);
 
         _state.Variables[varName] = new TrackedVariable
         {
