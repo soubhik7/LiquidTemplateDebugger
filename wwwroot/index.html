@@ -192,6 +192,33 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 @keyframes copySuccess { 0%{transform:scale(1)} 50%{transform:scale(1.1)} 100%{transform:scale(1)} }
 .copy-success { animation:copySuccess 0.3s ease; }
 
+.hidden { display: none !important; }
+
+.editor-area {
+  width: 100%;
+  height: 100%;
+  border: none;
+  resize: none;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  outline: none;
+  tab-size: 4;
+}
+
+.editor-area:focus {
+  background: var(--bg-surface);
+}
+
+.btn-edit-active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Resizer */
 .resizer-v { width: 4px; cursor: col-resize; background: transparent; flex-shrink: 0; z-index: 10; transition: background 0.2s; }
 .resizer-h { height: 4px; cursor: row-resize; background: transparent; flex-shrink: 0; z-index: 10; transition: background 0.2s; }
@@ -257,11 +284,17 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
           Template <span class="badge" id="tpl-info"></span>
           <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
             <input type="text" id="template-search" placeholder="Search template..." style="width:150px;font-size:11px;padding:3px 6px;height:24px;" oninput="searchInTemplate()">
+            <button class="btn" id="btn-edit-tpl" style="padding:4px 8px;font-size:11px;height:24px;" onclick="toggleTemplateEdit()" title="Edit template source">✎ Edit</button>
             <button class="btn" style="padding:4px 8px;font-size:11px;height:24px;" onclick="copyTemplate(event)" title="Copy template to clipboard">📋 Copy</button>
           </div>
         </div>
-        <div class="panel-body" id="template-body">
-          <div class="empty-state"><div class="icon">📄</div><p>Load a template to start debugging</p></div>
+        <div class="panel-body" id="template-body-container" style="position:relative;">
+          <div id="template-view" style="height:100%; overflow:auto;">
+            <div id="template-body">
+              <div class="empty-state"><div class="icon">📄</div><p>Load a template to start debugging</p></div>
+            </div>
+          </div>
+          <textarea id="template-editor" class="editor-area hidden" placeholder="Enter your Liquid template here..." onkeydown="handleEditorTab(event)"></textarea>
         </div>
       </div>
     </div>
@@ -270,9 +303,14 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
     
     <div class="col" style="width: 33.33%;" id="col2">
       <div class="panel" id="input-panel" style="height: 50%;">
-        <div class="panel-header">Input Data &nbsp;<span style="text-transform:none;font-weight:normal;color:var(--text-muted);" id="input-format-lbl"></span></div>
+        <div class="panel-header">
+          Input Data &nbsp;<span style="text-transform:none;font-weight:normal;color:var(--text-muted);" id="input-format-lbl"></span>
+          <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+            <button class="btn" id="btn-edit-data" style="padding:4px 8px;font-size:11px;height:24px;" onclick="toggleInputEdit()" title="Edit input data">✎ Edit</button>
+          </div>
+        </div>
         <div class="panel-body" style="padding:0;">
-          <textarea id="readonly-input" readonly style="width:100%;height:100%;resize:none;border:none;background:var(--bg);color:var(--text-dim);font-family:var(--font-mono);font-size:12px;padding:10px;"></textarea>
+          <textarea id="data-editor" readonly class="editor-area" style="font-size:12px;" onkeydown="handleEditorTab(event)"></textarea>
         </div>
       </div>
       
@@ -500,14 +538,14 @@ function applyState(s) {
   renderBreakpoints();
   renderScopeBar();
 
-  if (isInitialLoad || (s && s.isLoaded && !document.getElementById('readonly-input').value)) {
+  if (isInitialLoad || (s && s.isLoaded && !document.getElementById('data-editor').value)) {
     renderInput();
   }
 }
 
 function renderInput() {
   if (!state || !state.isLoaded) return;
-  const inputEl = document.getElementById('readonly-input');
+  const inputEl = document.getElementById('data-editor');
   if (state.dataContent) {
     inputEl.value = state.dataContent;
     document.getElementById('input-format-lbl').textContent = '(' + (state.dataFormat || 'JSON').toUpperCase() + ')';
@@ -727,6 +765,91 @@ function renderBreakpoints() {
   ).join('');
 }
 
+// --- In-place Editing ---
+function handleEditorTab(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = e.target.selectionStart;
+    const end = e.target.selectionEnd;
+    e.target.value = e.target.value.substring(0, start) + "  " + e.target.value.substring(end);
+    e.target.selectionStart = e.target.selectionEnd = start + 2;
+  }
+}
+
+function toggleTemplateEdit() {
+  const view = document.getElementById('template-view');
+  const editor = document.getElementById('template-editor');
+  const btn = document.getElementById('btn-edit-tpl');
+  const isEditing = !editor.classList.contains('hidden');
+
+  if (isEditing) {
+    // Save/Apply logic
+    applyInPlaceEdits();
+  } else {
+    // Switch to edit
+    editor.value = state?.templateSource || '';
+    view.classList.add('hidden');
+    editor.classList.remove('hidden');
+    btn.innerHTML = '▶ Apply';
+    btn.classList.add('btn-edit-active');
+    editor.focus();
+  }
+}
+
+function toggleInputEdit() {
+  const editor = document.getElementById('data-editor');
+  const btn = document.getElementById('btn-edit-data');
+  const isEditing = !editor.readOnly;
+
+  if (isEditing) {
+    // Apply logic
+    applyInPlaceEdits();
+  } else {
+    // Switch to edit
+    editor.readOnly = false;
+    btn.innerHTML = '▶ Apply';
+    btn.classList.add('btn-edit-active');
+    editor.focus();
+  }
+}
+
+async function applyInPlaceEdits() {
+  const tpl = document.getElementById('template-view').classList.contains('hidden') 
+    ? document.getElementById('template-editor').value 
+    : (state?.templateSource || '');
+  const data = document.getElementById('data-editor').value;
+  const format = state?.dataFormat || 'json';
+
+  if (!tpl || !data) {
+    showToast('Template and Data cannot be empty', 'error');
+    return;
+  }
+
+  try {
+    const s = await api('POST', '/api/load', { templateContent: tpl, dataContent: data, format });
+    if (s.error) {
+      showToast(s.error, 'error', 'Load Failed');
+      return;
+    }
+    
+    // Reset UI states
+    document.getElementById('template-view').classList.remove('hidden');
+    document.getElementById('template-editor').classList.add('hidden');
+    document.getElementById('btn-edit-tpl').innerHTML = '✎ Edit';
+    document.getElementById('btn-edit-tpl').classList.remove('btn-edit-active');
+    
+    document.getElementById('data-editor').readOnly = true;
+    document.getElementById('btn-edit-data').innerHTML = '✎ Edit';
+    document.getElementById('btn-edit-data').classList.remove('btn-edit-active');
+    
+    expandedVars.clear();
+    applyState(s);
+    showToast('Changes applied and debugging restarted', 'success');
+  } catch(err) {
+    showToast(err.message, 'error');
+  }
+}
+
 // --- Actions ---
 async function doStep(action) {
   const s = await api('POST', '/api/step', { action, targetLine: null });
@@ -869,7 +992,7 @@ async function loadFromModal() {
     const s = await api('POST', '/api/load', { templateContent: tpl, dataContent: data, format });
     if (s.error) return;
     // Update Input Panel
-    document.getElementById('readonly-input').value = data;
+    document.getElementById('data-editor').value = data;
     document.getElementById('input-format-lbl').textContent = '(' + format.toUpperCase() + ')';
     expandedVars.clear();
     hideLoadModal();
