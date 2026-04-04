@@ -101,6 +101,12 @@ public record InspectResultDto(
     string? Error
 );
 
+public record ValidateResponseDto(
+    bool IsValid,
+    string? ErrorMessage,
+    int? SourceLineNumber
+);
+
 // --- Request DTOs ---
 
 public record LoadRequest(
@@ -143,4 +149,8 @@ public record TransformRequest(
     string DataContent,
     string InputFormat,    // "json", "xml", "csv", "text"
     string OutputFormat    // "json", "xml", "csv", "text"
+);
+
+public record ValidateRequest(
+    string Format // "json", "xml", "csv"
 );

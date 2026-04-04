@@ -291,6 +291,29 @@ public static class DebugApiEndpoints
                 return Results.BadRequest(new { error = ex.Message });
             }
         });
+        // Validate Output Format
+        app.MapPost("/api/validate", (ValidateRequest request, DebugSessionManager manager) =>
+        {
+            if (!manager.IsLoaded || manager.Engine == null)
+                return Results.BadRequest(new { error = "No session loaded." });
+
+            try
+            {
+                var output = manager.Engine.State.OutputSoFar;
+                var format = request.Format ?? "json";
+                var result = OutputValidator.Validate(output, format, manager.Engine.State.OutputMappings);
+
+                return Results.Ok(new ValidateResponseDto(
+                    IsValid: result.IsValid,
+                    ErrorMessage: result.ErrorMessage,
+                    SourceLineNumber: result.SourceLineNumber
+                ));
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
     }
 
     /// <summary>
