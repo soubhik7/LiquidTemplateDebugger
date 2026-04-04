@@ -23,6 +23,11 @@ if (args.Length == 1 && args[0] == "--formattest")
 }
 // Parse port from args
 var port = 5050;
+var portEnv = Environment.GetEnvironmentVariable("PORT");
+if (int.TryParse(portEnv, out int envPort))
+{
+    port = envPort;
+}
 string? preloadTemplate = null;
 string? preloadData = null;
 string? preloadFormat = null;
@@ -81,7 +86,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Set the URL
-builder.WebHost.UseUrls($"http://localhost:{port}");
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
@@ -113,9 +118,11 @@ var url = $"http://localhost:{port}";
 Console.WriteLine($"DotLiquid Template Debugger running at {url}");
 
 // Auto-open browser
+var isContainerEnv = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" 
+                  || Environment.GetEnvironmentVariable("RENDER") == "true";
 try
 {
-    if (OperatingSystem.IsMacOS())
+    if (!isContainerEnv && OperatingSystem.IsMacOS())
         Process.Start("open", url);
     else if (OperatingSystem.IsWindows())
         Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
