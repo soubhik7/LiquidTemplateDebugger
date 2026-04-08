@@ -43,6 +43,11 @@ public static class XmlToXmlComplexTest
         var (hash, origins) = loader.LoadFromString(xmlInput, "XML");
         
         Assert(hash != null, "Hash loaded successfully");
+        if (hash == null)
+        {
+            return 1;
+        }
+
         Console.WriteLine($"  DEBUG: Hash keys: {string.Join(", ", hash.Keys)}");
         Assert(hash.ContainsKey("content"), "Root 'content' wrapper exists");
         Assert(origins.ContainsKey("content.order.@id"), "Order ID attribute tracked");
@@ -204,16 +209,17 @@ public static class XmlToXmlComplexTest
         try
         {
             var xmlDoc = XDocument.Parse(output);
-            Assert(xmlDoc.Root != null, "Output is well-formed XML");
-            Assert(xmlDoc.Root.Name.LocalName == "invoice", "Root element is 'invoice'");
+            var root = xmlDoc.Root;
+            Assert(root != null, "Output is well-formed XML");
+            Assert(root?.Name.LocalName == "invoice", "Root element is 'invoice'");
             
-            var lineItems = xmlDoc.Root.Descendants("line_item").ToList();
+            var lineItems = root?.Descendants("line_item").ToList() ?? new List<XElement>();
             Assert(lineItems.Count == 3, "XML contains 3 line_item elements");
             
-            var tags = xmlDoc.Root.Descendants("tag").ToList();
+            var tags = root?.Descendants("tag").ToList() ?? new List<XElement>();
             Assert(tags.Count == 6, "XML contains 6 tag elements total");
             
-            var notes = xmlDoc.Root.Descendants("note").ToList();
+            var notes = root?.Descendants("note").ToList() ?? new List<XElement>();
             Assert(notes.Count == 2, "XML contains 2 note elements");
         }
         catch (Exception ex)
