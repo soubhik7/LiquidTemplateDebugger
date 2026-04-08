@@ -37,4 +37,4 @@ public interface IInputDataLoader
     string DetectFormat(string content);
 }
 
-// Made with Bob
+
