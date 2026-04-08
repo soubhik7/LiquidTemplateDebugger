@@ -430,6 +430,14 @@ This project implements a comprehensive, production-ready architecture. See the 
 - **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide with 12-week plan
 - **[ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md)** - Executive summary of all architectural decisions
 
+### Deployment Documentation
+- **[AZURE_DEPLOYMENT_MANUAL.md](AZURE_DEPLOYMENT_MANUAL.md)** - 📘 **Complete manual deployment guide** (Azure Portal, no CLI)
+  - Detailed comparison: Azure Container Apps vs Azure Web App
+  - Step-by-step instructions with screenshots guidance
+  - Cost analysis and optimization tips
+  - Security best practices and troubleshooting
+- **[AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md)** - Azure deployment using CLI commands
+
 ### Key Features
 - ✅ **Modular Design** - Clear separation of concerns with interface-based programming
 - ✅ **Dependency Injection** - All services registered in DI container for testability

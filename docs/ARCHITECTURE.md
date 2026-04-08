@@ -83,17 +83,17 @@ Services are registered in the DI container and injected where needed:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Client Layer                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Browser    │  │   CLI Tool   │  │  API Client  │      │
-│  │     UI       │  │              │  │              │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│                        Client Layer                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │   Browser    │  │   CLI Tool   │  │  API Client  │       │
+│  │     UI       │  │              │  │              │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
 └─────────────────────────────────────────────────────────────┘
                             │
                             │ HTTP/REST
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      API Layer (ASP.NET)                     │
+│                      API Layer (ASP.NET)                    │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │         DebugApiEndpoints (REST Controllers)         │   │
 │  └──────────────────────────────────────────────────────┘   │
@@ -108,7 +108,7 @@ Services are registered in the DI container and injected where needed:
                             │ Service Calls
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Business Logic Layer                     │
+│                     Business Logic Layer                    │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  DebugEngine (Core Debugging & Execution Engine)     │   │
 │  └──────────────────────────────────────────────────────┘   │
@@ -129,7 +129,7 @@ Services are registered in the DI container and injected where needed:
                             │ Data Access
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                       Data Layer                             │
+│                       Data Layer                            │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │         Models (Domain Entities & DTOs)              │   │
 │  │  - DebugState, TrackedVariable, Breakpoint           │   │

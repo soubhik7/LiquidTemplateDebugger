@@ -30,4 +30,4 @@ public interface ITemplateParser
     (int line, int column) GetPosition(string template, int charIndex);
 }
 
-// Made with Bob
+

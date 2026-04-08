@@ -89,9 +89,9 @@ public static class FormatTransformationTest
         {
             var (hash, origins) = loader.LoadFromString(csv, "CSV");
             Assert(hash != null, "Hash is not null");
-            Assert(hash.ContainsKey("rows"), "Hash contains 'rows' key");
+            Assert(hash != null && hash.ContainsKey("rows"), "Hash contains 'rows' key");
 
-            var rows = hash["rows"] as List<object>;
+            var rows = hash?["rows"] as List<object>;
             Assert(rows != null, "Rows is not null");
             Assert(rows?.Count == 2, "Has 2 rows");
         }
@@ -101,7 +101,7 @@ public static class FormatTransformationTest
         Console.WriteLine("[Test 2] JSON Input Loading");
         {
             var (hash, origins) = loader.LoadFromString(json, "JSON");
-            Assert(hash.ContainsKey("order"), "Hash contains root object");
+            Assert(hash != null && hash.ContainsKey("order"), "Hash contains root object");
             Assert(origins.ContainsKey("order.items"), "Origins track arrays");
             Assert(origins.ContainsKey("order.customer.name"), "Origins track nested values");
         }
@@ -111,7 +111,7 @@ public static class FormatTransformationTest
         Console.WriteLine("[Test 3] XML Input Loading");
         {
             var (hash, origins) = loader.LoadFromString(xml, "XML");
-            Assert(hash.ContainsKey("catalog"), "XML root preserved");
+            Assert(hash != null && hash.ContainsKey("catalog"), "XML root preserved");
             Assert(origins.ContainsKey("catalog.@generated"), "XML attribute tracked");
             Assert(origins.ContainsKey("catalog.product"), "Repeated XML elements tracked as array");
         }
@@ -121,8 +121,8 @@ public static class FormatTransformationTest
         Console.WriteLine("[Test 4] TEXT Input Loading");
         {
             var (hash, origins) = loader.LoadFromString(text, "TEXT");
-            Assert(hash.ContainsKey("title"), "Key=value field loaded");
-            Assert(hash.ContainsKey("value"), "Freeform text preserved under value");
+            Assert(hash != null && hash.ContainsKey("title"), "Key=value field loaded");
+            Assert(hash != null && hash.ContainsKey("value"), "Freeform text preserved under value");
             Assert(origins.ContainsKey("value"), "Origin tracked for freeform value");
         }
         Console.WriteLine();
@@ -338,4 +338,4 @@ public static class FormatTransformationTest
     }
 }
 
-// Made with Bob
+
