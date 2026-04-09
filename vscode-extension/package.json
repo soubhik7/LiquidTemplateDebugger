@@ -4,6 +4,15 @@
   "description": "Step-by-step debugger for Liquid templates with format transformation support",
   "version": "1.0.0",
   "publisher": "liquid-debugger",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/liquid-template-debugger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/liquid-template-debugger/issues"
+  },
+  "homepage": "https://github.com/yourusername/liquid-template-debugger#readme",
   "engines": {
     "vscode": "^1.85.0"
   },

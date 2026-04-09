@@ -1,4 +1,6 @@
-import { Liquid, Tokenizer, TagToken, OutputToken } from 'liquidjs';
+import { Liquid } from 'liquidjs';
+import { TagToken } from 'liquidjs/dist/tokens/tag-token';
+import { OutputToken } from 'liquidjs/dist/tokens/output-token';
 import { ParsedTemplate, TemplateElement } from './types';
 import * as fs from 'fs';
 
@@ -23,24 +25,23 @@ export class TemplateParser {
             let currentLine = 1;
             let currentPos = 0;
 
-            for (const token of tokens) {
+            for (const template of tokens) {
+                const token = template.token;
                 const tokenContent = content.substring(currentPos, token.end);
                 const tokenLines = tokenContent.split('\n');
                 
-                if (token.kind === 1) { // Output token
-                    const outputToken = token as OutputToken;
+                if (token instanceof OutputToken) {
                     elements.push({
                         type: 'output',
                         line: currentLine,
-                        content: outputToken.content,
+                        content: token.content,
                         raw: tokenContent
                     });
-                } else if (token.kind === 2) { // Tag token
-                    const tagToken = token as TagToken;
+                } else if (token instanceof TagToken) {
                     elements.push({
                         type: 'tag',
                         line: currentLine,
-                        content: tagToken.name,
+                        content: token.name,
                         raw: tokenContent
                     });
                 } else {

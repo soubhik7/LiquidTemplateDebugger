@@ -93,7 +93,7 @@ export class DebugEngine {
         this.state.currentLine = element.line;
 
         // Check breakpoints
-        if (this.shouldBreakAt(element.line)) {
+        if (await this.shouldBreakAt(element.line)) {
             this.state.isPaused = true;
             return {
                 output: this.state.output,
@@ -307,7 +307,7 @@ export class DebugEngine {
         }
     }
 
-    private shouldBreakAt(line: number): boolean {
+    private async shouldBreakAt(line: number): Promise<boolean> {
         for (const bp of this.state.breakpoints) {
             if (bp.enabled && bp.line === line) {
                 if (!bp.condition) {
@@ -317,7 +317,7 @@ export class DebugEngine {
                 
                 try {
                     const context = this.buildContext();
-                    const result = this.parser.evaluateExpression(bp.condition, context);
+                    const result = await this.parser.evaluateExpression(bp.condition, context);
                     if (result) {
                         bp.hitCount++;
                         return true;
