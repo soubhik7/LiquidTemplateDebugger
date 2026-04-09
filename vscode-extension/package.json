@@ -1,0 +1,153 @@
+{
+  "name": "liquid-template-debugger",
+  "displayName": "Liquid Template Debugger",
+  "description": "Step-by-step debugger for Liquid templates with format transformation support",
+  "version": "1.0.0",
+  "publisher": "liquid-debugger",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages",
+    "Formatters"
+  ],
+  "keywords": [
+    "liquid",
+    "template",
+    "debugger",
+    "dotliquid",
+    "shopify"
+  ],
+  "activationEvents": [
+    "onDebugResolve:liquid",
+    "onCommand:liquid-debugger.start",
+    "onLanguage:liquid"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "liquid",
+        "extensions": [".liquid"],
+        "aliases": ["Liquid", "liquid"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "liquid-debugger.start",
+        "title": "Liquid: Start Debugging",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "liquid-debugger.loadData",
+        "title": "Liquid: Load Input Data"
+      },
+      {
+        "command": "liquid-debugger.showDebugger",
+        "title": "Liquid: Show Debugger Panel"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "liquid"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "liquid",
+        "label": "Liquid Template Debugger",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "configurationAttributes": {
+          "launch": {
+            "required": ["template"],
+            "properties": {
+              "template": {
+                "type": "string",
+                "description": "Path to the Liquid template file",
+                "default": "${file}"
+              },
+              "data": {
+                "type": "string",
+                "description": "Path to the input data file (JSON, XML, CSV, or text)"
+              },
+              "format": {
+                "type": "string",
+                "description": "Input data format (json, xml, csv, text)",
+                "enum": ["json", "xml", "csv", "text"],
+                "default": "json"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch",
+                "default": true
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "liquid",
+            "request": "launch",
+            "name": "Debug Liquid Template",
+            "template": "${file}",
+            "data": "${workspaceFolder}/data.json",
+            "format": "json",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Liquid: Debug Template",
+            "description": "Debug a Liquid template with input data",
+            "body": {
+              "type": "liquid",
+              "request": "launch",
+              "name": "Debug Liquid Template",
+              "template": "^\"\\${file}\"",
+              "data": "^\"\\${workspaceFolder}/data.json\"",
+              "format": "json",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceLangId == liquid",
+          "command": "liquid-debugger.start",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/debugadapter": "^1.65.0",
+    "@vscode/debugprotocol": "^1.65.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "liquidjs": "^10.10.0",
+    "fast-xml-parser": "^4.3.2",
+    "csv-parse": "^5.5.3",
+    "csv-stringify": "^6.4.5"
+  }
+}
