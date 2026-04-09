@@ -3,7 +3,6 @@ import {
     InitializedEvent,
     TerminatedEvent,
     StoppedEvent,
-    BreakpointEvent,
     OutputEvent,
     Thread,
     StackFrame,
@@ -18,16 +17,15 @@ import * as path from 'path';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     template: string;
-    data?: string;
+    data: string;
     format?: string;
     stopOnEntry?: boolean;
 }
 
 export class LiquidDebugSession extends LoggingDebugSession {
-    private static THREAD_ID = 1;
+    private static readonly THREAD_ID = 1;
     private engine: DebugEngine;
     private variableHandles = new Handles<string>();
-    private configurationDone = false;
 
     constructor() {
         super();
@@ -38,49 +36,29 @@ export class LiquidDebugSession extends LoggingDebugSession {
 
     protected initializeRequest(
         response: DebugProtocol.InitializeResponse,
-        args: DebugProtocol.InitializeRequestArguments
+        _args: DebugProtocol.InitializeRequestArguments
     ): void {
-        response.body = response.body || {};
-        response.body.supportsConfigurationDoneRequest = true;
-        response.body.supportsEvaluateForHovers = true;
-        response.body.supportsStepBack = false;
-        response.body.supportsSetVariable = false;
-        response.body.supportsRestartFrame = false;
-        response.body.supportsGotoTargetsRequest = false;
-        response.body.supportsStepInTargetsRequest = false;
-        response.body.supportsCompletionsRequest = false;
-        response.body.supportsModulesRequest = false;
-        response.body.supportsRestartRequest = true;
-        response.body.supportsExceptionOptions = false;
-        response.body.supportsValueFormattingOptions = true;
-        response.body.supportsExceptionInfoRequest = false;
-        response.body.supportTerminateDebuggee = true;
-        response.body.supportsDelayedStackTraceLoading = false;
-        response.body.supportsLoadedSourcesRequest = false;
-        response.body.supportsLogPoints = false;
-        response.body.supportsTerminateThreadsRequest = false;
-        response.body.supportsSetExpression = false;
-        response.body.supportsTerminateRequest = true;
-        response.body.supportsDataBreakpoints = false;
-        response.body.supportsReadMemoryRequest = false;
-        response.body.supportsDisassembleRequest = false;
-        response.body.supportsCancelRequest = false;
-        response.body.supportsBreakpointLocationsRequest = false;
-        response.body.supportsClipboardContext = false;
-        response.body.supportsConditionalBreakpoints = true;
-        response.body.supportsHitConditionalBreakpoints = false;
-        response.body.supportsFunctionBreakpoints = false;
-
+        response.body = {
+            supportsConfigurationDoneRequest: true,
+            supportsEvaluateForHovers: true,
+            supportsConditionalBreakpoints: true,
+            supportsRestartRequest: true,
+            supportTerminateDebuggee: true,
+            supportsTerminateRequest: true,
+            supportsStepBack: false,
+            supportsSetVariable: false,
+            supportsGotoTargetsRequest: false,
+            supportsCompletionsRequest: false
+        };
         this.sendResponse(response);
         this.sendEvent(new InitializedEvent());
     }
 
     protected configurationDoneRequest(
         response: DebugProtocol.ConfigurationDoneResponse,
-        args: DebugProtocol.ConfigurationDoneArguments
+        _args: DebugProtocol.ConfigurationDoneArguments
     ): void {
-        super.configurationDoneRequest(response, args);
-        this.configurationDone = true;
+        super.configurationDoneRequest(response, _args);
     }
 
     protected async launchRequest(
@@ -88,79 +66,65 @@ export class LiquidDebugSession extends LoggingDebugSession {
         args: LaunchRequestArguments
     ): Promise<void> {
         try {
-            const templatePath = args.template;
-            const dataPath = args.data || '';
-            const format = args.format || 'json';
-
-            if (!dataPath) {
-                this.sendErrorResponse(response, {
-                    id: 1001,
-                    format: 'Data file path is required',
-                    showUser: true
-                });
+            if (!args.template) {
+                this.sendErrorResponse(response, { id: 1001, format: 'template path is required', showUser: true });
+                return;
+            }
+            if (!args.data) {
+                this.sendErrorResponse(response, { id: 1002, format: 'data file path is required', showUser: true });
                 return;
             }
 
-            await this.engine.initialize(templatePath, dataPath, format);
+            await this.engine.initialize(args.template, args.data, args.format || 'json');
 
             this.sendResponse(response);
 
-            if (args.stopOnEntry) {
+            if (args.stopOnEntry !== false) {
                 this.sendEvent(new StoppedEvent('entry', LiquidDebugSession.THREAD_ID));
             } else {
-                this.continueRequest(
-                    <DebugProtocol.ContinueResponse>{ command: 'continue' },
-                    { threadId: LiquidDebugSession.THREAD_ID }
-                );
+                await this.runToEnd(response);
             }
-        } catch (error: any) {
+        } catch (err: any) {
             this.sendErrorResponse(response, {
-                id: 1002,
-                format: `Failed to launch: ${error.message}`,
+                id: 1003,
+                format: `Launch failed: ${err.message}`,
                 showUser: true
             });
         }
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        response.body = {
-            threads: [new Thread(LiquidDebugSession.THREAD_ID, 'Liquid Template')]
-        };
+        response.body = { threads: [new Thread(LiquidDebugSession.THREAD_ID, 'Liquid Template')] };
         this.sendResponse(response);
     }
 
     protected stackTraceRequest(
         response: DebugProtocol.StackTraceResponse,
-        args: DebugProtocol.StackTraceArguments
+        _args: DebugProtocol.StackTraceArguments
     ): void {
-        const currentLine = this.engine.getCurrentLine();
-        const templatePath = (this.engine as any).state.templatePath;
-
-        const stackFrame = new StackFrame(
+        const line = this.engine.getCurrentLine();
+        const templatePath = this.engine.getTemplatePath();
+        const frame = new StackFrame(
             0,
             'Template Execution',
             new Source(path.basename(templatePath), templatePath),
-            currentLine,
+            line,
             1
         );
-
-        response.body = {
-            stackFrames: [stackFrame],
-            totalFrames: 1
-        };
+        response.body = { stackFrames: [frame], totalFrames: 1 };
         this.sendResponse(response);
     }
 
     protected scopesRequest(
         response: DebugProtocol.ScopesResponse,
-        args: DebugProtocol.ScopesArguments
+        _args: DebugProtocol.ScopesArguments
     ): void {
-        const scopes: DebugProtocol.Scope[] = [
-            new Scope('Variables', this.variableHandles.create('variables'), false),
-            new Scope('Output', this.variableHandles.create('output'), false)
-        ];
-
-        response.body = { scopes };
+        response.body = {
+            scopes: [
+                new Scope('Variables', this.variableHandles.create('variables'), false),
+                new Scope('Output',    this.variableHandles.create('output'),    false)
+            ]
+        };
         this.sendResponse(response);
     }
 
@@ -172,36 +136,34 @@ export class LiquidDebugSession extends LoggingDebugSession {
         const variables: DebugProtocol.Variable[] = [];
 
         if (id === 'variables') {
-            const allVars = this.engine.getAllVariables();
-            for (const [name, trackedVar] of allVars) {
+            for (const [name, v] of this.engine.getAllVariables()) {
                 variables.push({
                     name,
-                    value: this.formatValue(trackedVar.value),
-                    type: trackedVar.type,
-                    variablesReference: this.isExpandable(trackedVar.value)
+                    value: this.fmt(v.value),
+                    type: v.type,
+                    variablesReference: this.isObject(v.value)
                         ? this.variableHandles.create(`var:${name}`)
                         : 0
                 });
             }
         } else if (id === 'output') {
-            const output = this.engine.getOutput();
             variables.push({
-                name: 'Current Output',
-                value: output || '(empty)',
+                name: 'output',
+                value: this.engine.getOutput() || '(empty)',
                 type: 'string',
                 variablesReference: 0
             });
         } else if (id?.startsWith('var:')) {
             const varName = id.substring(4);
-            const variable = this.engine.getVariable(varName);
-            if (variable && typeof variable.value === 'object') {
-                for (const [key, value] of Object.entries(variable.value)) {
+            const v = this.engine.getVariable(varName);
+            if (v && typeof v.value === 'object' && v.value !== null) {
+                for (const [k, val] of Object.entries(v.value as object)) {
                     variables.push({
-                        name: key,
-                        value: this.formatValue(value),
-                        type: typeof value,
-                        variablesReference: this.isExpandable(value)
-                            ? this.variableHandles.create(`var:${varName}.${key}`)
+                        name: k,
+                        value: this.fmt(val),
+                        type: typeof val,
+                        variablesReference: this.isObject(val)
+                            ? this.variableHandles.create(`var:${varName}.${k}`)
                             : 0
                     });
                 }
@@ -216,69 +178,56 @@ export class LiquidDebugSession extends LoggingDebugSession {
         response: DebugProtocol.SetBreakpointsResponse,
         args: DebugProtocol.SetBreakpointsArguments
     ): Promise<void> {
+        this.engine.clearBreakpoints();
         const breakpoints: DebugProtocol.Breakpoint[] = [];
-
-        if (args.breakpoints) {
-            for (const bp of args.breakpoints) {
-                const breakpoint = this.engine.setBreakpoint(bp.line, bp.condition);
-                breakpoints.push({
-                    id: breakpoint.id,
-                    verified: true,
-                    line: breakpoint.line
-                });
-            }
+        for (const src of (args.breakpoints || [])) {
+            const bp = this.engine.setBreakpoint(src.line, src.condition);
+            breakpoints.push(new Breakpoint(true, bp.line));
         }
-
         response.body = { breakpoints };
         this.sendResponse(response);
     }
 
     protected async continueRequest(
         response: DebugProtocol.ContinueResponse,
-        args: DebugProtocol.ContinueArguments
+        _args: DebugProtocol.ContinueArguments
     ): Promise<void> {
         try {
-            const result = await this.engine.continue();
-            
-            if (result.completed) {
-                this.sendEvent(new OutputEvent(result.output, 'stdout'));
-                this.sendEvent(new TerminatedEvent());
-            } else {
-                this.sendEvent(new StoppedEvent('breakpoint', LiquidDebugSession.THREAD_ID));
+            let result = await this.engine.step();
+            while (!result.completed) {
+                if (this.engine.checkAndHitBreakpoint()) {
+                    this.sendEvent(new StoppedEvent('breakpoint', LiquidDebugSession.THREAD_ID));
+                    response.body = { allThreadsContinued: true };
+                    this.sendResponse(response);
+                    return;
+                }
+                result = await this.engine.step();
             }
-
+            this.sendEvent(new OutputEvent(result.output, 'stdout'));
+            this.sendEvent(new TerminatedEvent());
             response.body = { allThreadsContinued: true };
             this.sendResponse(response);
-        } catch (error: any) {
-            this.sendErrorResponse(response, {
-                id: 1003,
-                format: error.message,
-                showUser: true
-            });
+        } catch (err: any) {
+            this.sendErrorResponse(response, { id: 2001, format: err.message, showUser: true });
         }
     }
 
     protected async nextRequest(
         response: DebugProtocol.NextResponse,
-        args: DebugProtocol.NextArguments
+        _args: DebugProtocol.NextArguments
     ): Promise<void> {
         try {
             const result = await this.engine.step();
-            
             if (result.completed) {
                 this.sendEvent(new OutputEvent(result.output, 'stdout'));
                 this.sendEvent(new TerminatedEvent());
             } else {
+                this.engine.checkAndHitBreakpoint();
                 this.sendEvent(new StoppedEvent('step', LiquidDebugSession.THREAD_ID));
             }
-
             this.sendResponse(response);
-        } catch (error: any) {
-            this.sendErrorResponse(response, {
-                id: 1004,
-                format: error.message,
-                showUser: true
-            });
+        } catch (err: any) {
+            this.sendErrorResponse(response, { id: 2002, format: err.message, showUser: true });
         }
     }
 
@@ -287,45 +236,37 @@ export class LiquidDebugSession extends LoggingDebugSession {
         args: DebugProtocol.EvaluateArguments
     ): Promise<void> {
         try {
-            const result = await this.engine.evaluateExpression(args.expression);
-            response.body = {
-                result: this.formatValue(result),
-                variablesReference: 0
-            };
+            const value = await this.engine.evaluateExpression(args.expression);
+            response.body = { result: this.fmt(value), variablesReference: 0 };
             this.sendResponse(response);
-        } catch (error: any) {
-            this.sendErrorResponse(response, {
-                id: 1005,
-                format: `Evaluation error: ${error.message}`,
-                showUser: true
-            });
+        } catch (err: any) {
+            this.sendErrorResponse(response, { id: 2003, format: `Eval error: ${err.message}`, showUser: true });
         }
     }
 
     protected disconnectRequest(
         response: DebugProtocol.DisconnectResponse,
-        args: DebugProtocol.DisconnectArguments
+        _args: DebugProtocol.DisconnectArguments
     ): void {
         this.engine.reset();
         this.sendResponse(response);
     }
 
-    private formatValue(value: any): string {
-        if (value === null) return 'null';
-        if (value === undefined) return 'undefined';
-        if (typeof value === 'string') return `"${value}"`;
-        if (typeof value === 'object') {
-            if (Array.isArray(value)) {
-                return `Array(${value.length})`;
-            }
-            return `Object {${Object.keys(value).length} keys}`;
-        }
+    private async runToEnd(response: DebugProtocol.LaunchResponse): Promise<void> {
+        const result = await this.engine.continue();
+        this.sendEvent(new OutputEvent(result.output, 'stdout'));
+        this.sendEvent(new TerminatedEvent());
+    }
+
+    private fmt(value: any): string {
+        if (value === null || value === undefined) { return 'null'; }
+        if (typeof value === 'string') { return `"${value}"`; }
+        if (Array.isArray(value)) { return `Array[${value.length}]`; }
+        if (typeof value === 'object') { return `{${Object.keys(value).join(', ')}}`; }
         return String(value);
     }
 
-    private isExpandable(value: any): boolean {
+    private isObject(value: any): boolean {
         return value !== null && typeof value === 'object';
     }
 }
-
-// Made with Bob

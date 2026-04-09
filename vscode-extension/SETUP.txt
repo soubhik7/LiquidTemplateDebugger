@@ -31,7 +31,7 @@
    npm run package
 
 3. This creates a .vsix file that can be:
-   - Installed locally: code --install-extension liquid-template-debugger-1.0.0.vsix
+   - Installed locally: code --install-extension liquid-template-debugger-pro-1.0.0.vsix
    - Published to VS Code Marketplace
    - Distributed to users
 

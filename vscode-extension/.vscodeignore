@@ -5,4 +5,12 @@ src/**
 tsconfig.json
 **/*.map
 **/*.ts
-node_modules/**
+node_modules/.bin/**
+node_modules/**/@types/**
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/*.md
+node_modules/**/*.map
+server/**
+SETUP.txt
+REINSTALL_GUIDE.md

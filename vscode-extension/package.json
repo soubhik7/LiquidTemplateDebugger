@@ -1,18 +1,18 @@
 {
-  "name": "liquid-template-debugger",
-  "displayName": "Liquid Template Debugger",
+  "name": "liquid-template-debugger-pro",
+  "displayName": "Liquid Template Debugger Pro",
   "description": "Step-by-step debugger for Liquid templates with format transformation support",
-  "version": "1.0.0",
-  "publisher": "liquid-debugger",
+  "version": "1.0.4",
+  "publisher": "SoubhikDevTools",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/liquid-template-debugger.git"
+    "url": "https://github.com/yourusername/liquid-template-debugger-pro.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/liquid-template-debugger/issues"
+    "url": "https://github.com/yourusername/liquid-template-debugger-pro/issues"
   },
-  "homepage": "https://github.com/yourusername/liquid-template-debugger#readme",
+  "homepage": "https://github.com/yourusername/liquid-template-debugger-pro#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -48,14 +48,6 @@
         "command": "liquid-debugger.start",
         "title": "Liquid: Start Debugging",
         "icon": "$(debug-start)"
-      },
-      {
-        "command": "liquid-debugger.loadData",
-        "title": "Liquid: Load Input Data"
-      },
-      {
-        "command": "liquid-debugger.showDebugger",
-        "title": "Liquid: Show Debugger Panel"
       }
     ],
     "breakpoints": [
@@ -147,8 +139,6 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
-    "@vscode/debugadapter": "^1.65.0",
-    "@vscode/debugprotocol": "^1.65.0",
     "eslint": "^8.54.0",
     "typescript": "^5.3.2",
     "@vscode/vsce": "^2.22.0"
@@ -157,6 +147,8 @@
     "liquidjs": "^10.10.0",
     "fast-xml-parser": "^4.3.2",
     "csv-parse": "^5.5.3",
-    "csv-stringify": "^6.4.5"
+    "csv-stringify": "^6.4.5",
+    "@vscode/debugadapter": "^1.65.0",
+    "@vscode/debugprotocol": "^1.65.0"
   }
 }

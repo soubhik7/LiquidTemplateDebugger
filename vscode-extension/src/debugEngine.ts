@@ -7,8 +7,7 @@ import {
     Breakpoint,
     WatchExpression,
     StepResult,
-    VariableOrigin,
-    Scope
+    ParsedTemplate
 } from './types';
 import * as fs from 'fs';
 
@@ -17,16 +16,13 @@ export class DebugEngine {
     private converter: FormatConverter;
     private liquid: Liquid;
     private state: DebugState;
+    private parsedTemplate: ParsedTemplate | null = null;
 
     constructor() {
         this.parser = new TemplateParser();
         this.converter = new FormatConverter();
-        this.liquid = new Liquid({
-            strictFilters: false,
-            strictVariables: false,
-            lenientIf: true
-        });
-
+        // Share the same Liquid instance as the parser for consistency
+        this.liquid = this.parser.getLiquid();
         this.state = this.createInitialState();
     }
 
@@ -41,30 +37,29 @@ export class DebugEngine {
             output: '',
             breakpoints: [],
             watches: [],
-            scopeStack: [],
             isRunning: false,
             isPaused: false
         };
     }
 
     async initialize(templatePath: string, dataPath: string, format: string): Promise<void> {
+        this.state = this.createInitialState();
         this.state.templatePath = templatePath;
         this.state.dataPath = dataPath;
         this.state.format = format;
 
-        // Load and parse data
+        // Load and parse data file
         const dataContent = fs.readFileSync(dataPath, 'utf-8');
         const rawData = this.converter.loadData(dataContent, format);
-        const wrappedData = this.converter.wrapForLogicApps(rawData);
+        const wrappedData = this.converter.wrapForTemplate(rawData);
 
-        // Initialize variables with input data
-        this.trackVariable('content', wrappedData, {
-            source: 'input',
-            path: 'content'
-        }, 'global');
+        // Seed all top-level keys as tracked variables
+        for (const [key, value] of Object.entries(wrappedData)) {
+            this.trackVariable(key, value, 'global');
+        }
 
-        // Parse template
-        await this.parser.parseTemplate(templatePath);
+        // Parse the template once — stored for the entire session
+        this.parsedTemplate = this.parser.parseTemplate(templatePath);
 
         this.state.currentLine = 1;
         this.state.currentElement = 0;
@@ -73,75 +68,51 @@ export class DebugEngine {
     }
 
     async step(): Promise<StepResult> {
-        if (!this.state.isRunning) {
-            throw new Error('Debug session not running');
+        if (!this.state.isRunning || !this.parsedTemplate) {
+            throw new Error('No active debug session');
         }
 
-        const parsed = await this.parser.parseTemplate(this.state.templatePath);
-        
-        if (this.state.currentElement >= parsed.elements.length) {
-            return {
-                output: this.state.output,
-                variables: this.state.variables,
-                currentLine: this.state.currentLine,
-                currentElement: this.state.currentElement,
-                completed: true
-            };
+        const { elements } = this.parsedTemplate;
+
+        if (this.state.currentElement >= elements.length) {
+            return this.makeResult(true);
         }
 
-        const element = parsed.elements[this.state.currentElement];
+        const element = elements[this.state.currentElement];
         this.state.currentLine = element.line;
 
-        // Check breakpoints
-        if (await this.shouldBreakAt(element.line)) {
-            this.state.isPaused = true;
-            return {
-                output: this.state.output,
-                variables: this.state.variables,
-                currentLine: this.state.currentLine,
-                currentElement: this.state.currentElement,
-                completed: false
-            };
-        }
-
-        // Execute element
+        // Render this single element against the current variable context
         const context = this.buildContext();
-        let elementOutput = '';
-
         try {
-            if (element.type === 'output') {
-                elementOutput = await this.liquid.parseAndRender(`{{ ${element.content} }}`, context);
-            } else if (element.type === 'tag') {
-                elementOutput = await this.liquid.parseAndRender(element.raw, context);
-                this.updateVariablesFromTag(element.content, context);
-            } else {
-                elementOutput = element.content;
-            }
+            if (element.type === 'output' || element.type === 'tag') {
+                const rendered = await this.liquid.parseAndRender(element.raw, context);
+                this.state.output += rendered;
 
-            this.state.output += elementOutput;
-        } catch (error: any) {
-            throw new Error(`Execution error at line ${element.line}: ${error.message}`);
+                // After rendering a tag, re-sync variables (e.g. assign, capture)
+                if (element.type === 'tag') {
+                    await this.syncVariablesAfterTag(element.content, element.raw, context);
+                }
+            } else {
+                // Literal — emit as-is
+                this.state.output += element.content;
+            }
+        } catch (err: any) {
+            // Non-fatal: emit error marker and continue stepping
+            this.state.output += `[ERROR line ${element.line}: ${err.message}]`;
         }
 
         this.state.currentElement++;
         this.updateWatches();
 
-        return {
-            output: this.state.output,
-            variables: this.state.variables,
-            currentLine: this.state.currentLine,
-            currentElement: this.state.currentElement,
-            completed: this.state.currentElement >= parsed.elements.length
-        };
+        const completed = this.state.currentElement >= elements.length;
+        return this.makeResult(completed);
     }
 
     async continue(): Promise<StepResult> {
         let result: StepResult;
         do {
             result = await this.step();
-            if (this.state.isPaused) {
-                break;
-            }
+            if (this.state.isPaused) { break; }
         } while (!result.completed);
         return result;
     }
@@ -149,73 +120,82 @@ export class DebugEngine {
     async stepOver(): Promise<StepResult> {
         const startLine = this.state.currentLine;
         let result: StepResult;
-        
         do {
             result = await this.step();
-            if (result.completed || this.state.currentLine > startLine) {
-                break;
-            }
+            if (result.completed || this.state.currentLine > startLine) { break; }
         } while (true);
-        
         return result;
     }
 
+    // ── Breakpoints ───────────────────────────────────────────────────────────
+
     setBreakpoint(line: number, condition?: string): Breakpoint {
-        const id = this.state.breakpoints.length + 1;
-        const breakpoint: Breakpoint = {
-            id,
+        // Update existing on same line
+        const existing = this.state.breakpoints.find(b => b.line === line);
+        if (existing) {
+            existing.condition = condition;
+            existing.enabled = true;
+            return existing;
+        }
+        const bp: Breakpoint = {
+            id: Date.now(),
             line,
             condition,
             enabled: true,
             hitCount: 0
         };
-        this.state.breakpoints.push(breakpoint);
-        return breakpoint;
+        this.state.breakpoints.push(bp);
+        return bp;
     }
 
     removeBreakpoint(id: number): boolean {
-        const index = this.state.breakpoints.findIndex(bp => bp.id === id);
-        if (index >= 0) {
-            this.state.breakpoints.splice(index, 1);
-            return true;
-        }
+        const idx = this.state.breakpoints.findIndex(b => b.id === id);
+        if (idx >= 0) { this.state.breakpoints.splice(idx, 1); return true; }
         return false;
+    }
+
+    clearBreakpoints(): void {
+        this.state.breakpoints = [];
     }
 
     toggleBreakpoint(id: number): boolean {
         const bp = this.state.breakpoints.find(b => b.id === id);
-        if (bp) {
-            bp.enabled = !bp.enabled;
-            return true;
+        if (bp) { bp.enabled = !bp.enabled; return true; }
+        return false;
+    }
+
+    checkAndHitBreakpoint(): boolean {
+        const { currentLine, breakpoints } = this.state;
+        for (const bp of breakpoints) {
+            if (bp.enabled && bp.line === currentLine) {
+                bp.hitCount++;
+                this.state.isPaused = true;
+                return true;
+            }
         }
         return false;
     }
 
+    // ── Watch expressions ─────────────────────────────────────────────────────
+
     addWatch(expression: string): WatchExpression {
-        const id = this.state.watches.length + 1;
-        const watch: WatchExpression = {
-            id,
-            expression,
-            value: null
-        };
+        const watch: WatchExpression = { id: Date.now(), expression, value: null };
         this.state.watches.push(watch);
-        this.updateWatch(watch);
+        this.refreshWatch(watch);
         return watch;
     }
 
     removeWatch(id: number): boolean {
-        const index = this.state.watches.findIndex(w => w.id === id);
-        if (index >= 0) {
-            this.state.watches.splice(index, 1);
-            return true;
-        }
+        const idx = this.state.watches.findIndex(w => w.id === id);
+        if (idx >= 0) { this.state.watches.splice(idx, 1); return true; }
         return false;
     }
 
     async evaluateExpression(expression: string): Promise<any> {
-        const context = this.buildContext();
-        return await this.parser.evaluateExpression(expression, context);
+        return this.parser.evaluateExpression(expression, this.buildContext());
     }
+
+    // ── Accessors ─────────────────────────────────────────────────────────────
 
     getVariable(name: string): TrackedVariable | undefined {
         return this.state.variables.get(name);
@@ -225,133 +205,93 @@ export class DebugEngine {
         return new Map(this.state.variables);
     }
 
-    getBreakpoints(): Breakpoint[] {
-        return [...this.state.breakpoints];
-    }
-
-    getWatches(): WatchExpression[] {
-        return [...this.state.watches];
-    }
-
-    getOutput(): string {
-        return this.state.output;
-    }
-
-    getCurrentLine(): number {
-        return this.state.currentLine;
-    }
+    getBreakpoints(): Breakpoint[] { return [...this.state.breakpoints]; }
+    getWatches(): WatchExpression[] { return [...this.state.watches]; }
+    getOutput(): string { return this.state.output; }
+    getCurrentLine(): number { return this.state.currentLine; }
+    getTemplatePath(): string { return this.state.templatePath; }
 
     reset(): void {
         this.state = this.createInitialState();
+        this.parsedTemplate = null;
     }
 
-    private trackVariable(
-        name: string,
-        value: any,
-        origin: VariableOrigin,
-        scope: string
-    ): void {
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private trackVariable(name: string, value: any, scope: string): void {
         const existing = this.state.variables.get(name);
         const variable: TrackedVariable = {
             name,
             value,
-            type: this.getType(value),
-            origin,
+            type: this.typeOf(value),
             scope,
             history: existing ? [...existing.history] : []
         };
-
         if (existing && existing.value !== value) {
             variable.history.push({
                 line: this.state.currentLine,
                 oldValue: existing.value,
-                newValue: value,
-                operation: 'assign'
+                newValue: value
             });
         }
-
         this.state.variables.set(name, variable);
     }
 
-    private buildContext(): any {
-        const context: any = {};
-        for (const [name, variable] of this.state.variables) {
-            context[name] = variable.value;
+    private buildContext(): Record<string, any> {
+        const ctx: Record<string, any> = {};
+        for (const [name, v] of this.state.variables) {
+            ctx[name] = v.value;
         }
-        return context;
+        return ctx;
     }
 
-    private updateVariablesFromTag(tagContent: string, context: any): void {
-        const assignMatch = tagContent.match(/assign\s+(\w+)\s*=\s*(.+)/);
+    private async syncVariablesAfterTag(
+        tagName: string,
+        raw: string,
+        _prevContext: Record<string, any>
+    ): Promise<void> {
+        // Detect assign: {% assign varName = ... %}
+        const assignMatch = raw.match(/\{%-?\s*assign\s+(\w+)\s*=/);
         if (assignMatch) {
             const varName = assignMatch[1];
-            const value = context[varName];
-            this.trackVariable(varName, value, {
-                source: 'assign',
-                path: varName,
-                line: this.state.currentLine
-            }, 'local');
-        }
-
-        const forMatch = tagContent.match(/for\s+(\w+)\s+in\s+(.+)/);
-        if (forMatch) {
-            const varName = forMatch[1];
-            const value = context[varName];
+            const value = await this.parser.evaluateExpression(varName, this.buildContext());
             if (value !== undefined) {
-                this.trackVariable(varName, value, {
-                    source: 'for',
-                    path: varName,
-                    line: this.state.currentLine
-                }, 'loop');
+                this.trackVariable(varName, value, 'local');
             }
         }
-    }
 
-    private async shouldBreakAt(line: number): Promise<boolean> {
-        for (const bp of this.state.breakpoints) {
-            if (bp.enabled && bp.line === line) {
-                if (!bp.condition) {
-                    bp.hitCount++;
-                    return true;
-                }
-                
-                try {
-                    const context = this.buildContext();
-                    const result = await this.parser.evaluateExpression(bp.condition, context);
-                    if (result) {
-                        bp.hitCount++;
-                        return true;
-                    }
-                } catch {
-                    // Condition evaluation failed, don't break
-                }
-            }
+        // Detect capture: {% capture varName %} ... {% endcapture %}
+        const captureMatch = raw.match(/\{%-?\s*capture\s+(\w+)\s*-?%\}([\s\S]*?)\{%-?\s*endcapture\s*-?%\}/);
+        if (captureMatch) {
+            const varName = captureMatch[1];
+            const rendered = await this.liquid.parseAndRender(captureMatch[2], this.buildContext());
+            this.trackVariable(varName, rendered.trim(), 'local');
         }
-        return false;
     }
 
     private updateWatches(): void {
-        for (const watch of this.state.watches) {
-            this.updateWatch(watch);
-        }
+        for (const w of this.state.watches) { this.refreshWatch(w); }
     }
 
-    private updateWatch(watch: WatchExpression): void {
-        try {
-            const context = this.buildContext();
-            watch.value = this.parser.evaluateExpression(watch.expression, context);
-            watch.error = undefined;
-        } catch (error: any) {
-            watch.value = null;
-            watch.error = error.message;
-        }
+    private refreshWatch(watch: WatchExpression): void {
+        this.parser.evaluateExpression(watch.expression, this.buildContext())
+            .then(v => { watch.value = v; watch.error = undefined; })
+            .catch((e: any) => { watch.value = null; watch.error = e.message; });
     }
 
-    private getType(value: any): string {
-        if (value === null) return 'null';
-        if (Array.isArray(value)) return 'array';
+    private makeResult(completed: boolean): StepResult {
+        return {
+            output: this.state.output,
+            variables: this.getAllVariables(),
+            currentLine: this.state.currentLine,
+            currentElement: this.state.currentElement,
+            completed
+        };
+    }
+
+    private typeOf(value: any): string {
+        if (value === null) { return 'null'; }
+        if (Array.isArray(value)) { return 'array'; }
         return typeof value;
     }
 }
-
-// Made with Bob

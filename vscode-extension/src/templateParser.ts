@@ -1,6 +1,4 @@
 import { Liquid } from 'liquidjs';
-import { TagToken } from 'liquidjs/dist/tokens/tag-token';
-import { OutputToken } from 'liquidjs/dist/tokens/output-token';
 import { ParsedTemplate, TemplateElement } from './types';
 import * as fs from 'fs';
 
@@ -15,107 +13,99 @@ export class TemplateParser {
         });
     }
 
-    async parseTemplate(templatePath: string): Promise<ParsedTemplate> {
+    parseTemplate(templatePath: string): ParsedTemplate {
         const content = fs.readFileSync(templatePath, 'utf-8');
         const lines = content.split('\n');
         const elements: TemplateElement[] = [];
 
-        try {
-            const tokens = this.liquid.parse(content);
-            let currentLine = 1;
-            let currentPos = 0;
+        // Split template into line-level elements using regex
+        // This avoids using internal LiquidJS token APIs that can break
+        const lineRegex = /(\{\{.*?\}\}|\{%-?\s*.*?-?%\}|[^{]+|\{(?!\{|%))/gs;
 
-            for (const template of tokens) {
-                const token = template.token;
-                const tokenContent = content.substring(currentPos, token.end);
-                const tokenLines = tokenContent.split('\n');
-                
-                if (token instanceof OutputToken) {
-                    elements.push({
-                        type: 'output',
-                        line: currentLine,
-                        content: token.content,
-                        raw: tokenContent
-                    });
-                } else if (token instanceof TagToken) {
-                    elements.push({
-                        type: 'tag',
-                        line: currentLine,
-                        content: token.name,
-                        raw: tokenContent
-                    });
-                } else {
-                    // Literal/HTML content
-                    if (tokenContent.trim()) {
-                        elements.push({
-                            type: 'literal',
-                            line: currentLine,
-                            content: tokenContent,
-                            raw: tokenContent
-                        });
-                    }
-                }
+        let pos = 0;
+        for (const line of lines) {
+            const lineNum = lines.indexOf(line) + 1; // re-calc below
+            pos += line.length + 1; // account for \n
+        }
 
-                currentLine += tokenLines.length - 1;
-                currentPos = token.end;
+        // Better approach: walk line by line and identify what each line contains
+        for (let i = 0; i < lines.length; i++) {
+            const lineNum = i + 1;
+            const lineContent = lines[i];
+            const trimmed = lineContent.trim();
+
+            if (!trimmed) {
+                // Blank line - still emit as literal so stepping feels natural
+                elements.push({
+                    type: 'literal',
+                    line: lineNum,
+                    content: lineContent + '\n',
+                    raw: lineContent + '\n'
+                });
+                continue;
             }
 
-            return {
-                elements,
-                lines,
-                totalLines: lines.length
-            };
-        } catch (error: any) {
-            throw new Error(`Template parsing error: ${error.message}`);
+            // Check if the line contains a tag {% ... %}
+            const tagMatch = trimmed.match(/^\{%-?\s*(\w+)(.*?)-?%\}/);
+            if (tagMatch) {
+                elements.push({
+                    type: 'tag',
+                    line: lineNum,
+                    content: tagMatch[1], // tag name e.g. "if", "for", "assign"
+                    raw: lineContent + '\n'
+                });
+                continue;
+            }
+
+            // Check if the line contains an output {{ ... }}
+            const outputMatch = trimmed.match(/\{\{(.*?)\}\}/);
+            if (outputMatch) {
+                elements.push({
+                    type: 'output',
+                    line: lineNum,
+                    content: outputMatch[1].trim(),
+                    raw: lineContent + '\n'
+                });
+                continue;
+            }
+
+            // Pure literal content
+            elements.push({
+                type: 'literal',
+                line: lineNum,
+                content: lineContent + '\n',
+                raw: lineContent + '\n'
+            });
         }
+
+        return { elements, lines, totalLines: lines.length };
     }
 
-    async renderTemplate(templatePath: string, data: any): Promise<string> {
+    async renderFull(templatePath: string, data: any): Promise<string> {
         const content = fs.readFileSync(templatePath, 'utf-8');
-        try {
-            return await this.liquid.parseAndRender(content, data);
-        } catch (error: any) {
-            throw new Error(`Template rendering error: ${error.message}`);
-        }
+        return await this.liquid.parseAndRender(content, data);
     }
 
     async evaluateExpression(expression: string, context: any): Promise<any> {
         try {
-            const template = `{{ ${expression} }}`;
-            const result = await this.liquid.parseAndRender(template, context);
-            return this.parseValue(result);
-        } catch (error: any) {
-            throw new Error(`Expression evaluation error: ${error.message}`);
+            const result = await this.liquid.parseAndRender(`{{ ${expression} }}`, context);
+            return this.coerce(result);
+        } catch {
+            return undefined;
         }
     }
 
-    private parseValue(value: string): any {
-        const trimmed = value.trim();
-        
-        if (trimmed === 'true') return true;
-        if (trimmed === 'false') return false;
-        if (trimmed === 'null' || trimmed === '') return null;
-        
-        const num = Number(trimmed);
-        if (!isNaN(num)) {
-            return num;
-        }
-        
-        return trimmed;
+    getLiquid(): Liquid {
+        return this.liquid;
     }
 
-    getLineContent(lines: string[], lineNumber: number): string {
-        if (lineNumber < 1 || lineNumber > lines.length) {
-            return '';
-        }
-        return lines[lineNumber - 1];
-    }
-
-    getContextLines(lines: string[], currentLine: number, contextSize: number = 2): string[] {
-        const start = Math.max(0, currentLine - contextSize - 1);
-        const end = Math.min(lines.length, currentLine + contextSize);
-        return lines.slice(start, end);
+    private coerce(value: string): any {
+        const t = value.trim();
+        if (t === 'true') { return true; }
+        if (t === 'false') { return false; }
+        if (t === '' || t === 'null') { return null; }
+        const n = Number(t);
+        if (!isNaN(n)) { return n; }
+        return t;
     }
 }
-
-// Made with Bob
