@@ -2,7 +2,7 @@
   "name": "liquid-template-debugger-pro",
   "displayName": "Liquid Template Debugger Pro",
   "description": "Step-by-step debugger for Liquid templates with format transformation support",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "SoubhikDevTools",
   "license": "MIT",
   "repository": {
@@ -29,7 +29,6 @@
     "shopify"
   ],
   "activationEvents": [
-    "onDebugResolve:liquid",
     "onCommand:liquid-debugger.start",
     "onLanguage:liquid"
   ],
@@ -50,74 +49,15 @@
         "icon": "$(debug-start)"
       }
     ],
-    "breakpoints": [
-      {
-        "language": "liquid"
-      }
-    ],
-    "debuggers": [
-      {
-        "type": "liquid",
-        "label": "Liquid Template Debugger",
-        "program": "./out/debugAdapter.js",
-        "runtime": "node",
-        "configurationAttributes": {
-          "launch": {
-            "required": ["template"],
-            "properties": {
-              "template": {
-                "type": "string",
-                "description": "Path to the Liquid template file",
-                "default": "${file}"
-              },
-              "data": {
-                "type": "string",
-                "description": "Path to the input data file (JSON, XML, CSV, or text)"
-              },
-              "format": {
-                "type": "string",
-                "description": "Input data format (json, xml, csv, text)",
-                "enum": ["json", "xml", "csv", "text"],
-                "default": "json"
-              },
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop after launch",
-                "default": true
-              }
-            }
-          }
-        },
-        "initialConfigurations": [
-          {
-            "type": "liquid",
-            "request": "launch",
-            "name": "Debug Liquid Template",
-            "template": "${file}",
-            "data": "${workspaceFolder}/data.json",
-            "format": "json",
-            "stopOnEntry": true
-          }
-        ],
-        "configurationSnippets": [
-          {
-            "label": "Liquid: Debug Template",
-            "description": "Debug a Liquid template with input data",
-            "body": {
-              "type": "liquid",
-              "request": "launch",
-              "name": "Debug Liquid Template",
-              "template": "^\"\\${file}\"",
-              "data": "^\"\\${workspaceFolder}/data.json\"",
-              "format": "json",
-              "stopOnEntry": true
-            }
-          }
-        ]
-      }
-    ],
     "menus": {
       "editor/context": [
+        {
+          "when": "resourceLangId == liquid",
+          "command": "liquid-debugger.start",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
         {
           "when": "resourceLangId == liquid",
           "command": "liquid-debugger.start",

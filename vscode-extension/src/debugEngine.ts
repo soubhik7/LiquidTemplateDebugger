@@ -17,11 +17,15 @@ export class DebugEngine {
     private liquid: Liquid;
     private state: DebugState;
     private parsedTemplate: ParsedTemplate | null = null;
+    private inputDataContent: string = '';
+    private templateSource: string = '';
+    private scopeStack: string[] = ['root'];
+    private previousOutput: string = '';
+    private lastReloadArgs: { templateContent: string; dataContent: string; format: string } | null = null;
 
     constructor() {
         this.parser = new TemplateParser();
         this.converter = new FormatConverter();
-        // Share the same Liquid instance as the parser for consistency
         this.liquid = this.parser.getLiquid();
         this.state = this.createInitialState();
     }
@@ -42,62 +46,83 @@ export class DebugEngine {
         };
     }
 
+    // ── Initialize from file paths (DAP / VS Code editor integration) ─────────
     async initialize(templatePath: string, dataPath: string, format: string): Promise<void> {
+        const templateContent = fs.readFileSync(templatePath, 'utf-8');
+        const dataContent = fs.readFileSync(dataPath, 'utf-8');
+        await this.initializeFromContent(templateContent, dataContent, format, templatePath);
+    }
+
+    // ── Initialize from pasted strings (Load modal) ───────────────────────────
+    async initializeFromContent(
+        templateContent: string,
+        dataContent: string,
+        format: string,
+        templatePath = ''
+    ): Promise<void> {
+        const savedBreakpoints = [...this.state.breakpoints]; // preserve BPs across reloads
         this.state = this.createInitialState();
+        this.state.breakpoints = savedBreakpoints;
+        this.parsedTemplate = null;
+        this.scopeStack = ['root'];
+        this.previousOutput = '';
+
+        this.templateSource = templateContent;
+        this.inputDataContent = dataContent;
         this.state.templatePath = templatePath;
-        this.state.dataPath = dataPath;
         this.state.format = format;
 
-        // Load and parse data file
-        const dataContent = fs.readFileSync(dataPath, 'utf-8');
+        // Save args for reset
+        this.lastReloadArgs = { templateContent, dataContent, format };
+
         const rawData = this.converter.loadData(dataContent, format);
         const wrappedData = this.converter.wrapForTemplate(rawData);
-
-        // Seed all top-level keys as tracked variables
         for (const [key, value] of Object.entries(wrappedData)) {
             this.trackVariable(key, value, 'global');
         }
 
-        // Parse the template once — stored for the entire session
-        this.parsedTemplate = this.parser.parseTemplate(templatePath);
-
-        this.state.currentLine = 1;
+        this.parsedTemplate = this.parser.parseTemplateFromContent(templateContent);
+        this.state.currentLine = this.parsedTemplate.elements[0]?.line ?? 1;
         this.state.currentElement = 0;
         this.state.isRunning = true;
         this.state.isPaused = true;
     }
 
+    async reinitialize(): Promise<void> {
+        if (!this.lastReloadArgs) { throw new Error('Nothing loaded yet'); }
+        const { templateContent, dataContent, format } = this.lastReloadArgs;
+        await this.initializeFromContent(templateContent, dataContent, format, this.state.templatePath);
+    }
+
+    // ── Step ──────────────────────────────────────────────────────────────────
     async step(): Promise<StepResult> {
         if (!this.state.isRunning || !this.parsedTemplate) {
             throw new Error('No active debug session');
         }
 
         const { elements } = this.parsedTemplate;
-
         if (this.state.currentElement >= elements.length) {
             return this.makeResult(true);
         }
 
         const element = elements[this.state.currentElement];
         this.state.currentLine = element.line;
+        this.updateScopeStack(element);
 
-        // Render this single element against the current variable context
         const context = this.buildContext();
+        this.previousOutput = this.state.output;
+
         try {
             if (element.type === 'output' || element.type === 'tag') {
                 const rendered = await this.liquid.parseAndRender(element.raw, context);
                 this.state.output += rendered;
-
-                // After rendering a tag, re-sync variables (e.g. assign, capture)
                 if (element.type === 'tag') {
-                    await this.syncVariablesAfterTag(element.content, element.raw, context);
+                    await this.syncVariablesAfterTag(element.raw);
                 }
             } else {
-                // Literal — emit as-is
                 this.state.output += element.content;
             }
         } catch (err: any) {
-            // Non-fatal: emit error marker and continue stepping
             this.state.output += `[ERROR line ${element.line}: ${err.message}]`;
         }
 
@@ -108,41 +133,27 @@ export class DebugEngine {
         return this.makeResult(completed);
     }
 
+    async stepOver(): Promise<StepResult> {
+        return this.step();
+    }
+
     async continue(): Promise<StepResult> {
         let result: StepResult;
         do {
             result = await this.step();
-            if (this.state.isPaused) { break; }
+            if (this.checkBreakpoint()) { break; }
         } while (!result.completed);
-        return result;
-    }
-
-    async stepOver(): Promise<StepResult> {
-        const startLine = this.state.currentLine;
-        let result: StepResult;
-        do {
-            result = await this.step();
-            if (result.completed || this.state.currentLine > startLine) { break; }
-        } while (true);
         return result;
     }
 
     // ── Breakpoints ───────────────────────────────────────────────────────────
 
     setBreakpoint(line: number, condition?: string): Breakpoint {
-        // Update existing on same line
         const existing = this.state.breakpoints.find(b => b.line === line);
-        if (existing) {
-            existing.condition = condition;
-            existing.enabled = true;
-            return existing;
-        }
+        if (existing) { existing.condition = condition; existing.enabled = true; return existing; }
         const bp: Breakpoint = {
-            id: Date.now(),
-            line,
-            condition,
-            enabled: true,
-            hitCount: 0
+            id: Math.floor(Date.now() + Math.random() * 1000),
+            line, condition, enabled: true, hitCount: 0
         };
         this.state.breakpoints.push(bp);
         return bp;
@@ -154,9 +165,7 @@ export class DebugEngine {
         return false;
     }
 
-    clearBreakpoints(): void {
-        this.state.breakpoints = [];
-    }
+    clearBreakpoints(): void { this.state.breakpoints = []; }
 
     toggleBreakpoint(id: number): boolean {
         const bp = this.state.breakpoints.find(b => b.id === id);
@@ -164,7 +173,7 @@ export class DebugEngine {
         return false;
     }
 
-    checkAndHitBreakpoint(): boolean {
+    checkBreakpoint(): boolean {
         const { currentLine, breakpoints } = this.state;
         for (const bp of breakpoints) {
             if (bp.enabled && bp.line === currentLine) {
@@ -176,9 +185,11 @@ export class DebugEngine {
         return false;
     }
 
-    // ── Watch expressions ─────────────────────────────────────────────────────
+    // ── Watches ───────────────────────────────────────────────────────────────
 
     addWatch(expression: string): WatchExpression {
+        const existing = this.state.watches.find(w => w.expression === expression);
+        if (existing) { return existing; }
         const watch: WatchExpression = { id: Date.now(), expression, value: null };
         this.state.watches.push(watch);
         this.refreshWatch(watch);
@@ -195,25 +206,108 @@ export class DebugEngine {
         return this.parser.evaluateExpression(expression, this.buildContext());
     }
 
-    // ── Accessors ─────────────────────────────────────────────────────────────
-
-    getVariable(name: string): TrackedVariable | undefined {
-        return this.state.variables.get(name);
+    validateOutput(format: string): { isValid: boolean; errorMessage?: string } {
+        const output = this.state.output.trim();
+        try {
+            if (format === 'json') {
+                JSON.parse(output);
+            } else if (format === 'xml') {
+                // Simple XML check
+                if (!output.startsWith('<')) { throw new Error('Not valid XML — does not start with <'); }
+            } else if (format === 'csv') {
+                if (!output.includes(',') && !output.includes('\n')) {
+                    throw new Error('Content does not appear to be CSV');
+                }
+            }
+            return { isValid: true };
+        } catch (e: any) {
+            return { isValid: false, errorMessage: e.message };
+        }
     }
 
-    getAllVariables(): Map<string, TrackedVariable> {
-        return new Map(this.state.variables);
+    // ── Web-UI-compatible state object ────────────────────────────────────────
+
+    getWebUIState(): any {
+        const isComplete = !this.state.isRunning ||
+            this.state.currentElement >= (this.parsedTemplate?.elements.length ?? 0);
+
+        const variables = [];
+        for (const [name, v] of this.state.variables) {
+            variables.push({
+                name,
+                scopeTag: v.scope,
+                currentValue: this.fmtValue(v.value),
+                typeName: this.typeOf(v.value),
+                rawValue: this.toSerializable(v.value),
+                origin: { sourcePath: this.inputDataContent.length < 5000 ? v.scope : v.scope, sourceFormat: this.state.format },
+                transformations: []
+            });
+        }
+
+        const watches = this.state.watches.map(w => ({
+            id: w.id,
+            expression: w.expression,
+            displayExpression: w.expression,
+            currentValue: this.fmtValue(w.value),
+            typeName: this.typeOf(w.value),
+            hasChanged: false,
+            error: w.error
+        }));
+
+        const breakpoints = this.state.breakpoints.map(bp => ({
+            id: bp.id,
+            line: bp.line,
+            condition: bp.condition ?? null,
+            isEnabled: bp.enabled,
+            hitCount: bp.hitCount
+        }));
+
+        const elements = (this.parsedTemplate?.elements ?? []).map(e => ({
+            lineNumber: e.line,
+            type: e.type,
+            content: e.content
+        }));
+
+        const lastChunk = this.state.output.substring(this.previousOutput.length);
+
+        return {
+            isLoaded: this.state.isRunning || isComplete,
+            templateSource: this.templateSource,
+            dataContent: this.inputDataContent,
+            dataFormat: this.state.format,
+            elements,
+            breakpoints,
+            watches,
+            state: {
+                isComplete,
+                currentLine: this.state.currentLine,
+                currentElementIndex: this.state.currentElement,
+                outputSoFar: this.state.output,
+                lastOutputChunk: lastChunk,
+                variables,
+                scopeStack: [...this.scopeStack]
+            }
+        };
     }
 
+    // ── Accessors (for DAP adapter) ───────────────────────────────────────────
+    getVariable(name: string): TrackedVariable | undefined { return this.state.variables.get(name); }
+    getAllVariables(): Map<string, TrackedVariable> { return new Map(this.state.variables); }
     getBreakpoints(): Breakpoint[] { return [...this.state.breakpoints]; }
     getWatches(): WatchExpression[] { return [...this.state.watches]; }
     getOutput(): string { return this.state.output; }
     getCurrentLine(): number { return this.state.currentLine; }
     getTemplatePath(): string { return this.state.templatePath; }
+    isLoaded(): boolean { return !!this.parsedTemplate; }
 
     reset(): void {
         this.state = this.createInitialState();
         this.parsedTemplate = null;
+        this.templateSource = '';
+        this.inputDataContent = '';
+        this.scopeStack = ['root'];
+        this.previousOutput = '';
+        this.lastReloadArgs = null;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -221,52 +315,64 @@ export class DebugEngine {
     private trackVariable(name: string, value: any, scope: string): void {
         const existing = this.state.variables.get(name);
         const variable: TrackedVariable = {
-            name,
-            value,
-            type: this.typeOf(value),
-            scope,
+            name, value, type: this.typeOf(value), scope,
             history: existing ? [...existing.history] : []
         };
-        if (existing && existing.value !== value) {
-            variable.history.push({
-                line: this.state.currentLine,
-                oldValue: existing.value,
-                newValue: value
-            });
+        if (existing && JSON.stringify(existing.value) !== JSON.stringify(value)) {
+            variable.history.push({ line: this.state.currentLine, oldValue: existing.value, newValue: value });
         }
         this.state.variables.set(name, variable);
     }
 
     private buildContext(): Record<string, any> {
         const ctx: Record<string, any> = {};
-        for (const [name, v] of this.state.variables) {
-            ctx[name] = v.value;
-        }
+        for (const [name, v] of this.state.variables) { ctx[name] = v.value; }
         return ctx;
     }
 
-    private async syncVariablesAfterTag(
-        tagName: string,
-        raw: string,
-        _prevContext: Record<string, any>
-    ): Promise<void> {
-        // Detect assign: {% assign varName = ... %}
+    private async syncVariablesAfterTag(raw: string): Promise<void> {
         const assignMatch = raw.match(/\{%-?\s*assign\s+(\w+)\s*=/);
         if (assignMatch) {
             const varName = assignMatch[1];
-            const value = await this.parser.evaluateExpression(varName, this.buildContext());
-            if (value !== undefined) {
-                this.trackVariable(varName, value, 'local');
-            }
+            const val = await this.parser.evaluateExpression(varName, this.buildContext());
+            if (val !== undefined && val !== null) { this.trackVariable(varName, val, 'assign'); }
         }
 
-        // Detect capture: {% capture varName %} ... {% endcapture %}
-        const captureMatch = raw.match(/\{%-?\s*capture\s+(\w+)\s*-?%\}([\s\S]*?)\{%-?\s*endcapture\s*-?%\}/);
+        const captureMatch = raw.match(/\{%-?\s*capture\s+(\w+)\s*-?%\}([\s\S]*?)\{%-?\s*endcapture/);
         if (captureMatch) {
             const varName = captureMatch[1];
             const rendered = await this.liquid.parseAndRender(captureMatch[2], this.buildContext());
-            this.trackVariable(varName, rendered.trim(), 'local');
+            this.trackVariable(varName, rendered.trim(), 'capture');
+            const e = `capture:${varName}`;
+            if (!this.scopeStack.includes(e)) { this.scopeStack.push(e); }
         }
+
+        const forMatch = raw.match(/\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)/);
+        if (forMatch) {
+            const itemName = forMatch[1];
+            const collName = forMatch[2];
+            const coll = this.resolvePath(this.buildContext(), collName);
+            if (Array.isArray(coll) && coll.length > 0) { this.trackVariable(itemName, coll[0], 'for'); }
+            const e = `for:${itemName}`;
+            if (!this.scopeStack.includes(e)) { this.scopeStack.push(e); }
+        }
+
+        if (/\{%-?\s*endfor/.test(raw)) { this.scopeStack = this.scopeStack.filter(s => !s.startsWith('for:')); }
+        if (/\{%-?\s*endcapture/.test(raw)) { this.scopeStack = this.scopeStack.filter(s => !s.startsWith('capture:')); }
+    }
+
+    private updateScopeStack(element: { type: string; raw: string }): void {
+        if (element.type !== 'tag') { return; }
+        const raw = element.raw;
+        if (/\{%-?\s*if\b/.test(raw))    { if (!this.scopeStack.includes('if')) { this.scopeStack.push('if'); } }
+        if (/\{%-?\s*unless\b/.test(raw)){ if (!this.scopeStack.includes('unless')) { this.scopeStack.push('unless'); } }
+        if (/\{%-?\s*endif/.test(raw))   { this.scopeStack = this.scopeStack.filter(s => s !== 'if' && s !== 'unless'); }
+        if (/\{%-?\s*case\b/.test(raw))  { if (!this.scopeStack.includes('case')) { this.scopeStack.push('case'); } }
+        if (/\{%-?\s*endcase/.test(raw)) { this.scopeStack = this.scopeStack.filter(s => s !== 'case'); }
+    }
+
+    private resolvePath(ctx: any, path: string): any {
+        return path.split('.').reduce((obj, key) => obj?.[key], ctx);
     }
 
     private updateWatches(): void {
@@ -280,18 +386,43 @@ export class DebugEngine {
     }
 
     private makeResult(completed: boolean): StepResult {
+        const lastChunk = this.state.output.substring(this.previousOutput.length);
         return {
             output: this.state.output,
             variables: this.getAllVariables(),
             currentLine: this.state.currentLine,
             currentElement: this.state.currentElement,
-            completed
+            completed,
+            lastChunk
         };
     }
 
+    private fmtValue(value: any): string {
+        if (value === null || value === undefined) { return 'nil'; }
+        if (typeof value === 'string') { return value.length > 300 ? value.substring(0, 300) + '…' : value; }
+        if (Array.isArray(value)) { return `[${value.length} items]`; }
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            return `{${keys.length} keys}`;
+        }
+        return String(value);
+    }
+
     private typeOf(value: any): string {
-        if (value === null) { return 'null'; }
-        if (Array.isArray(value)) { return 'array'; }
-        return typeof value;
+        if (value === null || value === undefined) { return 'Null'; }
+        if (Array.isArray(value)) { return `Array`; }
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            return `Hash: ${keys.length} keys`;
+        }
+        const t = typeof value;
+        if (t === 'number') { return Number.isInteger(value) ? 'Integer' : 'Double'; }
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    private toSerializable(value: any): any {
+        if (value === null || value === undefined) { return null; }
+        if (typeof value !== 'object') { return value; }
+        try { return JSON.parse(JSON.stringify(value)); } catch { return String(value); }
     }
 }

@@ -16,7 +16,7 @@ export interface TrackedVariable {
     name: string;
     value: any;
     type: string;
-    scope: string;
+    scope: string;   // 'global' | 'local' | 'loop' | 'capture'
     history: VariableChange[];
 }
 
@@ -59,5 +59,54 @@ export interface StepResult {
     variables: Map<string, TrackedVariable>;
     currentLine: number;
     currentElement: number;
+    completed: boolean;
+    lastChunk: string;
+}
+
+// ─── Snapshot sent to WebView ──────────────────────────────────────────────
+
+export interface SnapshotVariable {
+    name: string;
+    displayValue: string;
+    rawValue: any;
+    type: string;
+    scope: string;
+    historyCount: number;
+    lastChange?: { line: number; oldValue: string };
+}
+
+export interface SnapshotWatch {
+    id: number;
+    expression: string;
+    value: string;
+    error?: string;
+}
+
+export interface SnapshotBreakpoint {
+    id: number;
+    line: number;
+    condition?: string;
+    enabled: boolean;
+    hitCount: number;
+}
+
+export interface DebugSnapshot {
+    // Template
+    templatePath: string;
+    templateLines: string[];
+    totalElements: number;
+    currentElement: number;
+    currentLine: number;
+    scopeStack: string[];
+    // Data
+    inputData: string;
+    inputFormat: string;
+    // Output
+    output: string;
+    lastChunk: string;
+    // State
+    variables: SnapshotVariable[];
+    watches: SnapshotWatch[];
+    breakpoints: SnapshotBreakpoint[];
     completed: boolean;
 }

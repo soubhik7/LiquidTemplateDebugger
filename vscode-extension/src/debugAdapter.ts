@@ -76,13 +76,15 @@ export class LiquidDebugSession extends LoggingDebugSession {
             }
 
             await this.engine.initialize(args.template, args.data, args.format || 'json');
-
             this.sendResponse(response);
+
+            // Send initial snapshot to the panel
+            this.sendStateUpdate();
 
             if (args.stopOnEntry !== false) {
                 this.sendEvent(new StoppedEvent('entry', LiquidDebugSession.THREAD_ID));
             } else {
-                await this.runToEnd(response);
+                await this.runToEnd();
             }
         } catch (err: any) {
             this.sendErrorResponse(response, {
@@ -157,7 +159,10 @@ export class LiquidDebugSession extends LoggingDebugSession {
             const varName = id.substring(4);
             const v = this.engine.getVariable(varName);
             if (v && typeof v.value === 'object' && v.value !== null) {
-                for (const [k, val] of Object.entries(v.value as object)) {
+                const entries = Array.isArray(v.value)
+                    ? v.value.map((val: any, i: number) => [String(i), val])
+                    : Object.entries(v.value as object);
+                for (const [k, val] of entries) {
                     variables.push({
                         name: k,
                         value: this.fmt(val),
@@ -186,6 +191,8 @@ export class LiquidDebugSession extends LoggingDebugSession {
         }
         response.body = { breakpoints };
         this.sendResponse(response);
+        // Notify panel of new breakpoints
+        this.sendStateUpdate();
     }
 
     protected async continueRequest(
@@ -195,7 +202,8 @@ export class LiquidDebugSession extends LoggingDebugSession {
         try {
             let result = await this.engine.step();
             while (!result.completed) {
-                if (this.engine.checkAndHitBreakpoint()) {
+                this.sendStateUpdate();
+                if (this.engine.checkBreakpoint()) {
                     this.sendEvent(new StoppedEvent('breakpoint', LiquidDebugSession.THREAD_ID));
                     response.body = { allThreadsContinued: true };
                     this.sendResponse(response);
@@ -203,6 +211,7 @@ export class LiquidDebugSession extends LoggingDebugSession {
                 }
                 result = await this.engine.step();
             }
+            this.sendStateUpdate();
             this.sendEvent(new OutputEvent(result.output, 'stdout'));
             this.sendEvent(new TerminatedEvent());
             response.body = { allThreadsContinued: true };
@@ -218,11 +227,13 @@ export class LiquidDebugSession extends LoggingDebugSession {
     ): Promise<void> {
         try {
             const result = await this.engine.step();
+            this.sendStateUpdate();
+
             if (result.completed) {
                 this.sendEvent(new OutputEvent(result.output, 'stdout'));
                 this.sendEvent(new TerminatedEvent());
             } else {
-                this.engine.checkAndHitBreakpoint();
+                this.engine.checkBreakpoint();
                 this.sendEvent(new StoppedEvent('step', LiquidDebugSession.THREAD_ID));
             }
             this.sendResponse(response);
@@ -244,6 +255,37 @@ export class LiquidDebugSession extends LoggingDebugSession {
         }
     }
 
+    protected customRequest(
+        command: string,
+        response: DebugProtocol.Response,
+        args: any
+    ): void {
+        switch (command) {
+            case 'liquid.addWatch': {
+                const watch = this.engine.addWatch(args.expression);
+                response.body = { watch };
+                break;
+            }
+            case 'liquid.removeWatch': {
+                this.engine.removeWatch(args.id);
+                break;
+            }
+            case 'liquid.toggleBreakpoint': {
+                this.engine.toggleBreakpoint(args.id);
+                break;
+            }
+            case 'liquid.getSnapshot': {
+                response.body = this.engine.getWebUIState();
+                break;
+            }
+            default:
+                super.customRequest(command, response, args);
+                return;
+        }
+        this.sendResponse(response);
+        this.sendStateUpdate();
+    }
+
     protected disconnectRequest(
         response: DebugProtocol.DisconnectResponse,
         _args: DebugProtocol.DisconnectArguments
@@ -252,14 +294,28 @@ export class LiquidDebugSession extends LoggingDebugSession {
         this.sendResponse(response);
     }
 
-    private async runToEnd(response: DebugProtocol.LaunchResponse): Promise<void> {
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /** Send current engine snapshot as a custom DAP event for the WebView panel */
+    private sendStateUpdate(): void {
+        const snapshot = this.engine.getWebUIState();
+        this.sendEvent({
+            type: 'event',
+            event: 'liquid.stateUpdate',
+            seq: 0,
+            body: snapshot
+        } as DebugProtocol.Event);
+    }
+
+    private async runToEnd(): Promise<void> {
         const result = await this.engine.continue();
+        this.sendStateUpdate();
         this.sendEvent(new OutputEvent(result.output, 'stdout'));
         this.sendEvent(new TerminatedEvent());
     }
 
     private fmt(value: any): string {
-        if (value === null || value === undefined) { return 'null'; }
+        if (value === null || value === undefined) { return 'nil'; }
         if (typeof value === 'string') { return `"${value}"`; }
         if (Array.isArray(value)) { return `Array[${value.length}]`; }
         if (typeof value === 'object') { return `{${Object.keys(value).join(', ')}}`; }

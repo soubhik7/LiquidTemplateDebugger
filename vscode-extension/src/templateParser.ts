@@ -81,6 +81,38 @@ export class TemplateParser {
         return { elements, lines, totalLines: lines.length };
     }
 
+    parseTemplateFromContent(content: string): ParsedTemplate {
+        const lines = content.split('\n');
+        const elements: TemplateElement[] = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const lineNum = i + 1;
+            const lineContent = lines[i];
+            const trimmed = lineContent.trim();
+
+            if (!trimmed) {
+                elements.push({ type: 'literal', line: lineNum, content: lineContent + '\n', raw: lineContent + '\n' });
+                continue;
+            }
+
+            const tagMatch = trimmed.match(/^\{%-?\s*(\w+)(.*?)-?%\}/);
+            if (tagMatch) {
+                elements.push({ type: 'tag', line: lineNum, content: tagMatch[1], raw: lineContent + '\n' });
+                continue;
+            }
+
+            const outputMatch = trimmed.match(/\{\{(.*?)\}\}/);
+            if (outputMatch) {
+                elements.push({ type: 'output', line: lineNum, content: outputMatch[1].trim(), raw: lineContent + '\n' });
+                continue;
+            }
+
+            elements.push({ type: 'literal', line: lineNum, content: lineContent + '\n', raw: lineContent + '\n' });
+        }
+
+        return { elements, lines, totalLines: lines.length };
+    }
+
     async renderFull(templatePath: string, data: any): Promise<string> {
         const content = fs.readFileSync(templatePath, 'utf-8');
         return await this.liquid.parseAndRender(content, data);
