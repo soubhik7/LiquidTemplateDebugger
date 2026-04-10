@@ -7,7 +7,9 @@ import {
     Breakpoint,
     WatchExpression,
     StepResult,
-    ParsedTemplate
+    ParsedTemplate,
+    ForLoopState,
+    ExecutionStackEntry
 } from './types';
 import * as fs from 'fs';
 
@@ -23,6 +25,11 @@ export class DebugEngine {
     private previousOutput: string = '';
     private outputMap: { startIndex: number; endIndex: number; line: number }[] = [];
     private lastReloadArgs: { templateContent: string; dataContent: string; format: string } | null = null;
+    
+    // ── Flow Control Stacks ───────────────────────────────────────────────────
+    private executionStack: ExecutionStackEntry[] = [];
+    private forLoopStack: ForLoopState[] = [];
+    private caseValueStack: any[] = [];
 
     constructor() {
         this.parser = new TemplateParser();
@@ -68,6 +75,9 @@ export class DebugEngine {
         this.scopeStack = ['root'];
         this.previousOutput = '';
         this.outputMap = [];
+        this.executionStack = [];
+        this.forLoopStack = [];
+        this.caseValueStack = [];
 
         this.templateSource = templateContent;
         this.inputDataContent = dataContent;
@@ -116,14 +126,39 @@ export class DebugEngine {
         const startIndex = this.state.output.length;
 
         try {
-            if (element.type === 'output' || element.type === 'tag') {
-                const rendered = await this.liquid.parseAndRender(element.raw, context);
-                this.state.output += rendered;
-                if (element.type === 'tag') {
-                    await this.syncVariablesAfterTag(element.raw);
+            if (element.type === 'tag') {
+                const tagNameMatch = element.raw.match(/^\s*\{%-?\s*([a-zA-Z0-9_]+)/);
+                const tagName = tagNameMatch ? tagNameMatch[1].toLowerCase() : '';
+                const expressionMatch = element.raw.match(/^\s*\{%-?\s*[a-zA-Z0-9_]+\s+([\s\S]*?)-?%\}\s*$/);
+                const args = expressionMatch ? expressionMatch[1].trim() : '';
+
+                if (this.isFlowControlTag(tagName)) {
+                    await this.executeFlowControlTag(tagName, args, context, element.line);
+                } else if (this.isExecuting()) {
+                    if (tagName === 'assign') {
+                        await this.executeAssign(args, context, element.line);
+                    } else if (tagName === 'capture') {
+                        await this.executeCapture(args, context, element.line);
+                    } else if (tagName === 'for') {
+                        await this.executeForStart(args, context, element.line);
+                    } else if (tagName === 'endfor') {
+                        await this.executeForEnd(element.line);
+                    } else if (tagName === 'endcapture') {
+                        if (this.scopeStack.length > 1) { this.scopeStack.pop(); }
+                    } else {
+                        // All other non-block tags
+                        const rendered = await this.liquid.parseAndRender(element.raw, context);
+                        this.state.output += rendered;
+                        await this.syncVariablesAfterTag(element.raw);
+                    }
                 }
-            } else {
-                this.state.output += element.content;
+            } else if (this.isExecuting()) {
+                if (element.type === 'output') {
+                    const rendered = await this.liquid.parseAndRender(element.raw, context);
+                    this.state.output += rendered;
+                } else {
+                    this.state.output += element.content;
+                }
             }
         } catch (err: any) {
             this.state.output += `[ERROR line ${element.line}: ${err.message}]`;
@@ -153,7 +188,7 @@ export class DebugEngine {
         let result: StepResult;
         do {
             result = await this.step();
-            if (this.checkBreakpoint()) { break; }
+            if (await this.checkBreakpoint()) { break; }
         } while (!result.completed);
         return result;
     }
@@ -185,10 +220,18 @@ export class DebugEngine {
         return false;
     }
 
-    checkBreakpoint(): boolean {
+    async checkBreakpoint(): Promise<boolean> {
         const { currentLine, breakpoints } = this.state;
         for (const bp of breakpoints) {
             if (bp.enabled && bp.line === currentLine) {
+                if (bp.condition && bp.condition.trim().length > 0) {
+                    try {
+                        const conditionMet = await this.evaluateCondition(bp.condition, this.buildContext());
+                        if (!conditionMet) continue;
+                    } catch {
+                        continue;
+                    }
+                }
                 bp.hitCount++;
                 this.state.isPaused = true;
                 return true;
@@ -357,6 +400,9 @@ export class DebugEngine {
         this.previousOutput = '';
         this.outputMap = [];
         this.lastReloadArgs = null;
+        this.executionStack = [];
+        this.forLoopStack = [];
+        this.caseValueStack = [];
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -456,6 +502,252 @@ export class DebugEngine {
             return `{${keys.length} keys}`;
         }
         return String(value);
+    }
+
+    private isExecuting(): boolean {
+        return this.executionStack.length === 0 || this.executionStack.every(e => e.executing);
+    }
+
+    private isFlowControlTag(tagName: string): boolean {
+        return ['if', 'unless', 'elsif', 'else', 'endif', 'endunless', 'case', 'when', 'endcase', 'break', 'continue', 'increment', 'decrement'].includes(tagName);
+    }
+
+    private async executeFlowControlTag(tagName: string, args: string, context: Record<string, any>, line: number) {
+        switch (tagName) {
+            case 'if': {
+                if (!this.isExecuting()) {
+                    this.executionStack.push({ executing: false, branchTaken: true });
+                    return;
+                }
+                const result = await this.evaluateCondition(args, context);
+                this.executionStack.push({ executing: result, branchTaken: result });
+                break;
+            }
+            case 'unless': {
+                if (!this.isExecuting()) {
+                    this.executionStack.push({ executing: false, branchTaken: true });
+                    return;
+                }
+                const result = !(await this.evaluateCondition(args, context));
+                this.executionStack.push({ executing: result, branchTaken: result });
+                break;
+            }
+            case 'elsif': {
+                if (this.executionStack.length === 0) return;
+                const top = this.executionStack.pop()!;
+                if (top.branchTaken || !this.isExecuting()) {
+                    this.executionStack.push({ executing: false, branchTaken: true });
+                    return;
+                }
+                const result = await this.evaluateCondition(args, context);
+                this.executionStack.push({ executing: result, branchTaken: result });
+                break;
+            }
+            case 'else': {
+                if (this.executionStack.length === 0) return;
+                const top = this.executionStack.pop()!;
+                if (top.branchTaken || !this.isExecuting()) {
+                    this.executionStack.push({ executing: false, branchTaken: true });
+                    return;
+                }
+                this.executionStack.push({ executing: true, branchTaken: true });
+                break;
+            }
+            case 'endif':
+            case 'endunless': {
+                if (this.executionStack.length > 0) this.executionStack.pop();
+                break;
+            }
+            case 'case': {
+                if (!this.isExecuting()) {
+                    this.executionStack.push({ executing: false, branchTaken: true });
+                    return;
+                }
+                const value = await this.parser.evaluateExpression(args, context);
+                this.caseValueStack.push(value);
+                this.executionStack.push({ executing: false, branchTaken: false });
+                break;
+            }
+            case 'when': {
+                if (this.executionStack.length === 0) return;
+                const top = this.executionStack.pop()!;
+                if (top.branchTaken || !this.isExecuting() || this.caseValueStack.length === 0) {
+                    this.executionStack.push({ executing: false, branchTaken: true });
+                    return;
+                }
+                const caseValue = this.caseValueStack[this.caseValueStack.length - 1];
+                
+                const whenValues = args.split(',').map(s => s.trim());
+                let matched = false;
+                for (const wv of whenValues) {
+                    const evalWv = await this.parser.evaluateExpression(wv, context);
+                    if (evalWv === caseValue || String(evalWv) === String(caseValue)) {
+                        matched = true;
+                        break;
+                    }
+                }
+                
+                this.executionStack.push({ executing: matched, branchTaken: matched });
+                break;
+            }
+            case 'endcase': {
+                if (this.executionStack.length > 0) this.executionStack.pop();
+                if (this.caseValueStack.length > 0) this.caseValueStack.pop();
+                break;
+            }
+            case 'break': {
+                if (!this.isExecuting() || this.forLoopStack.length === 0) return;
+                const loopState = this.forLoopStack.pop()!;
+                this.state.currentElement = loopState.loopEndElementIndex;
+                break;
+            }
+            case 'continue': {
+                if (!this.isExecuting() || this.forLoopStack.length === 0) return;
+                const loopState = this.forLoopStack[this.forLoopStack.length - 1];
+                loopState.currentIndex++;
+                if (loopState.currentIndex < loopState.items.length) {
+                    this.setForLoopVariable(loopState);
+                    this.state.currentElement = loopState.loopStartElementIndex;
+                } else {
+                    this.forLoopStack.pop();
+                    this.state.currentElement = loopState.loopEndElementIndex;
+                }
+                break;
+            }
+            case 'increment': {
+                if (!this.isExecuting()) return;
+                const vName = args.trim();
+                let val = this.state.variables.get(vName)?.value ?? 0;
+                if (typeof val !== 'number') val = 0;
+                this.state.output += val;
+                this.trackVariable(vName, val + 1, 'global');
+                break;
+            }
+            case 'decrement': {
+                if (!this.isExecuting()) return;
+                const vName = args.trim();
+                let val = this.state.variables.get(vName)?.value ?? 0;
+                if (typeof val !== 'number') val = 0;
+                val = val - 1;
+                this.state.output += val;
+                this.trackVariable(vName, val, 'global');
+                break;
+            }
+        }
+    }
+
+    private async evaluateCondition(condition: string, context: Record<string, any>): Promise<boolean> {
+        try {
+            const out = await this.liquid.parseAndRender(`{% if ${condition} %}1{% endif %}`, context);
+            return out.trim() === '1';
+        } catch {
+            return false;
+        }
+    }
+
+    private async executeAssign(args: string, context: Record<string, any>, line: number) {
+        await this.syncVariablesAfterTag(`{% assign ${args} %}`);
+    }
+
+    private async executeCapture(args: string, context: Record<string, any>, line: number) {
+        const varName = args.trim();
+        let depth = 1;
+        let idx = this.state.currentElement + 1;
+        const elements = this.parsedTemplate!.elements;
+
+        while (idx < elements.length && depth > 0) {
+            const el = elements[idx];
+            if (el.type === 'tag') {
+                const tagNameMatch = el.raw.match(/^\s*\{%-?\s*([a-zA-Z0-9_]+)/);
+                const tg = tagNameMatch ? tagNameMatch[1].toLowerCase() : '';
+                if (tg === 'capture') depth++;
+                else if (tg === 'endcapture') depth--;
+            }
+            if (depth === 0) break;
+            idx++;
+        }
+        
+        const endIdx = idx;
+        let innerRaw = '';
+        for(let i = this.state.currentElement + 1; i < endIdx; i++) {
+            innerRaw += elements[i].raw;
+        }
+        
+        try {
+            const rendered = await this.liquid.parseAndRender(innerRaw, context);
+            this.trackVariable(varName, rendered.trim(), 'capture');
+        } catch (e: any) {
+            this.state.output += `[ERROR block rendering: ${e.message}]`;
+        }
+        
+        this.state.currentElement = endIdx - 1; // Will be incremented by AdvanceToNext
+    }
+
+    private async executeForStart(args: string, context: Record<string, any>, line: number) {
+        const forMatch = args.match(/^(\w+)\s+in\s+([\w.]+)/);
+        if (!forMatch) return;
+        
+        const itemName = forMatch[1];
+        const collName = forMatch[2];
+        const collVal = this.resolvePath(context, collName);
+        
+        let items: any[] = [];
+        if (Array.isArray(collVal)) items = [...collVal];
+        else if (collVal && typeof collVal === 'object') items = Object.keys(collVal);
+        
+        let depth = 1;
+        let endForIdx = this.state.currentElement + 1;
+        const elements = this.parsedTemplate!.elements;
+        while (endForIdx < elements.length && depth > 0) {
+            const el = elements[endForIdx];
+            if (el.type === 'tag') {
+                const tagNameMatch = el.raw.match(/^\s*\{%-?\s*([a-zA-Z0-9_]+)/);
+                const tg = tagNameMatch ? tagNameMatch[1].toLowerCase() : '';
+                if (tg === 'for') depth++;
+                else if (tg === 'endfor') depth--;
+            }
+            if (depth === 0) break;
+            endForIdx++;
+        }
+        
+        const loopState: ForLoopState = {
+            variableName: itemName,
+            collectionExpression: collName,
+            items,
+            currentIndex: 0,
+            loopStartElementIndex: this.state.currentElement,
+            loopEndElementIndex: endForIdx,
+            executionStackDepthAtStart: this.executionStack.length,
+            caseValueStackDepthAtStart: this.caseValueStack.length,
+            scopeStackDepthAtStart: this.scopeStack.length
+        };
+        
+        this.forLoopStack.push(loopState);
+        
+        if (items.length > 0) {
+            this.setForLoopVariable(loopState);
+        } else {
+            this.state.currentElement = endForIdx - 1; // Will step to endfor and pop
+        }
+    }
+
+    private setForLoopVariable(loopState: ForLoopState) {
+        const item = loopState.items[loopState.currentIndex];
+        this.trackVariable(loopState.variableName, item, 'for');
+    }
+
+    private async executeForEnd(line: number) {
+        if (this.forLoopStack.length === 0) return;
+        
+        const loopState = this.forLoopStack[this.forLoopStack.length - 1];
+        loopState.currentIndex++;
+        
+        if (loopState.currentIndex < loopState.items.length) {
+            this.setForLoopVariable(loopState);
+            this.state.currentElement = loopState.loopStartElementIndex;
+        } else {
+            this.forLoopStack.pop();
+        }
     }
 
     private typeOf(value: any): string {

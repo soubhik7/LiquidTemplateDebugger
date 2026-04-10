@@ -408,6 +408,11 @@ window.addEventListener('message', ev => {
   }
   // Direct state push from extension (e.g. after DAP step)
   if (msg.type === 'stateUpdate') { applyState(msg.state); }
+  // Handle prefill from extension context
+  if (msg.type === 'prefill' && msg.template) {
+    const tplEl = document.getElementById('tpl-textarea');
+    if (tplEl) { tplEl.value = msg.template; }
+  }
 });
 
 // ── Everything below is identical to the web UI ───────────────────────────────
@@ -465,9 +470,10 @@ function showToast(message, type = 'info', title = '', duration = 6000) {
 
 function applyState(s) {
   const isInit = !state && s && s.isLoaded;
+  const dataChanged = state && s && (state.dataContent !== s.dataContent || state.dataFormat !== s.dataFormat);
   state = s;
   updateToolbar(); renderTemplate(); renderVariables(); renderOutput(); renderWatches(); renderBreakpoints(); renderScopeBar();
-  if (isInit || (s && s.isLoaded && !document.getElementById('data-editor').value)) { renderInput(); }
+  if (isInit || dataChanged || (s && s.isLoaded && !document.getElementById('data-editor').value)) { renderInput(); }
 }
 
 function renderInput() {

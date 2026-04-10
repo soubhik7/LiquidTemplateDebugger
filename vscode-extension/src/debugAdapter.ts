@@ -203,7 +203,7 @@ export class LiquidDebugSession extends LoggingDebugSession {
             let result = await this.engine.step();
             while (!result.completed) {
                 this.sendStateUpdate();
-                if (this.engine.checkBreakpoint()) {
+                if (await this.engine.checkBreakpoint()) {
                     this.sendEvent(new StoppedEvent('breakpoint', LiquidDebugSession.THREAD_ID));
                     response.body = { allThreadsContinued: true };
                     this.sendResponse(response);
@@ -233,7 +233,7 @@ export class LiquidDebugSession extends LoggingDebugSession {
                 this.sendEvent(new OutputEvent(result.output, 'stdout'));
                 this.sendEvent(new TerminatedEvent());
             } else {
-                this.engine.checkBreakpoint();
+                await this.engine.checkBreakpoint();
                 this.sendEvent(new StoppedEvent('step', LiquidDebugSession.THREAD_ID));
             }
             this.sendResponse(response);

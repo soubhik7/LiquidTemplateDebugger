@@ -110,3 +110,20 @@ export interface DebugSnapshot {
     breakpoints: SnapshotBreakpoint[];
     completed: boolean;
 }
+
+export interface ForLoopState {
+    variableName: string;
+    collectionExpression: string;
+    items: any[];
+    currentIndex: number;
+    loopStartElementIndex: number;
+    loopEndElementIndex: number;
+    executionStackDepthAtStart: number;
+    caseValueStackDepthAtStart: number;
+    scopeStackDepthAtStart: number;
+}
+
+export interface ExecutionStackEntry {
+    executing: boolean;
+    branchTaken: boolean;
+}

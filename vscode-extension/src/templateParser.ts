@@ -11,105 +11,147 @@ export class TemplateParser {
             strictVariables: false,
             lenientIf: true
         });
+
+        this.registerDotLiquidAliases();
+    }
+
+    private registerDotLiquidAliases() {
+        const aliases: Record<string, string> = {
+            'DividedBy': 'divided_by',
+            'dividedby': 'divided_by',
+            'ReplaceFirst': 'replace_first',
+            'replacefirst': 'replace_first',
+            'RemoveFirst': 'remove_first',
+            'removefirst': 'remove_first',
+            'StripHtml': 'strip_html',
+            'striphtml': 'strip_html',
+            'StripNewlines': 'strip_newlines',
+            'stripnewlines': 'strip_newlines',
+            'NewlineToBr': 'newline_to_br',
+            'newlinetobr': 'newline_to_br',
+            'UrlEncode': 'url_encode',
+            'urlencode': 'url_encode',
+            'UrlDecode': 'url_decode',
+            'urldecode': 'url_decode',
+            'Upcase': 'upcase',
+            'Downcase': 'downcase',
+            'Capitalize': 'capitalize',
+            'Strip': 'strip',
+            'Lstrip': 'lstrip',
+            'Rstrip': 'rstrip',
+            'Escape': 'escape',
+            'Size': 'size',
+            'Reverse': 'reverse',
+            'First': 'first',
+            'Last': 'last',
+            'Sort': 'sort',
+            'Uniq': 'uniq',
+            'Join': 'join',
+            'Split': 'split',
+            'Slice': 'slice',
+            'Replace': 'replace',
+            'Remove': 'remove',
+            'Append': 'append',
+            'Prepend': 'prepend',
+            'Truncate': 'truncate',
+            'TruncateWords': 'truncatewords',
+            'Default': 'default',
+            'Plus': 'plus',
+            'Minus': 'minus',
+            'Times': 'times',
+            'Modulo': 'modulo',
+            'Abs': 'abs',
+            'Ceil': 'ceil',
+            'Floor': 'floor',
+            'Round': 'round',
+            'Map': 'map',
+            'Where': 'where',
+            'Compact': 'compact',
+            'Concat': 'concat',
+            'Date': 'date'
+        };
+
+        const registry = (this.liquid as any).filters;
+        const impls = registry?.impls || registry || {};
+
+        for (const [alias, original] of Object.entries(aliases)) {
+            const impl = impls[original];
+            if (impl) {
+                this.liquid.registerFilter(alias, impl);
+            }
+        }
+    }
+
+    private parseLinesToElements(lines: string[]): TemplateElement[] {
+        const elements: TemplateElement[] = [];
+        const tokenRegex = /(\{\{.*?\}\}|\{%-?[\s\S]*?-?%\}|[^{]+|\{(?!\{|%))/g;
+
+        for (let i = 0; i < lines.length; i++) {
+            const lineNum = i + 1;
+            const lineContent = lines[i];
+
+            if (!lineContent && lineContent !== '') {
+                continue;
+            }
+
+            tokenRegex.lastIndex = 0;
+            let match;
+            let tokensFound = 0;
+
+            while ((match = tokenRegex.exec(lineContent)) !== null) {
+                const token = match[0];
+                if (!token) continue;
+                tokensFound++;
+                const trimmedToken = token.trim();
+
+                if (trimmedToken.startsWith('{%')) {
+                    const tagMatch = trimmedToken.match(/^\{%-?\s*(\w+)/);
+                    elements.push({
+                        type: 'tag',
+                        line: lineNum,
+                        content: tagMatch ? tagMatch[1].toLowerCase() : '',
+                        raw: token
+                    });
+                } else if (trimmedToken.startsWith('{{')) {
+                    elements.push({
+                        type: 'output',
+                        line: lineNum,
+                        content: trimmedToken.replace(/^\{\{|\}\}$/g, '').trim(),
+                        raw: token
+                    });
+                } else {
+                    elements.push({
+                        type: 'literal',
+                        line: lineNum,
+                        content: token,
+                        raw: token
+                    });
+                }
+            }
+
+            if (elements.length > 0 && elements[elements.length - 1].line === lineNum) {
+                const lastEl = elements[elements.length - 1];
+                lastEl.raw += '\n';
+                if (lastEl.type === 'literal') {
+                    lastEl.content += '\n';
+                }
+            } else if (tokensFound === 0) {
+                elements.push({ type: 'literal', line: lineNum, content: lineContent + '\n', raw: lineContent + '\n' });
+            }
+        }
+        return elements;
     }
 
     parseTemplate(templatePath: string): ParsedTemplate {
         const content = fs.readFileSync(templatePath, 'utf-8');
         const lines = content.split('\n');
-        const elements: TemplateElement[] = [];
-
-        // Split template into line-level elements using regex
-        // This avoids using internal LiquidJS token APIs that can break
-        const lineRegex = /(\{\{.*?\}\}|\{%-?\s*.*?-?%\}|[^{]+|\{(?!\{|%))/gs;
-
-        let pos = 0;
-        for (const line of lines) {
-            const lineNum = lines.indexOf(line) + 1; // re-calc below
-            pos += line.length + 1; // account for \n
-        }
-
-        // Better approach: walk line by line and identify what each line contains
-        for (let i = 0; i < lines.length; i++) {
-            const lineNum = i + 1;
-            const lineContent = lines[i];
-            const trimmed = lineContent.trim();
-
-            if (!trimmed) {
-                // Blank line - still emit as literal so stepping feels natural
-                elements.push({
-                    type: 'literal',
-                    line: lineNum,
-                    content: lineContent + '\n',
-                    raw: lineContent + '\n'
-                });
-                continue;
-            }
-
-            // Check if the line contains a tag {% ... %}
-            const tagMatch = trimmed.match(/^\{%-?\s*(\w+)(.*?)-?%\}/);
-            if (tagMatch) {
-                elements.push({
-                    type: 'tag',
-                    line: lineNum,
-                    content: tagMatch[1], // tag name e.g. "if", "for", "assign"
-                    raw: lineContent + '\n'
-                });
-                continue;
-            }
-
-            // Check if the line contains an output {{ ... }}
-            const outputMatch = trimmed.match(/\{\{(.*?)\}\}/);
-            if (outputMatch) {
-                elements.push({
-                    type: 'output',
-                    line: lineNum,
-                    content: outputMatch[1].trim(),
-                    raw: lineContent + '\n'
-                });
-                continue;
-            }
-
-            // Pure literal content
-            elements.push({
-                type: 'literal',
-                line: lineNum,
-                content: lineContent + '\n',
-                raw: lineContent + '\n'
-            });
-        }
-
+        const elements = this.parseLinesToElements(lines);
         return { elements, lines, totalLines: lines.length };
     }
 
     parseTemplateFromContent(content: string): ParsedTemplate {
         const lines = content.split('\n');
-        const elements: TemplateElement[] = [];
-
-        for (let i = 0; i < lines.length; i++) {
-            const lineNum = i + 1;
-            const lineContent = lines[i];
-            const trimmed = lineContent.trim();
-
-            if (!trimmed) {
-                elements.push({ type: 'literal', line: lineNum, content: lineContent + '\n', raw: lineContent + '\n' });
-                continue;
-            }
-
-            const tagMatch = trimmed.match(/^\{%-?\s*(\w+)(.*?)-?%\}/);
-            if (tagMatch) {
-                elements.push({ type: 'tag', line: lineNum, content: tagMatch[1], raw: lineContent + '\n' });
-                continue;
-            }
-
-            const outputMatch = trimmed.match(/\{\{(.*?)\}\}/);
-            if (outputMatch) {
-                elements.push({ type: 'output', line: lineNum, content: outputMatch[1].trim(), raw: lineContent + '\n' });
-                continue;
-            }
-
-            elements.push({ type: 'literal', line: lineNum, content: lineContent + '\n', raw: lineContent + '\n' });
-        }
-
+        const elements = this.parseLinesToElements(lines);
         return { elements, lines, totalLines: lines.length };
     }
 
