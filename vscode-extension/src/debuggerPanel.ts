@@ -240,6 +240,12 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 @keyframes toastIn { from{opacity:0;transform:translateX(40px) scale(0.9)} to{opacity:1;transform:translateX(0) scale(1)} }
 @keyframes toastOut { from{opacity:1;transform:translateX(0) scale(1)} to{opacity:0;transform:translateX(40px) scale(0.9)} }
 @keyframes toastProgress { from{transform:scaleX(1)} to{transform:scaleX(0)} }
+.debug-group { display:flex; align-items:center; gap:8px; background:var(--bg-panel); padding:2px 8px; border-radius:var(--radius); border:1px solid var(--border); }
+.debug-item { display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer; color:var(--text-dim); transition:all var(--transition); padding:4px 8px; border-radius:var(--radius-sm); }
+.debug-item:hover:not(.disabled) { background:var(--bg-hover); color:var(--text); }
+.debug-item.disabled { opacity:0.3; cursor:not-allowed; }
+.fkey { background:var(--bg-surface); border:1px solid var(--border-light); border-radius:3px; padding:0px 4px; font-family:var(--font-mono); font-weight:700; color:var(--accent); font-size:9px; min-width:24px; text-align:center; }
+.flbl { font-weight:500; }
 </style>
 </head>
 <body>
@@ -250,16 +256,16 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
       <button class="btn btn-primary" id="btn-load" onclick="showLoadModal()">📂 Load</button>
     </div>
     <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
-      <button class="btn" id="btn-step" onclick="doStep('next')" disabled>Step <span class="shortcut">F10</span></button>
-      <button class="btn" id="btn-into" onclick="doStep('into')" disabled>Into <span class="shortcut">F11</span></button>
-      <button class="btn" id="btn-over" onclick="doStep('over')" disabled>Over</button>
-      <button class="btn" id="btn-out" onclick="doStep('out')" disabled>Out <span class="shortcut">⇧F11</span></button>
-      <button class="btn" id="btn-continue" onclick="doStep('continue')" disabled>Continue <span class="shortcut">F5</span></button>
+    <div class="debug-group">
+      <div class="debug-item" id="fbtn-continue" onclick="doStep('continue')"><span class="fkey">F5</span> <span class="flbl">Continue</span></div>
+      <div class="debug-item" id="fbtn-bp" onclick="toggleBPAtCurrentLine()"><span class="fkey">F9</span> <span class="flbl">Breakpoint</span></div>
+      <div class="debug-item" id="fbtn-step" onclick="doStep('over')"><span class="fkey">F10</span> <span class="flbl">Over</span></div>
+      <div class="debug-item" id="fbtn-into" onclick="doStep('into')"><span class="fkey">F11</span> <span class="flbl">Into</span></div>
+      <div class="debug-item" id="fbtn-out" onclick="doStep('out')"><span class="fkey">⇧F11</span> <span class="flbl">Out</span></div>
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
-      <button class="btn" id="btn-reset" onclick="doReset()" disabled>⟳ Reset <span class="shortcut">⌃⇧F5</span></button>
+      <button class="btn" id="btn-reset" onclick="doReset()" disabled><span class="fkey" style="margin-right:4px">⌃⇧F5</span> Reset</button>
     </div>
     <div class="toolbar-status">
       <button class="btn" id="btn-theme" onclick="toggleTheme()" title="Toggle Theme" style="margin-right:12px;padding:6px 10px;">🌓</button>
@@ -486,8 +492,13 @@ function renderInput() {
 function updateToolbar() {
   const loaded = state && state.isLoaded;
   const complete = loaded && state.state && state.state.isComplete;
-  ['btn-step','btn-into','btn-over','btn-out','btn-continue'].forEach(id => { document.getElementById(id).disabled = !loaded || complete; });
-  document.getElementById('btn-reset').disabled = !loaded;
+  ['fbtn-step','fbtn-into','fbtn-out','fbtn-continue','fbtn-bp','btn-reset'].forEach(id => { 
+    const el = document.getElementById(id); 
+    if (el) {
+        if (el.tagName === 'BUTTON') el.disabled = !loaded || (id !== 'btn-reset' && complete);
+        else el.classList.toggle('disabled', !loaded || complete); 
+    }
+  });
   const badge = document.getElementById('status-badge');
   if (!loaded) { badge.textContent='No session'; badge.className='status-badge status-idle'; }
   else if (complete) { badge.textContent='Complete'; badge.className='status-badge status-complete'; }
@@ -761,6 +772,12 @@ async function applyInPlaceEdits() {
 
 async function doStep(action) { const s = await api('POST','/api/step',{action}); applyState(s); }
 
+async function toggleBPAtCurrentLine() {
+  if (!state || !state.isLoaded || !state.state || state.state.isComplete) return;
+  const line = state.state.currentLine;
+  if (line > 0) await toggleBP(line);
+}
+
 async function doReset() { const s = await api('POST','/api/reset'); expandedVars.clear(); expandedWatches.clear(); applyState(s); }
 
 async function toggleBP(line) {
@@ -930,10 +947,11 @@ async function loadSample() {
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
-  if (e.key==='F10') { e.preventDefault(); doStep('next'); }
+  if (e.key==='F10') { e.preventDefault(); doStep('over'); }
   else if (e.key==='F11'&&e.shiftKey) { e.preventDefault(); doStep('out'); }
   else if (e.key==='F11') { e.preventDefault(); doStep('into'); }
-  else if (e.key==='F5'&&e.ctrlKey&&e.shiftKey) { e.preventDefault(); doReset(); }
+  else if (e.key==='F9') { e.preventDefault(); toggleBPAtCurrentLine(); }
+  else if (e.key==='F5' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); doReset(); }
   else if (e.key==='F5') { e.preventDefault(); doStep('continue'); }
 });
 
