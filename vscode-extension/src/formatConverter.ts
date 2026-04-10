@@ -7,8 +7,8 @@ export class FormatConverter {
     constructor() {
         this.xmlParser = new XMLParser({
             ignoreAttributes: false,
-            attributeNamePrefix: '@_',
-            textNodeName: '#text',
+            attributeNamePrefix: 'attr_',
+            textNodeName: 'value',
             parseAttributeValue: true,
             parseTagValue: true
         });

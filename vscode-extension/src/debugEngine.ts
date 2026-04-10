@@ -272,7 +272,9 @@ export class DebugEngine {
                 JSON.parse(cleanedOutput);
             } else if (format === 'xml') {
                 // Simple XML check
-                if (!output.trim().startsWith('<')) { throw new Error('Not valid XML — does not start with <'); }
+                const trimmed = output.trim();
+                if (!trimmed.startsWith('<')) { throw new Error('Not valid XML — does not start with <'); }
+                if (trimmed.includes('[ERROR')) { throw new Error('XML contains rendering errors'); }
             } else if (format === 'csv') {
                 if (!output.includes(',') && !output.includes('\n')) {
                     throw new Error('Content does not appear to be CSV');

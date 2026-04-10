@@ -3,7 +3,7 @@
   "displayName": "Dot Liquid Template Debugger",
   "description": "Debug and step through DotLiquid templates with real-time variable inspection and format transformations",
   "icon": "images/ltdlogo.png",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": "SoubhikDevTools",
   "repository": {
     "type": "git",
@@ -37,8 +37,13 @@
     "languages": [
       {
         "id": "liquid",
-        "extensions": [".liquid"],
-        "aliases": ["Liquid", "liquid"],
+        "extensions": [
+          ".liquid"
+        ],
+        "aliases": [
+          "Liquid",
+          "liquid"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
