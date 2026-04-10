@@ -21,6 +21,7 @@ export class DebugEngine {
     private templateSource: string = '';
     private scopeStack: string[] = ['root'];
     private previousOutput: string = '';
+    private outputMap: { startIndex: number; endIndex: number; line: number }[] = [];
     private lastReloadArgs: { templateContent: string; dataContent: string; format: string } | null = null;
 
     constructor() {
@@ -66,6 +67,7 @@ export class DebugEngine {
         this.parsedTemplate = null;
         this.scopeStack = ['root'];
         this.previousOutput = '';
+        this.outputMap = [];
 
         this.templateSource = templateContent;
         this.inputDataContent = dataContent;
@@ -111,6 +113,7 @@ export class DebugEngine {
 
         const context = this.buildContext();
         this.previousOutput = this.state.output;
+        const startIndex = this.state.output.length;
 
         try {
             if (element.type === 'output' || element.type === 'tag') {
@@ -126,10 +129,19 @@ export class DebugEngine {
             this.state.output += `[ERROR line ${element.line}: ${err.message}]`;
         }
 
+        const endIndex = this.state.output.length;
+        if (endIndex > startIndex) {
+            this.outputMap.push({ startIndex, endIndex, line: element.line });
+        }
+
         this.state.currentElement++;
         this.updateWatches();
 
         const completed = this.state.currentElement >= elements.length;
+        if (!completed) {
+            this.state.currentLine = elements[this.state.currentElement].line;
+        }
+
         return this.makeResult(completed);
     }
 
@@ -206,14 +218,18 @@ export class DebugEngine {
         return this.parser.evaluateExpression(expression, this.buildContext());
     }
 
-    validateOutput(format: string): { isValid: boolean; errorMessage?: string } {
-        const output = this.state.output.trim();
+    validateOutput(format: string): { isValid: boolean; errorMessage?: string; sourceLineNumber?: number } {
+        const output = this.state.output;
         try {
             if (format === 'json') {
-                JSON.parse(output);
+                let cleanedOutput = output
+                    .replace(/,(\s*[\]}])/g, ' $1') // trailing commas replaced by space, preserving length and newlines
+                    .replace(/:\s*(?=,)/g, m => m + 'null') // empty value before comma, insert null, preserve newlines
+                    .replace(/:\s*(?=})/g, m => m + 'null'); // empty value before }, insert null, preserve newlines
+                JSON.parse(cleanedOutput);
             } else if (format === 'xml') {
                 // Simple XML check
-                if (!output.startsWith('<')) { throw new Error('Not valid XML — does not start with <'); }
+                if (!output.trim().startsWith('<')) { throw new Error('Not valid XML — does not start with <'); }
             } else if (format === 'csv') {
                 if (!output.includes(',') && !output.includes('\n')) {
                     throw new Error('Content does not appear to be CSV');
@@ -221,7 +237,39 @@ export class DebugEngine {
             }
             return { isValid: true };
         } catch (e: any) {
-            return { isValid: false, errorMessage: e.message };
+            let sourceLineNumber: number | undefined;
+            const lineMatch = e.message.match(/line (\d+)/i);
+            let charIndex = -1;
+            
+            if (lineMatch) {
+                const outLine = parseInt(lineMatch[1], 10);
+                let currentLine = 1;
+                for (let i = 0; i < output.length; i++) {
+                    if (currentLine === outLine) {
+                        charIndex = i;
+                        break;
+                    }
+                    if (output[i] === '\n') currentLine++;
+                }
+            }
+            
+            if (charIndex === -1) {
+                const posMatch = e.message.match(/position (\d+)/i);
+                if (posMatch) {
+                    charIndex = parseInt(posMatch[1], 10);
+                }
+            }
+
+            if (charIndex >= 0) {
+                const segment = this.outputMap.find(s => charIndex >= s.startIndex && charIndex < s.endIndex);
+                if (segment) {
+                    sourceLineNumber = segment.line;
+                } else if (this.outputMap.length > 0) {
+                    sourceLineNumber = this.outputMap[this.outputMap.length - 1].line;
+                }
+            }
+
+            return { isValid: false, errorMessage: e.message, sourceLineNumber };
         }
     }
 
@@ -307,6 +355,7 @@ export class DebugEngine {
         this.inputDataContent = '';
         this.scopeStack = ['root'];
         this.previousOutput = '';
+        this.outputMap = [];
         this.lastReloadArgs = null;
     }
 

@@ -83,10 +83,18 @@ html, body { height:100%; font-family:var(--font-ui); background:var(--bg); colo
 button { font-family:var(--font-ui); cursor:pointer; border:none; outline:none; transition:all var(--transition); }
 input, textarea, select { font-family:var(--font-mono); background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 10px; outline:none; transition:border var(--transition); }
 input:focus, textarea:focus, select:focus { border-color:var(--accent); }
-::-webkit-scrollbar { width:8px; height:8px; }
-::-webkit-scrollbar-track { background:var(--bg); }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-::-webkit-scrollbar-thumb:hover { background:var(--border-light); }
+/* ── Hide all scrollbars but keep scroll functionality ── */
+
+/* Firefox */
+* {
+  scrollbar-width: none;        /* hides scrollbar */
+  -ms-overflow-style: none;     /* IE/Edge legacy */
+}
+
+/* Chrome, Safari, Edge */
+*::-webkit-scrollbar {
+  display: none;
+}
 #app { display:flex; flex-direction:column; height:100vh; }
 #toolbar { display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--bg-surface); border-bottom:1px solid var(--border); flex-shrink:0; z-index:10; }
 .toolbar-group { display:flex; gap:4px; align-items:center; }
@@ -108,7 +116,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .panel { display:flex; flex-direction:column; border:1px solid var(--border); overflow:hidden; background:var(--bg-surface); }
 .panel-header { display:flex; align-items:center; padding:6px 12px; background:var(--bg-panel); border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0; gap:8px; }
 .panel-header .badge { font-size:10px; padding:1px 6px; border-radius:8px; background:var(--accent-bg); color:var(--accent); }
-.panel-body { flex:1; overflow:auto; position:relative; }
+.panel-body { flex:1; overflow:hidden; position:relative; display:flex; flex-direction:column; }
 #template-panel .panel-body { font-family:var(--font-mono); font-size:13px; line-height:1.7; padding:0; }
 .template-line { display:flex; min-height:22px; padding-right:12px; }
 .template-line:hover { background:var(--bg-hover); }
@@ -126,6 +134,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .line-content .tok-tag { color:var(--purple); }
 .line-content .tok-comment { color:var(--text-muted); font-style:italic; }
 #vars-panel .panel-body { padding:0; }
+#vars-body { overflow:auto; flex: 1; }
 .var-filter { padding:6px 8px; border-bottom:1px solid var(--border); }
 .var-filter input { width:100%; font-size:12px; padding:4px 8px; }
 .var-table { width:100%; border-collapse:collapse; font-size:12px; }
@@ -146,7 +155,8 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .var-detail pre { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); white-space:pre-wrap; word-break:break-all; max-height:200px; overflow:auto; }
 .var-detail .origin-info { margin-top:6px; color:var(--text-muted); font-size:11px; }
 .var-detail .origin-info span { color:var(--green); }
-#output-panel .panel-body { font-family:var(--font-mono); font-size:13px; padding:10px 14px; white-space:pre-wrap; word-break:break-word; }
+#output-panel .panel-body { font-family:var(--font-mono); font-size:13px; padding:0; }
+#output-body { padding:10px 14px; white-space:pre-wrap; word-break:break-word; overflow:auto; flex:1; }
 .scope-breadcrumb { display:flex; gap:4px; align-items:center; padding:4px 12px; font-size:11px; color:var(--text-muted); border-bottom:1px solid var(--border); background:var(--bg-panel); flex-shrink:0; flex-wrap:wrap; }
 .scope-breadcrumb span { padding:1px 6px; border-radius:8px; background:var(--accent-bg); color:var(--accent); font-size:10px; }
 .scope-breadcrumb .sep { background:none; color:var(--text-muted); font-size:10px; }
@@ -203,7 +213,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 @keyframes copySuccess { 0%{transform:scale(1)} 50%{transform:scale(1.1)} 100%{transform:scale(1)} }
 .copy-success { animation:copySuccess 0.3s ease; }
 .hidden { display: none !important; }
-.editor-area { width:100%; height:100%; border:none; resize:none; background:var(--bg); color:var(--text); font-family:var(--font-mono); font-size:13px; line-height:1.6; padding:12px; outline:none; tab-size:4; }
+.editor-area { width:100%; height:100%; border:none; resize:none; background:var(--bg); color:var(--text); font-family:var(--font-mono); font-size:13px; line-height:1.6; padding:12px; outline:none; tab-size:4; display:block; }
 .editor-area:focus { background:var(--bg-surface); }
 .btn-edit-active { background:var(--accent-bg); color:var(--accent); border-color:var(--accent); }
 .resizer-v { width:4px; cursor:col-resize; background:transparent; flex-shrink:0; z-index:10; transition:background 0.2s; }
@@ -689,11 +699,33 @@ async function evalExpr() {
 }
 
 async function validateOutput() {
-  if (!state||!state.isLoaded) return;
-  const format=document.getElementById('validate-format').value;
-  const result=await api('POST','/api/validate',{format});
-  if (result.isValid) { showToast('Output is valid ' + format.toUpperCase(),'success'); }
-  else { showToast(result.errorMessage||'Validation failed','error','Validation Failed',10000); }
+  if (!state || !state.isLoaded) return;
+  const format = document.getElementById('validate-format').value;
+  try {
+    const result = await api('POST', '/api/validate', { format });
+    if (result.error) {
+      showToast(result.error, 'error', 'Validation Error');
+      return;
+    }
+    if (result.isValid) {
+      showToast(\`Output is valid \${format.toUpperCase()}\`, 'success');
+    } else {
+      let msg = result.errorMessage;
+      if (result.sourceLineNumber) {
+        msg += '\\n\\nIssue was likely introduced at template line: ' + result.sourceLineNumber;
+        const el = document.querySelector(\`.template-line[data-line="\${result.sourceLineNumber}"]\`);
+        if (el) {
+          el.scrollIntoView({ block:'center', behavior:'smooth' });
+          el.style.transition = 'background-color 0.3s';
+          el.style.backgroundColor = 'rgba(255, 75, 75, 0.4)';
+          setTimeout(() => el.style.backgroundColor = '', 8000);
+        }
+      }
+      showToast(msg, 'error', 'Validation Failed', 10000);
+    }
+  } catch(err) {
+    showToast(err.message, 'error', 'Failed to validate');
+  }
 }
 
 async function beautifyInput() {
@@ -718,7 +750,10 @@ function detectFormat(s) {
 }
 
 function beautifyContent(content, format) {
-  if (format==='json') { return JSON.stringify(JSON.parse(content),null,2); }
+  if (format==='json') { 
+    let cleaned = content.replace(/,\s*([\]}])/g, '$1').replace(/:\s*,/g, ': null,').replace(/:\s*}/g, ': null}');
+    return JSON.stringify(JSON.parse(cleaned),null,2); 
+  }
   if (format==='xml') { const d=new DOMParser().parseFromString(content,'text/xml'); if(d.querySelector('parsererror')) throw new Error('Invalid XML'); return fmtXml(d.documentElement,0); }
   return content;
 }
