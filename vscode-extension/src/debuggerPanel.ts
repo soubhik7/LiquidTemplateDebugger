@@ -155,6 +155,10 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
 .var-detail pre { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); white-space:pre-wrap; word-break:break-all; max-height:200px; overflow:auto; }
 .var-detail .origin-info { margin-top:6px; color:var(--text-muted); font-size:11px; }
 .var-detail .origin-info span { color:var(--green); }
+.transformation { margin-top:4px; padding:6px; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:11px; }
+.tf-type { color:var(--magenta); font-weight:600; }
+.tf-before { color:var(--red); text-decoration:line-through; }
+.tf-after { color:var(--green); font-weight:600; }
 #output-panel .panel-body { font-family:var(--font-mono); font-size:13px; padding:0; }
 #output-body { padding:10px 14px; white-space:pre-wrap; word-break:break-word; overflow:auto; flex:1; }
 .scope-breadcrumb { display:flex; gap:4px; align-items:center; padding:4px 12px; font-size:11px; color:var(--text-muted); border-bottom:1px solid var(--border); background:var(--bg-panel); flex-shrink:0; flex-wrap:wrap; }
@@ -545,24 +549,51 @@ function hideTooltip() { document.getElementById('tooltip').style.display = 'non
 function renderVariables() {
   const body = document.getElementById('vars-body');
   if (!state || !state.isLoaded || !state.state || !state.state.variables.length) {
-    body.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>No variables in scope</p></div>'; return;
+    body.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>No variables in scope</p></div>';
+    return;
   }
   const filter = document.getElementById('var-search').value.toLowerCase();
   let vars = state.state.variables;
   if (filter) vars = vars.filter(v => v.name.toLowerCase().includes(filter) || (v.currentValue||'').toLowerCase().includes(filter));
+
   let html = '<table class="var-table"><thead><tr><th>Name</th><th>Scope</th><th>Value</th><th>Type</th></tr></thead><tbody>';
   vars.forEach(v => {
-    const bc = 'scope-' + v.scopeTag;
+    const badgeClass = 'scope-' + (v.scopeTag || '');
     html += '<tr onclick="toggleVarExpand(\\'' + v.name + '\\')">';
     html += '<td class="var-name">' + escapeHtml(v.name) + '</td>';
-    html += '<td><span class="scope-badge ' + bc + '">' + escapeHtml(v.scopeTag||'').toUpperCase() + '</span></td>';
-    html += '<td class="var-value" title="' + escapeHtml(v.currentValue||'') + '">' + escapeHtml(truncate(v.currentValue||'', 50)) + '</td>';
-    html += '<td style="color:var(--text-muted);font-size:11px;">' + escapeHtml(v.typeName||'') + '</td>';
+    html += '<td><span class="scope-badge ' + badgeClass + '">' + escapeHtml(v.scopeTag || '').toUpperCase() + '</span></td>';
+    html += '<td class="var-value" title="' + escapeHtml(v.currentValue || '') + '">' + escapeHtml(truncate(v.currentValue || '', 50)) + '</td>';
+    html += '<td style="color:var(--text-muted);font-size:11px;">' + escapeHtml(v.typeName || '') + '</td>';
     html += '</tr>';
     if (expandedVars.has(v.name)) {
-      html += '<tr><td colspan="4"><div class="var-detail animate-in">';
+      html += '<tr><td colspan="4">';
+      html += '<div class="var-detail animate-in">';
       html += '<h4>Value</h4><pre>' + formatRawValue(v.rawValue) + '</pre>';
-      if (v.origin) html += '<div class="origin-info">Origin: <span>' + escapeHtml(v.origin.sourcePath||'') + '</span> (' + escapeHtml(v.origin.sourceFormat||'') + ')</div>';
+      if (v.origin) { html += '<div class="origin-info">Origin: <span>' + escapeHtml(v.origin.sourcePath || '') + '</span> (' + escapeHtml(v.origin.sourceFormat || '') + ')</div>'; }
+      if (v.transformations && v.transformations.length) {
+        html += '<h4 style="margin-top:8px">Transformations</h4>';
+        v.transformations.forEach(t => {
+          html += '<div class="transformation">';
+          html += '<span class="tf-type">[' + (t.type || 'FILTER').toUpperCase() + ']</span> ';
+          html += escapeHtml(t.name || '');
+          html += '<br>';
+          html += '<span class="tf-before">' + escapeHtml(t.before ?? 'nil') + '</span>';
+          html += ' → ';
+          html += '<span class="tf-after">' + escapeHtml(t.after ?? 'nil') + '</span>';
+          html += '</div>';
+        });
+      }
+      if (v.history && v.history.length) {
+        html += '<h4 style="margin-top:8px">History</h4>';
+        v.history.forEach(h => {
+          html += '<div class="transformation">';
+          html += '<span class="tf-type">[LINE ' + h.line + ']</span><br>';
+          html += '<span class="tf-before">' + escapeHtml(h.before ?? 'nil') + '</span>';
+          html += ' → ';
+          html += '<span class="tf-after">' + escapeHtml(h.after ?? 'nil') + '</span>';
+          html += '</div>';
+        });
+      }
       html += '</div></td></tr>';
     }
   });
@@ -570,16 +601,27 @@ function renderVariables() {
   body.innerHTML = html;
 }
 
-function toggleVarExpand(name) { if (expandedVars.has(name)) expandedVars.delete(name); else expandedVars.add(name); renderVariables(); }
+function toggleVarExpand(name) {
+  if (expandedVars.has(name)) expandedVars.delete(name); else expandedVars.add(name);
+  renderVariables();
+}
 
 function formatRawValue(val, depth) {
   depth = depth || 0;
-  if (val===null||val===undefined) return 'nil';
-  if (typeof val==='string') return escapeHtml(val);
-  if (typeof val==='number'||typeof val==='boolean') return String(val);
-  const i2='  '.repeat(depth+1), i1='  '.repeat(depth);
-  if (Array.isArray(val)) { if (!val.length) return '[]'; return '[\\n'+val.map(v=>i2+formatRawValue(v,depth+1)).join(',\\n')+'\\n'+i1+']'; }
-  if (typeof val==='object') { const k=Object.keys(val); if (!k.length) return '{}'; return '{\\n'+k.map(k=>i2+escapeHtml(k)+': '+formatRawValue(val[k],depth+1)).join(',\\n')+'\\n'+i1+'}'; }
+  if (val === null || val === undefined) return 'nil';
+  if (typeof val === 'string') return escapeHtml(val);
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  const indent = '  '.repeat(depth);
+  const indent2 = '  '.repeat(depth + 1);
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '[]';
+    return '[\\n' + val.map((v,i) => indent2 + formatRawValue(v, depth+1)).join(',\\n') + '\\n' + indent + ']';
+  }
+  if (typeof val === 'object') {
+    const keys = Object.keys(val);
+    if (keys.length === 0) return '{}';
+    return '{\\n' + keys.map(k => indent2 + escapeHtml(k) + ': ' + formatRawValue(val[k], depth+1)).join(',\\n') + '\\n' + indent + '}';
+  }
   return escapeHtml(String(val));
 }
 

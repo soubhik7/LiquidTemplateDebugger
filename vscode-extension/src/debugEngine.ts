@@ -380,10 +380,11 @@ export class DebugEngine {
     }
 
     private async syncVariablesAfterTag(raw: string): Promise<void> {
-        const assignMatch = raw.match(/\{%-?\s*assign\s+(\w+)\s*=/);
+        const assignMatch = raw.match(/\{%-?\s*assign\s+(\w+)\s*=\s*(.*?)\s*-?%\}/);
         if (assignMatch) {
             const varName = assignMatch[1];
-            const val = await this.parser.evaluateExpression(varName, this.buildContext());
+            const expr = assignMatch[2].trim();
+            const val = await this.parser.evaluateExpression(expr, this.buildContext());
             if (val !== undefined && val !== null) { this.trackVariable(varName, val, 'assign'); }
         }
 
