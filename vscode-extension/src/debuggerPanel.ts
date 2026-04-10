@@ -339,7 +339,7 @@ input:focus, textarea:focus, select:focus { border-color:var(--accent); }
                 <input type="text" id="watch-input" placeholder="Expression to watch..." onkeydown="if(event.key==='Enter')addWatch()">
                 <button class="btn" onclick="addWatch()">+ Add</button>
               </div>
-              <ul class="wb-list" id="watch-list"></ul>
+              <div class="wb-list" id="watch-list" style="overflow-y:auto; flex:1"></div>
             </div>
             <div class="wb-section" id="sec-breakpoints">
               <ul class="wb-list" id="bp-list"></ul>
@@ -418,6 +418,7 @@ window.addEventListener('message', ev => {
 // ── Everything below is identical to the web UI ───────────────────────────────
 let state = null;
 let expandedVars = new Set();
+let expandedWatches = new Set();
 
 function initTheme() {
   const saved = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
@@ -578,14 +579,22 @@ function renderVariables() {
       if (v.origin) { html += '<div class="origin-info">Origin: <span>' + escapeHtml(v.origin.sourcePath || '') + '</span> (' + escapeHtml(v.origin.sourceFormat || '') + ')</div>'; }
       if (v.transformations && v.transformations.length) {
         html += '<h4 style="margin-top:8px">Transformations</h4>';
-        v.transformations.forEach(t => {
+        v.transformations.forEach((t, index) => {
           html += '<div class="transformation">';
-          html += '<span class="tf-type">[' + (t.type || 'FILTER').toUpperCase() + ']</span> ';
-          html += escapeHtml(t.name || '');
-          html += '<br>';
-          html += '<span class="tf-before">' + escapeHtml(String(t.before ?? 'nil')) + '</span>';
-          html += ' → ';
-          html += '<span class="tf-after">' + escapeHtml(String(t.after ?? 'nil')) + '</span>';
+          if (t.operator && t.operator !== '') {
+            const leftVarName = index === 0 ? escapeHtml(t.baseExpr || 'value') : 'result';
+            html += '<div style="color:var(--accent);font-weight:600;margin-bottom:4px;font-family:var(--font-mono);font-size:12px;">' + escapeHtml(v.name) + ' = ' + leftVarName + ' ' + t.operator + ' ' + escapeHtml(t.rightVar || '') + '</div>';
+            html += '<span class="tf-before" style="text-decoration:none;">' + escapeHtml(String(t.before ?? 'nil')) + ' ' + t.operator + ' ' + escapeHtml(String(t.rightValue ?? 'nil')) + '</span>';
+            html += ' → ';
+            html += '<span class="tf-after">' + escapeHtml(String(t.after ?? 'nil')) + '</span>';
+          } else {
+            html += '<span class="tf-type">[' + (t.type || 'FILTER').toUpperCase() + ']</span> ';
+            html += escapeHtml(t.name || '');
+            html += '<br>';
+            html += '<span class="tf-before">' + escapeHtml(String(t.before ?? 'nil')) + '</span>';
+            html += ' → ';
+            html += '<span class="tf-after">' + escapeHtml(String(t.after ?? 'nil')) + '</span>';
+          }
           html += '</div>';
         });
       }
@@ -659,12 +668,54 @@ function switchWBTab(tab) {
 
 function renderWatches() {
   const list = document.getElementById('watch-list');
-  if (!state || !state.watches || !state.watches.length) { list.innerHTML = '<li style="color:var(--text-muted);justify-content:center;">No watches</li>'; return; }
-  list.innerHTML = state.watches.map(w =>
-    '<li><span class="wb-expr" title="'+escapeHtml(w.expression)+'">'+escapeHtml(w.displayExpression||w.expression)+'</span>'
-    +'<span class="wb-val '+(w.hasChanged?'wb-changed':'')+'">'+escapeHtml(w.currentValue||'nil')+' <span style="color:var(--text-muted);font-size:10px;">('+escapeHtml(w.typeName||'')+')</span></span>'
-    +'<span class="wb-remove" onclick="removeWatch('+w.id+')">✕</span></li>'
-  ).join('');
+  if (!state || !state.watches || !state.watches.length) { 
+      list.innerHTML = '<div style="color:var(--text-muted);display:flex;justify-content:center;padding:12px;">No watches</div>'; 
+      return; 
+  }
+  let html = '<table class="var-table" style="width:100%"><tbody>';
+  state.watches.forEach(w => {
+      html += '<tr onclick="toggleWatchExpand(' + w.id + ')">';
+      html += '<td class="var-name" style="width:40%">' + escapeHtml(w.displayExpression || w.expression) + '</td>';
+      html += '<td class="var-value ' + (w.hasChanged ? 'wb-changed' : '') + '" style="width:40%" title="' + escapeHtml(w.currentValue || 'nil') + '">' + escapeHtml(truncate(w.currentValue || 'nil', 50)) + '</td>';
+      html += '<td style="color:var(--text-muted);font-size:11px;width:15%">' + escapeHtml(w.typeName || '') + '</td>';
+      html += '<td style="width:5%;text-align:right;"><span class="wb-remove" onclick="event.stopPropagation(); removeWatch(' + w.id + ')">✕</span></td>';
+      html += '</tr>';
+
+      if (expandedWatches.has(w.id)) {
+          html += '<tr><td colspan="4">';
+          html += '<div class="var-detail animate-in">';
+          html += '<h4>Value</h4><pre>' + formatRawValue(w.rawValue) + '</pre>';
+          if (w.transformations && w.transformations.length) {
+              html += '<h4 style="margin-top:8px">Transformations</h4>';
+              w.transformations.forEach((t, index) => {
+                  html += '<div class="transformation">';
+                  if (t.operator && t.operator !== '') {
+                      const leftVarName = index === 0 ? escapeHtml(t.baseExpr || 'value') : 'result';
+                      html += '<div style="color:var(--accent);font-weight:600;margin-bottom:4px;font-family:var(--font-mono);font-size:12px;">' + escapeHtml(w.expression) + ' = ' + leftVarName + ' ' + t.operator + ' ' + escapeHtml(t.rightVar || '') + '</div>';
+                      html += '<span class="tf-before" style="text-decoration:none;">' + escapeHtml(String(t.before ?? 'nil')) + ' ' + t.operator + ' ' + escapeHtml(String(t.rightValue ?? 'nil')) + '</span>';
+                      html += ' → ';
+                      html += '<span class="tf-after">' + escapeHtml(String(t.after ?? 'nil')) + '</span>';
+                  } else {
+                      html += '<span class="tf-type">[' + (t.type || 'FILTER').toUpperCase() + ']</span> ';
+                      html += escapeHtml(t.name || '');
+                      html += '<br>';
+                      html += '<span class="tf-before">' + escapeHtml(String(t.before ?? 'nil')) + '</span>';
+                      html += ' → ';
+                      html += '<span class="tf-after">' + escapeHtml(String(t.after ?? 'nil')) + '</span>';
+                  }
+                  html += '</div>';
+              });
+          }
+          html += '</div></td></tr>';
+      }
+  });
+  html += '</tbody></table>';
+  list.innerHTML = html;
+}
+
+function toggleWatchExpand(id) {
+  if (expandedWatches.has(id)) expandedWatches.delete(id); else expandedWatches.add(id);
+  renderWatches();
 }
 
 function renderBreakpoints() {
@@ -705,12 +756,12 @@ async function applyInPlaceEdits() {
   document.getElementById('template-view').classList.remove('hidden'); document.getElementById('template-editor').classList.add('hidden');
   document.getElementById('btn-edit-tpl').innerHTML='✎ Edit'; document.getElementById('btn-edit-tpl').classList.remove('btn-edit-active');
   document.getElementById('data-editor').readOnly=true; document.getElementById('btn-edit-data').innerHTML='✎ Edit'; document.getElementById('btn-edit-data').classList.remove('btn-edit-active');
-  expandedVars.clear(); applyState(s); showToast('Changes applied and debugging restarted','success');
+  expandedVars.clear(); expandedWatches.clear(); applyState(s); showToast('Changes applied and debugging restarted','success');
 }
 
 async function doStep(action) { const s = await api('POST','/api/step',{action}); applyState(s); }
 
-async function doReset() { const s = await api('POST','/api/reset'); expandedVars.clear(); applyState(s); }
+async function doReset() { const s = await api('POST','/api/reset'); expandedVars.clear(); expandedWatches.clear(); applyState(s); }
 
 async function toggleBP(line) {
   if (!state || !state.isLoaded) return;
@@ -869,12 +920,12 @@ async function loadFromModal() {
   if (!tpl||!data) { showToast('Please provide both template and data','error'); return; }
   const s=await api('POST','/api/load',{templateContent:tpl,dataContent:data,format});
   if (s.error) { showToast(s.error,'error','Load Failed'); return; }
-  expandedVars.clear(); hideLoadModal(); applyState(s);
+  expandedVars.clear(); expandedWatches.clear(); hideLoadModal(); applyState(s);
 }
 
 async function loadSample() {
   const s=await api('POST','/api/load-sample');
-  if (s && !s.error) { expandedVars.clear(); hideLoadModal(); applyState(s); }
+  if (s && !s.error) { expandedVars.clear(); expandedWatches.clear(); hideLoadModal(); applyState(s); }
 }
 
 document.addEventListener('keydown', e => {

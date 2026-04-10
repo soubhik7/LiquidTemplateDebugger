@@ -170,7 +170,7 @@ export class DebugEngine {
         }
 
         this.state.currentElement++;
-        this.updateWatches();
+        await this.updateWatches();
 
         const completed = this.state.currentElement >= elements.length;
         if (!completed) {
@@ -242,12 +242,12 @@ export class DebugEngine {
 
     // ── Watches ───────────────────────────────────────────────────────────────
 
-    addWatch(expression: string): WatchExpression {
+    async addWatch(expression: string): Promise<WatchExpression> {
         const existing = this.state.watches.find(w => w.expression === expression);
         if (existing) { return existing; }
         const watch: WatchExpression = { id: Date.now(), expression, value: null };
         this.state.watches.push(watch);
-        this.refreshWatch(watch);
+        await this.refreshWatch(watch);
         return watch;
     }
 
@@ -355,9 +355,12 @@ export class DebugEngine {
             expression: w.expression,
             displayExpression: w.expression,
             currentValue: this.fmtValue(w.value),
+            rawValue: w.value,
             typeName: this.typeOf(w.value),
             hasChanged: false,
-            error: w.error
+            error: w.error,
+            transformations: w.transformations || [],
+            scopeTag: 'WATCH'
         }));
 
         const breakpoints = this.state.breakpoints.map(bp => ({
@@ -489,14 +492,90 @@ export class DebugEngine {
         return path.split('.').reduce((obj, key) => obj?.[key], ctx);
     }
 
-    private updateWatches(): void {
-        for (const w of this.state.watches) { this.refreshWatch(w); }
+    private findAliasExpressionInTemplate(alias: string): string | null {
+        if (!this.parsedTemplate) return null;
+        const elements = this.parsedTemplate.elements;
+        
+        // Support nested paths like pricing.unitPrice by focusing on the leaf name
+        const parts = alias.split('.');
+        const leaf = parts[parts.length - 1];
+        const escapedLeaf = leaf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Generic label detection:
+        // Matches the leaf name as a distinct word at the end of the literal snippet,
+        // followed by any punctuation or separators (: > = , etc).
+        const regex = new RegExp(`(?:^|[^a-zA-Z0-9_])${escapedLeaf}[^a-zA-Z0-9_]*$`, 'i');
+
+        for (let i = 0; i < elements.length - 1; i++) {
+            const el = elements[i];
+            if (el.type === 'literal') {
+                const text = el.content.trimEnd();
+                if (regex.test(text)) {
+                    // Check parent context for nested paths if it's a multipart alias
+                    if (parts.length > 1) {
+                        const parent = parts[parts.length - 2];
+                        const escapedParent = parent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const parentRegex = new RegExp(`(?:^|[^a-zA-Z0-9_])${escapedParent}(?:$|[^a-zA-Z0-9_])`, 'i');
+                        
+                        let foundParent = false;
+                        // Scan back a few elements to see if parent is mentioned
+                        for (let j = Math.max(0, i - 5); j <= i; j++) {
+                            if (elements[j].type === 'literal' && parentRegex.test(elements[j].content)) {
+                                foundParent = true;
+                                break;
+                            }
+                        }
+                        if (!foundParent) continue;
+                    }
+
+                    const nextEl = elements[i + 1];
+                    if (nextEl.type === 'output') {
+                        return nextEl.content.trim();
+                    }
+                }
+            }
+        }
+        return null;
     }
 
-    private refreshWatch(watch: WatchExpression): void {
-        this.parser.evaluateExpression(watch.expression, this.buildContext())
-            .then(v => { watch.value = v; watch.error = undefined; })
-            .catch((e: any) => { watch.value = null; watch.error = e.message; });
+    private async updateWatches(): Promise<void> {
+        for (const w of this.state.watches) { await this.refreshWatch(w); }
+    }
+
+    private async refreshWatch(watch: WatchExpression): Promise<void> {
+        try {
+            const context = this.buildContext();
+            
+            // Try evaluating directly as a variable or expression first
+            let value = await this.parser.evaluateExpression(watch.expression, context);
+            let exprToAnalyze = watch.expression;
+
+            // If it evaluates to something that looks like an undefined variable (null/nil in Liquid),
+            // try to find if it refers to an output field in the template.
+            if (value === null || value === undefined) {
+                const aliasedExpr = this.findAliasExpressionInTemplate(watch.expression);
+                if (aliasedExpr) {
+                    exprToAnalyze = aliasedExpr;
+                    value = await this.parser.evaluateExpression(aliasedExpr, context);
+                }
+            }
+
+            watch.value = value;
+            watch.error = undefined;
+
+            // Pull transformations from tracked variables if the watch is a simple variable name
+            const trackedVar = this.state.variables.get(watch.expression);
+            if (trackedVar && !watch.expression.includes('|')) {
+                watch.transformations = trackedVar.transformations || [];
+            } else {
+                // Otherwise extract math transformations from the actual expression being evaluated
+                watch.transformations = await this.extractTransformationsFromExpression(exprToAnalyze, context);
+            }
+        } catch (e: any) {
+            watch.value = null;
+            watch.error = e.message;
+            watch.transformations = [];
+        }
     }
 
     private makeResult(completed: boolean): StepResult {
@@ -782,9 +861,38 @@ export class DebugEngine {
             currentExpr += ` | ${filterStr}`;
             const nextValue = await this.parser.evaluateExpression(currentExpr, context);
             
+            let operator = '';
+            let rightVar = '';
+            let rightValue: any = undefined;
+            
+            const filterMatch = filterStr.match(/^(\w+)(?:\s*:\s*(.+))?$/);
+            if (filterMatch) {
+                const name = filterMatch[1].toLowerCase();
+                const arg = filterMatch[2] ? filterMatch[2].trim() : '';
+                
+                if (name === 'plus') operator = '+';
+                else if (name === 'minus') operator = '-';
+                else if (name === 'times') operator = '*';
+                else if (name === 'dividedby' || name === 'divided_by') operator = '/';
+                else if (name === 'modulo') operator = '%';
+                
+                if (arg) {
+                    rightVar = arg;
+                    try {
+                        rightValue = await this.parser.evaluateExpression(arg, context);
+                    } catch {
+                        rightValue = arg;
+                    }
+                }
+            }
+
             transformations.push({
                 type: 'FILTER',
                 name: filterStr,
+                baseExpr: i === 1 ? baseExpr : '',
+                operator: operator,
+                rightVar: rightVar,
+                rightValue: rightValue,
                 before: currentValue,
                 after: nextValue
             });

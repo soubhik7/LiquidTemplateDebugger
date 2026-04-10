@@ -165,7 +165,7 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
 
     // POST /api/watch  { expression }
     if (POST && urlPath === '/api/watch') {
-        const w = engine.addWatch(body.expression);
+        const w = await engine.addWatch(body.expression);
         return { id: w.id };
     }
 

@@ -41,6 +41,7 @@ export interface WatchExpression {
     expression: string;
     value: any;
     error?: string;
+    transformations?: any[];
 }
 
 export interface TemplateElement {
@@ -80,8 +81,14 @@ export interface SnapshotVariable {
 export interface SnapshotWatch {
     id: number;
     expression: string;
-    value: string;
+    displayExpression?: string;
+    currentValue: string;
+    rawValue?: any;
+    typeName?: string;
+    scopeTag?: string;
     error?: string;
+    hasChanged?: boolean;
+    transformations?: any[];
 }
 
 export interface SnapshotBreakpoint {
