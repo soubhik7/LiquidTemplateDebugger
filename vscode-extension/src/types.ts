@@ -18,6 +18,8 @@ export interface TrackedVariable {
     type: string;
     scope: string;   // 'global' | 'local' | 'loop' | 'capture'
     history: VariableChange[];
+    transformations?: any[];
+    loopItems?: any[];
 }
 
 export interface VariableChange {

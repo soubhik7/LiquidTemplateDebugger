@@ -324,14 +324,29 @@ export class DebugEngine {
 
         const variables = [];
         for (const [name, v] of this.state.variables) {
+            let loopState = undefined;
+            if (v.scope === 'for') {
+                loopState = this.forLoopStack.find(s => s.variableName === name);
+            }
+            
+            let rawValueToSerialize = v.value;
+            if (v.scope === 'for' && v.loopItems) {
+                rawValueToSerialize = {
+                    current_item: v.value,
+                    index: loopState ? loopState.currentIndex : -1,
+                    total_items: v.loopItems.length,
+                    all_loop_objects: v.loopItems
+                };
+            }
+
             variables.push({
                 name,
                 scopeTag: v.scope,
                 currentValue: this.fmtValue(v.value),
                 typeName: this.typeOf(v.value),
-                rawValue: this.toSerializable(v.value),
+                rawValue: this.toSerializable(rawValueToSerialize),
                 origin: { sourcePath: this.inputDataContent.length < 5000 ? v.scope : v.scope, sourceFormat: this.state.format },
-                transformations: []
+                transformations: v.transformations || []
             });
         }
 
@@ -407,11 +422,13 @@ export class DebugEngine {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private trackVariable(name: string, value: any, scope: string): void {
+    private trackVariable(name: string, value: any, scope: string, transformations?: any[], loopItems?: any[]): void {
         const existing = this.state.variables.get(name);
         const variable: TrackedVariable = {
             name, value, type: this.typeOf(value), scope,
-            history: existing ? [...existing.history] : []
+            history: existing ? [...existing.history] : [],
+            transformations: transformations || (existing ? existing.transformations : []),
+            loopItems: loopItems || (existing ? existing.loopItems : undefined)
         };
         if (existing && JSON.stringify(existing.value) !== JSON.stringify(value)) {
             variable.history.push({ line: this.state.currentLine, oldValue: existing.value, newValue: value });
@@ -431,7 +448,8 @@ export class DebugEngine {
             const varName = assignMatch[1];
             const expr = assignMatch[2].trim();
             const val = await this.parser.evaluateExpression(expr, this.buildContext());
-            if (val !== undefined && val !== null) { this.trackVariable(varName, val, 'assign'); }
+            const transformations = await this.extractTransformationsFromExpression(expr, this.buildContext());
+            if (val !== undefined && val !== null) { this.trackVariable(varName, val, 'assign', transformations); }
         }
 
         const captureMatch = raw.match(/\{%-?\s*capture\s+(\w+)\s*-?%\}([\s\S]*?)\{%-?\s*endcapture/);
@@ -675,7 +693,8 @@ export class DebugEngine {
         
         try {
             const rendered = await this.liquid.parseAndRender(innerRaw, context);
-            this.trackVariable(varName, rendered.trim(), 'capture');
+            const transformations = await this.extractTransformationsFromCapture(innerRaw, context);
+            this.trackVariable(varName, rendered.trim(), 'capture', transformations);
         } catch (e: any) {
             this.state.output += `[ERROR block rendering: ${e.message}]`;
         }
@@ -733,7 +752,7 @@ export class DebugEngine {
 
     private setForLoopVariable(loopState: ForLoopState) {
         const item = loopState.items[loopState.currentIndex];
-        this.trackVariable(loopState.variableName, item, 'for');
+        this.trackVariable(loopState.variableName, item, 'for', undefined, loopState.items);
     }
 
     private async executeForEnd(line: number) {
@@ -748,6 +767,44 @@ export class DebugEngine {
         } else {
             this.forLoopStack.pop();
         }
+    }
+
+    private async extractTransformationsFromExpression(expr: string, context: Record<string, any>): Promise<any[]> {
+        const parts = expr.split('|');
+        if (parts.length <= 1) return [];
+        const baseExpr = parts[0].trim();
+        const transformations: any[] = [];
+        let currentValue = await this.parser.evaluateExpression(baseExpr, context);
+        let currentExpr = baseExpr;
+
+        for (let i = 1; i < parts.length; i++) {
+            const filterStr = parts[i].trim();
+            currentExpr += ` | ${filterStr}`;
+            const nextValue = await this.parser.evaluateExpression(currentExpr, context);
+            
+            transformations.push({
+                type: 'FILTER',
+                name: filterStr,
+                before: currentValue,
+                after: nextValue
+            });
+            currentValue = nextValue;
+        }
+        return transformations;
+    }
+
+    private async extractTransformationsFromCapture(innerRaw: string, context: Record<string, any>): Promise<any[]> {
+        const transformations: any[] = [];
+        const regex = /\{\{(.*?)\}\}/g;
+        let match;
+        while ((match = regex.exec(innerRaw)) !== null) {
+            const expr = match[1];
+            if (expr.includes('|')) {
+                const tr = await this.extractTransformationsFromExpression(expr, context);
+                transformations.push(...tr);
+            }
+        }
+        return transformations;
     }
 
     private typeOf(value: any): string {

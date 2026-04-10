@@ -583,9 +583,9 @@ function renderVariables() {
           html += '<span class="tf-type">[' + (t.type || 'FILTER').toUpperCase() + ']</span> ';
           html += escapeHtml(t.name || '');
           html += '<br>';
-          html += '<span class="tf-before">' + escapeHtml(t.before ?? 'nil') + '</span>';
+          html += '<span class="tf-before">' + escapeHtml(String(t.before ?? 'nil')) + '</span>';
           html += ' → ';
-          html += '<span class="tf-after">' + escapeHtml(t.after ?? 'nil') + '</span>';
+          html += '<span class="tf-after">' + escapeHtml(String(t.after ?? 'nil')) + '</span>';
           html += '</div>';
         });
       }
@@ -594,9 +594,9 @@ function renderVariables() {
         v.history.forEach(h => {
           html += '<div class="transformation">';
           html += '<span class="tf-type">[LINE ' + h.line + ']</span><br>';
-          html += '<span class="tf-before">' + escapeHtml(h.before ?? 'nil') + '</span>';
+          html += '<span class="tf-before">' + escapeHtml(String(h.oldValue ?? h.before ?? 'nil')) + '</span>';
           html += ' → ';
-          html += '<span class="tf-after">' + escapeHtml(h.after ?? 'nil') + '</span>';
+          html += '<span class="tf-after">' + escapeHtml(String(h.newValue ?? h.after ?? 'nil')) + '</span>';
           html += '</div>';
         });
       }
