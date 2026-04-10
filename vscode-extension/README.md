@@ -1,53 +1,63 @@
-# Liquid Template Debugger for VS Code
+# 🔍 Dot Liquid Template Debugger for VS Code
 
-A powerful VS Code extension for debugging Liquid templates with step-by-step execution, variable inspection, and format transformation support.
+[![Version](https://img.shields.io/visual-studio-marketplace/v/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
 
-## Features
+**A professional-grade debugging environment for Liquid templates.** Stop guessing why your templates aren't rendering correctly—step through them line-by-line with full visibility into every variable transformation.
 
-- **Step-by-step debugging** - Execute templates line by line
-- **Variable inspection** - Deep dive into data structures
-- **Breakpoints** - Pause execution at specific lines with optional conditions
-- **Watch expressions** - Monitor values as the template executes
-- **Format transformations** - Support for JSON, XML, CSV, and text formats
-- **Azure Logic Apps compatible** - Input data wrapped in `content` property
-- **Native VS Code integration** - Uses VS Code Debug Protocol
+---
 
-## Quick Start
+## 🚀 Why Liquid Debugger?
 
-1. Install the extension
-2. Open a `.liquid` template file
-3. Press F5 or use "Run > Start Debugging"
-4. Select your input data file (JSON, XML, CSV, or text)
-5. Step through your template execution
+Debugging Liquid templates (especially complex ones for  Dot Liquid or Azure Logic Apps) can be frustrating. Standard out-of-the-box experiences offer little more than syntax highlighting.
 
-## Usage
+This extension transforms VS Code into a first-class Liquid development environment, providing:
+- **Instant Feedback**: See exactly what your template is doing as it executes.
+- **Data Traceability**: Track how filters modify your variables step-by-step.
+- **Enterprise Ready**: Built-in support for JSON, XML, and CSV data formats.
 
-### Starting a Debug Session
+---
 
-1. Open a Liquid template file
-2. Right-click in the editor and select "Liquid: Start Debugging"
-3. Choose your input data file
-4. The debugger will pause at the first line
+## ✨ Core Features
 
-### Setting Breakpoints
+### 🛠️ Line-by-Line Execution
+Execute your templates instruction by instruction. Watch the output panel build in real-time as you step through loops and conditional branches.
 
-Click in the gutter next to any line number to set a breakpoint. The debugger will pause when it reaches that line.
+### 📜 Transformation History
+> [!TIP]
+> **Unique Feature!** Most debuggers only show current values. Our engine records the history of every filter applied. See exactly how `{{ "hello" | capitalize | append: "!" }}` was derived.
 
-### Conditional Breakpoints
+### 🔴 Advanced Breakpoints
+- **Standard Breakpoints**: Pause execution on any line.
+- **Conditional Breakpoints**: Pause only when a specific Liquid expression evaluates to true (e.g., `item.price > 100`).
 
-Right-click on a breakpoint and select "Edit Breakpoint" to add a condition. The debugger will only pause when the condition evaluates to true.
+### 📊 Multi-Format Support
+Debug your templates using real-world data payloads:
+- **JSON**: Perfect for web APIs and modern applications.
+- **XML**: Native support for enterprise systems and SOAP services.
+- **CSV/Text**: Tabular and raw data processing.
 
-### Viewing Variables
+### 🌐 Azure Logic Apps Integration
+Seamlessly handle data wrapped in the Logic Apps `content` property. The debugger automatically detects and adapts to your input structure.
 
-Use the Variables panel in the Debug sidebar to inspect all variables and their values at the current execution point.
+---
 
-### Evaluating Expressions
+## 🏁 Quick Start
 
-Use the Debug Console or the debugger panel to evaluate Liquid expressions on the fly.
+1. **Install** the extension from the VS Code Marketplace.
+2. **Open** any `.liquid` template file.
+3. **Start Debugging**:
+   - Press `F5` or right-click in the editor and select **"Liquid: Start Debugging"**.
+4. **Load Data**:
+   - The Debugger Panel will appear. Click **📂 Load** to paste your JSON/XML data or drop a file.
+5. **Debug**: Use standard controls (`F10` for Step Over, `F5` for Continue) to explore your template.
 
-## Configuration
+---
 
-Create a `.vscode/launch.json` file in your workspace:
+## ⚙️ Configuration
+
+While "Start Debugging" works out of the box, you can create a `.vscode/launch.json` for persistent configurations:
 
 ```json
 {
@@ -66,38 +76,30 @@ Create a `.vscode/launch.json` file in your workspace:
 }
 ```
 
-## Supported Formats
+---
 
-- **JSON** - Standard web data format
-- **XML** - Enterprise and legacy systems
-- **CSV** - Tabular data
-- **Text** - Key-value pairs
+## 🖥️ Extension Settings
 
-## Requirements
+| Setting | Description |
+|---------|-------------|
+| `liquid-debugger.start` | Launches the interactive debugger for the current file. |
+| `liquid-debugger.loadData` | Programmatically loads a new data payload into the current session. |
+| `liquid-debugger.showDebugger` | Toggles the visibility of the specialized liquid debugger panel. |
 
-- VS Code 1.85.0 or higher
-- Node.js (bundled with extension)
+---
 
-## Extension Settings
+## 📦 Requirements
 
-This extension contributes the following settings:
+- **VS Code**: 1.85.0 or higher
+- **File Extensions**: Templates must end in `.liquid`.
 
-- `liquid-debugger.start`: Start debugging the current Liquid template
-- `liquid-debugger.loadData`: Load input data file
-- `liquid-debugger.showDebugger`: Show debugger panel
+---
 
-## Known Issues
+## 🛡️ Support & Feedback
 
-- Large templates may take longer to parse
-- Complex nested objects may require multiple expansions in the Variables panel
+Encountered a bug or have a feature request?
+- **Issues**: [Github Issues](https://github.com/soubhik1/liquid-template-debugger-pro/issues)
+- **Repository**: [Source Code](https://github.com/soubhik1/liquid-template-debugger-pro)
 
-## Release Notes
-
-### 1.0.0
-
-Initial release with core debugging features:
-- Step-by-step execution
-- Breakpoints and conditional breakpoints
-- Variable inspection
-- Format transformation support
-- Azure Logic Apps compatibility
+---
+*Developed with ❤️ for the Liquid Community.*

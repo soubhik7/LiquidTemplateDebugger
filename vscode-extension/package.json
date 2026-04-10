@@ -1,9 +1,9 @@
 {
   "name": "dot-liquid-template-debugger",
   "displayName": "Dot Liquid Template Debugger",
-  "description": "Debug and step through DotLiquid templates with real-time variable inspection and format transformations",
+  "description": "Professional dot Liquid template debugger with line-by-line execution, variable transformation history, and multi-format support (JSON, XML, CSV).",
   "icon": "images/ltdlogo.png",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "publisher": "SoubhikDevTools",
   "repository": {
     "type": "git",
@@ -26,7 +26,9 @@
     "template",
     "debugger",
     "dotliquid",
-    "shopify"
+    "azure",
+    "logicapps",
+    "transformation"
   ],
   "activationEvents": [
     "onCommand:liquid-debugger.start",
