@@ -1,18 +1,18 @@
 {
-  "name": "liquid-template-debugger-pro",
-  "displayName": "Liquid Template Debugger Pro",
-  "description": "Step-by-step debugger for Liquid templates with format transformation support",
-  "version": "1.0.5",
+  "name": "dot-liquid-template-debugger",
+  "displayName": "Dot Liquid Template Debugger",
+  "description": "Debug and step through DotLiquid templates with real-time variable inspection and format transformations",
+  "icon": "images/ltdlogo.png",
+  "version": "1.0.6",
   "publisher": "SoubhikDevTools",
-  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/liquid-template-debugger-pro.git"
+    "url": "https://github.com/soubhik1/liquid-template-debugger-pro.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/liquid-template-debugger-pro/issues"
+    "url": "https://github.com/soubhik1/liquid-template-debugger-pro/issues"
   },
-  "homepage": "https://github.com/yourusername/liquid-template-debugger-pro#readme",
+  "homepage": "https://github.com/soubhik1/liquid-template-debugger-pro#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
