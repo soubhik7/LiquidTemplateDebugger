@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <invoice generated="{{ 'now' | date: '%Y-%m-%dT%H:%M:%SZ' }}">
   <header>
-    <invoice_number>INV-{{ content.order.@id | upcase }}</invoice_number>
-    <order_status>{{ content.order.@status | upcase }}</order_status>
-    <priority_level>{{ content.order.@priority }}</priority_level>
+    <invoice_number>INV-{{ content.order.attr_id | upcase }}</invoice_number>
+    <order_status>{{ content.order.attr_status | upcase }}</order_status>
+    <priority_level>{{ content.order.attr_priority }}</priority_level>
   </header>
   
   <billing_info>
     <company_name>{{ content.order.customer.name }}</company_name>
-    <customer_type>{{ content.order.customer.@type | capitalize }}</customer_type>
+    <customer_type>{{ content.order.customer.attr_type | capitalize }}</customer_type>
     <contact_email>{{ content.order.customer.email | downcase }}</contact_email>
     <billing_address>
       <line1>{{ content.order.customer.address.street }}</line1>
@@ -17,7 +17,7 @@
     </billing_address>
     <contacts>
       {% for phone in content.order.customer.phone %}
-      <phone type="{{ phone.@type }}">{{ phone.#text }}</phone>
+      <phone type="{{ phone.attr_type }}">{{ phone.value }}</phone>
       {% endfor %}
     </contacts>
   </billing_info>
@@ -26,7 +26,7 @@
     {% assign subtotal = 0.0 %}
     {% assign total_discount = 0.0 %}
     {% for item in content.order.items.item %}
-    {% assign item_price = item.price.#text | times: 1.0 %}
+    {% assign item_price = item.price.value | times: 1.0 %}
     {% assign item_qty = item.quantity | times: 1 %}
     {% assign item_discount_pct = item.discount | times: 1 %}
     {% assign line_subtotal = item_price | times: item_qty %}
@@ -34,10 +34,10 @@
     {% assign line_total = line_subtotal | minus: line_discount %}
     {% assign subtotal = subtotal | plus: line_subtotal %}
     {% assign total_discount = total_discount | plus: line_discount %}
-    <line_item position="{{ forloop.index }}" sku="{{ item.@sku }}">
+    <line_item position="{{ forloop.index }}" sku="{{ item.attr_sku }}">
       <description>{{ item.name }}</description>
-      <category>{{ item.@category | upcase }}</category>
-      <unit_price currency="{{ item.price.@currency }}">{{ item_price }}</unit_price>
+      <category>{{ item.attr_category | upcase }}</category>
+      <unit_price currency="{{ item.price.attr_currency }}">{{ item_price }}</unit_price>
       <quantity>{{ item_qty }}</quantity>
       <subtotal>{{ line_subtotal }}</subtotal>
       {% if item_discount_pct > 0 %}
@@ -64,7 +64,7 @@
     <subtotal>{{ subtotal }}</subtotal>
     <total_discount>{{ total_discount }}</total_discount>
     {% assign shipping_cost = content.order.shipping.cost | times: 1.0 %}
-    <shipping method="{{ content.order.shipping.@method }}" carrier="{{ content.order.shipping.@carrier }}">
+    <shipping method="{{ content.order.shipping.attr_method }}" carrier="{{ content.order.shipping.attr_carrier }}">
       <cost>{{ shipping_cost }}</cost>
       <estimated_delivery_days>{{ content.order.shipping.estimated_days }}</estimated_delivery_days>
     </shipping>
@@ -73,8 +73,8 @@
   </summary>
   
   <payment>
-    <method>{{ content.order.payment.@method | replace: '_', ' ' | capitalize }}</method>
-    <status>{{ content.order.payment.@status | upcase }}</status>
+    <method>{{ content.order.payment.attr_method | replace: '_', ' ' | capitalize }}</method>
+    <status>{{ content.order.payment.attr_status | upcase }}</status>
     <authorized_amount>{{ content.order.payment.amount }}</authorized_amount>
   </payment>
   
@@ -82,9 +82,9 @@
   <order_notes>
     {% for note in content.order.notes.note %}
     <note id="{{ forloop.index }}">
-      <timestamp>{{ note.@timestamp }}</timestamp>
-      <author>{{ note.@author | capitalize }}</author>
-      <content>{{ note.#text }}</content>
+      <timestamp>{{ note.attr_timestamp }}</timestamp>
+      <author>{{ note.attr_author | capitalize }}</author>
+      <content>{{ note.value }}</content>
     </note>
     {% endfor %}
   </order_notes>
@@ -93,6 +93,6 @@
   <metadata>
     <total_items>{{ content.order.items.item.size }}</total_items>
     <has_discounts>{% if total_discount > 0 %}true{% else %}false{% endif %}</has_discounts>
-    <is_express_shipping>{% if content.order.shipping.@method == 'express' %}true{% else %}false{% endif %}</is_express_shipping>
+    <is_express_shipping>{% if content.order.shipping.attr_method == 'express' %}true{% else %}false{% endif %}</is_express_shipping>
   </metadata>
 </invoice>

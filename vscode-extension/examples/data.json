@@ -1,0 +1,14 @@
+{
+  "customer": {
+    "name": "Alice Johnson",
+    "email": "alice@example.com",
+    "tier": "gold"
+  },
+  "items": [
+    { "name": "Widget A", "price": 29.99, "quantity": 2 },
+    { "name": "Widget B", "price": 49.99, "quantity": 1 },
+    { "name": "Gadget C", "price": 15.50, "quantity": 3 }
+  ],
+  "discount_percent": 10,
+  "shipping": "express"
+}

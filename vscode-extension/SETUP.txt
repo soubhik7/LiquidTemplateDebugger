@@ -1,0 +1,97 @@
+# VS Code Extension Setup Instructions
+
+## Prerequisites
+- Node.js 20.x or higher
+- npm or yarn
+- VS Code 1.85.0 or higher
+
+## Installation Steps
+
+1. Navigate to the extension directory:
+   cd vscode-extension
+
+2. Install dependencies:
+   npm install
+
+3. Compile TypeScript:
+   npm run compile
+
+4. Test the extension:
+   - Press F5 in VS Code to open Extension Development Host
+   - Open examples/sample.liquid
+   - Press F5 again to start debugging
+   - Select examples/data.json as input data
+
+## Building for Distribution
+
+1. Install vsce globally (if not already installed):
+   npm install -g @vscode/vsce
+
+2. Package the extension:
+   npm run package
+
+3. This creates a .vsix file that can be:
+   - Installed locally: code --install-extension liquid-template-debugger-pro-1.0.0.vsix
+   - Published to VS Code Marketplace
+   - Distributed to users
+
+## Publishing to Marketplace
+
+1. Create a publisher account at https://marketplace.visualstudio.com/manage
+
+2. Get a Personal Access Token from Azure DevOps
+
+3. Login with vsce:
+   vsce login <publisher-name>
+
+4. Publish:
+   vsce publish
+
+## Project Structure
+
+vscode-extension/
+├── src/
+│   ├── extension.ts          - Extension entry point
+│   ├── debugAdapter.ts       - Debug protocol implementation
+│   ├── debugEngine.ts        - Core debugging logic
+│   ├── templateParser.ts     - Liquid template parser
+│   ├── formatConverter.ts    - Format transformation
+│   ├── debuggerPanel.ts      - Webview UI
+│   └── types.ts              - TypeScript interfaces
+├── examples/
+│   ├── sample.liquid         - Example template
+│   └── data.json             - Example data
+├── package.json              - Extension manifest
+├── tsconfig.json             - TypeScript config
+└── language-configuration.json - Liquid language support
+
+## Features Implemented
+
+✅ Step-by-step debugging
+✅ Breakpoints (including conditional)
+✅ Variable inspection
+✅ Watch expressions
+✅ Format transformations (JSON, XML, CSV, text)
+✅ Azure Logic Apps compatibility
+✅ Native VS Code Debug Protocol integration
+✅ Webview debugger panel
+✅ Liquid syntax support
+
+## Usage
+
+1. Open a .liquid file
+2. Right-click and select "Liquid: Start Debugging"
+3. Choose input data file
+4. Use debug controls:
+   - F10: Step over
+   - F5: Continue
+   - Set breakpoints by clicking in gutter
+   - View variables in Debug sidebar
+   - Evaluate expressions in Debug Console
+
+## Troubleshooting
+
+- If compilation fails: npm run clean && npm install
+- If extension doesn't load: Check VS Code version >= 1.85.0
+- If debugging doesn't start: Ensure data file path is correct
+- TypeScript errors: Run npm run compile to see detailed errors
