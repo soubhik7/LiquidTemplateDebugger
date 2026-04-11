@@ -178,7 +178,7 @@ Output:
 
 ```
   ╔══════════════════════════════════════════════╗
-  ║   DotLiquid Template Debugger               ║
+  ║   DotLiquid Template Debugger                ║
   ║   Step-by-step Liquid template execution     ║
   ╚══════════════════════════════════════════════╝
 
