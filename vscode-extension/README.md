@@ -1,13 +1,5 @@
-<div align="center">
-  <img src="https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/ltdlogo.png" alt="Dot Liquid Template Debugger Logo" width="150"/>
-  <h1>Dot Liquid Template Debugger</h1>
-  <p><strong>A professional-grade debugging environment for Liquid templates.</strong></p>
+# Dot Liquid Template Debugger
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
-
-</div>
 
 Stop guessing why your templates aren't rendering correctly. Step through them line-by-line with full visibility into every variable transformation.
 
@@ -27,17 +19,17 @@ Stop guessing why your templates aren't rendering correctly. Step through them l
 2. **Open** any `.liquid` template file.
 3. **Start Debugging**: Press `F5` or open the command palette and type **"Liquid: Start Debugging"**.
 
-   ![Command Palette Start](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-command-palette.png)
+   ![Command Palette Start](images/screenshot-command-palette.png)
 
 4. **Load Data**: The Debugger Panel will appear. Click **Load** to paste your Data.
 
-   ![Debugger Controls](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-menu-bar.png)
+   ![Debugger Controls](images/screenshot-menu-bar.png)
 
    You can easily load XML or JSON data via the data modal:
-   ![Data Loading](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-load-json.png)
+   ![Data Loading](images/screenshot-load-json.png)
 
    Not sure where to start? Just click **Load Sample** to instantly populate the debugger with sample templates and data!
-   ![Load Sample](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-load-sample.png)
+   ![Load Sample](images/screenshot-load-sample.png)
 
 5. **Debug**: Use standard controls (`F10` for Step Over, `F5` for Continue) to explore your template.
 
@@ -47,31 +39,31 @@ Stop guessing why your templates aren't rendering correctly. Step through them l
 
 ### The Debugging Environment
 
-![Full Debugger View - Light](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-full-debugger.png)
-![Full Debugger View - Dark](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-full-debugger-dark.png)
+![Full Debugger View - Light](images/screenshot-full-debugger.png)
+![Full Debugger View - Dark](images/screenshot-full-debugger-dark.png)
 _Complete overview of the template, input data, real-time output, and variable states with full Light and Dark mode support._
 
 ### Step-by-Step Execution
 
-![Breakpoint and Execution](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-breakpoint.png)
+![Breakpoint and Execution](images/screenshot-breakpoint.png)
 _Pause execution on any line and inspect variables at that exact moment._
 
 ### Variable Transformations & Evaluation
 
-![Evaluation and Watches](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-evaluation.png)
-![Variable Transformations](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-transformations.png)
+![Evaluation and Watches](images/screenshot-evaluation.png)
+![Variable Transformations](images/screenshot-transformations.png)
 _Track how filters modify your variables step-by-step and evaluate expressions on the fly._
 
 ### XML Data Support
 
-![XML Format](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-load-xml.png)
-![XML Debugging](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-xml-debugging.png)
+![XML Format](images/screenshot-load-xml.png)
+![XML Debugging](images/screenshot-xml-debugging.png)
 _First-class support for debugging complex XML payloads and evaluating their properties natively._
 
 ### Editor Utilities
 
-![Template Controls](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-template-menu.png)
-![Output Controls](https://github.com/soubhik7/LiquidTemplateDebugger/blob/main/vscode-extension/images/screenshot-output-menu.png)
+![Template Controls](images/screenshot-template-menu.png)
+![Output Controls](images/screenshot-output-menu.png)
 _Easily search, copy, format, and validate your code right inline within your active debug session._
 
 ---
@@ -107,7 +99,7 @@ Create a `.vscode/launch.json` for persistent configurations:
 
 ---
 
-## 🔒 Privacy & Data Security
+##  Privacy & Data Security
 
 Your data is your business. This extension is designed with a **Privacy-First Architecture**:
 
@@ -122,8 +114,8 @@ Your data is your business. This extension is designed with a **Privacy-First Ar
 
 Encountered a bug or have a feature request?
 
-- **Issues**: [GitHub Issues](https://github.com/soubhik1/liquid-template-debugger-pro/issues)
-- **Repository**: [Source Code](https://github.com/soubhik1/liquid-template-debugger-pro)
+- **Issues**: [GitHub Issues](https://github.com/soubhik7/LiquidTemplateDebugger/issues)
+- **Repository**: [Source Code](https://github.com/soubhik7/LiquidTemplateDebugger)
 
 ---
 
