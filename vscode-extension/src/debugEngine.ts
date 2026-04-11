@@ -56,6 +56,10 @@ export class DebugEngine {
 
     // ── Initialize from file paths (DAP / VS Code editor integration) ─────────
     async initialize(templatePath: string, dataPath: string, format: string): Promise<void> {
+        if (!templatePath || !dataPath) throw new Error('Template and Data paths are required');
+        if (!fs.existsSync(templatePath) || !fs.lstatSync(templatePath).isFile()) throw new Error('Invalid template path');
+        if (!fs.existsSync(dataPath) || !fs.lstatSync(dataPath).isFile()) throw new Error('Invalid data path');
+
         const templateContent = fs.readFileSync(templatePath, 'utf-8');
         const dataContent = fs.readFileSync(dataPath, 'utf-8');
         await this.initializeFromContent(templateContent, dataContent, format, templatePath);

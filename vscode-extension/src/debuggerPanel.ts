@@ -54,6 +54,7 @@ export class DebuggerPanel {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DotLiquid Template Debugger</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; img-src 'self' data:;">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root, [data-theme="dark"] {
@@ -465,7 +466,11 @@ function showToast(message, type = 'info', title = '', duration = 6000) {
   const toast = document.createElement('div');
   toast.className = 'toast toast-' + type + ' animate-in';
   if (!title) { title = type.charAt(0).toUpperCase() + type.slice(1); if (type==='success') title='✓ '+title; if (type==='error') title='✕ '+title; }
-  toast.innerHTML = '<div class="toast-header">' + title + '</div><div class="toast-body">' + message + '</div><div class="toast-close">×</div><div class="toast-progress" style="animation-duration:' + duration + 'ms"></div>';
+  const titleEl = document.createElement('div'); titleEl.className = 'toast-header'; titleEl.textContent = title;
+  const bodyEl = document.createElement('div'); bodyEl.className = 'toast-body'; bodyEl.textContent = message;
+  const closeEl = document.createElement('div'); closeEl.className = 'toast-close'; closeEl.textContent = '×';
+  const progressEl = document.createElement('div'); progressEl.className = 'toast-progress'; progressEl.style.animationDuration = duration + 'ms';
+  toast.appendChild(titleEl); toast.appendChild(bodyEl); toast.appendChild(closeEl); toast.appendChild(progressEl);
   container.appendChild(toast);
   const close = () => { toast.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); };
   toast.querySelector('.toast-close').onclick = close;
@@ -533,7 +538,7 @@ function renderTemplate() {
   body.querySelectorAll('.tok-output').forEach(el => { el.addEventListener('mouseenter', showExprTooltip); el.addEventListener('mouseleave', hideTooltip); });
 }
 
-function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function highlightSyntax(line) {
   line = line.replace(/(\\{\\{-?\\s*)(.*?)(\\s*-?\\}\\})/g, '<span class="tok-output" data-expr="$2">$1$2$3</span>');

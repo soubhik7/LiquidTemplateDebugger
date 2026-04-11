@@ -72,7 +72,10 @@ export class FormatConverter {
             if (eq > 0) {
                 const key = trimmed.substring(0, eq).trim();
                 const val = trimmed.substring(eq + 1).trim();
-                data[key] = this.coerce(val);
+                // Security: Block prototype pollution
+                if (key !== '__proto__' && key !== 'constructor' && key !== 'prototype') {
+                    data[key] = this.coerce(val);
+                }
             }
         }
         return data;
