@@ -857,7 +857,7 @@ async function beautifyOutput() {
 
 function detectFormat(s) {
   const t=s.trim();
-  const c=t.replace(/[\\u200B-\\u200D\\uFEFF\\u200e\\u200f\\u2028\\u2029\\u200A\\u2003]/g, ' ');
+  const c=t.replace(/[\\u00A0\\u1680\\u2000-\\u200F\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]/g, ' ');
   if ((c.startsWith('{')&&c.endsWith('}')||(c.startsWith('[')&&c.endsWith(']')))) { try{JSON.parse(c);return 'json';}catch{} }
   if (t.startsWith('<')&&t.includes('>')) return 'xml';
   if (t.includes(',')&&t.split('\\n').length>1) return 'csv';
@@ -866,7 +866,7 @@ function detectFormat(s) {
 
 function beautifyContent(content, format) {
   if (format==='json') { 
-    let sanitized = content.replace(/[\\u200B-\\u200D\\uFEFF\\u200e\\u200f\\u2028\\u2029\\u200A\\u2003]/g, ' ');
+    let sanitized = content.replace(/[\\u00A0\\u1680\\u2000-\\u200F\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]/g, ' ');
     let cleaned = sanitized.replace(/,\s*([\]}])/g, '$1').replace(/:\s*,/g, ': null,').replace(/:\s*}/g, ': null}');
     return JSON.stringify(JSON.parse(cleaned),null,2); 
   }
