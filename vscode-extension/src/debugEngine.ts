@@ -699,6 +699,12 @@ export class DebugEngine {
                 if (!this.isExecuting() || this.forLoopStack.length === 0) return;
                 const loopState = this.forLoopStack.pop()!;
                 this.state.currentElement = loopState.loopEndElementIndex;
+                this.state.variables.delete(loopState.variableName);
+                if (this.forLoopStack.length > 0) {
+                    this.setForLoopVariable(this.forLoopStack[this.forLoopStack.length - 1]);
+                } else {
+                    this.state.variables.delete('forloop');
+                }
                 break;
             }
             case 'continue': {
@@ -711,6 +717,12 @@ export class DebugEngine {
                 } else {
                     this.forLoopStack.pop();
                     this.state.currentElement = loopState.loopEndElementIndex;
+                    this.state.variables.delete(loopState.variableName);
+                    if (this.forLoopStack.length > 0) {
+                        this.setForLoopVariable(this.forLoopStack[this.forLoopStack.length - 1]);
+                    } else {
+                        this.state.variables.delete('forloop');
+                    }
                 }
                 break;
             }
@@ -835,6 +847,17 @@ export class DebugEngine {
     private setForLoopVariable(loopState: ForLoopState) {
         const item = loopState.items[loopState.currentIndex];
         this.trackVariable(loopState.variableName, item, 'for', undefined, loopState.items);
+        
+        const forloop = {
+            index: loopState.currentIndex + 1,
+            index0: loopState.currentIndex,
+            first: loopState.currentIndex === 0,
+            last: loopState.currentIndex === loopState.items.length - 1,
+            length: loopState.items.length,
+            rindex: loopState.items.length - loopState.currentIndex,
+            rindex0: loopState.items.length - loopState.currentIndex - 1
+        };
+        this.trackVariable('forloop', forloop, 'for');
     }
 
     private async executeForEnd(line: number) {
@@ -848,6 +871,12 @@ export class DebugEngine {
             this.state.currentElement = loopState.loopStartElementIndex;
         } else {
             this.forLoopStack.pop();
+            this.state.variables.delete(loopState.variableName);
+            if (this.forLoopStack.length > 0) {
+                this.setForLoopVariable(this.forLoopStack[this.forLoopStack.length - 1]);
+            } else {
+                this.state.variables.delete('forloop');
+            }
         }
     }
 
