@@ -74,10 +74,41 @@ export class TemplateParser {
         const registry = (this.liquid as any).filters;
         const impls = registry?.impls || registry || {};
 
+        // Setup custom wrappers for format translation (.NET to POSIX)
+        const originalDateImpl = impls['date'];
+        const dateWrapper = function(this: any, v: any, format: any, timezone: any) {
+            let val = v;
+            // Native JS Date doesn't cleanly support "UTC+01:00", strip "UTC" for ISO-8601 parsing
+            if (typeof val === 'string' && val.includes('UTC')) {
+                val = val.replace('UTC', ''); 
+            }
+            let fmt = format;
+            if (typeof fmt === 'string' && !fmt.includes('%')) {
+                // Convert basic .NET date format string to POSIX strftime
+                fmt = fmt.replace(/yyyy/g, '%Y')
+                         .replace(/yy/g, '%y')
+                         .replace(/MM/g, '%m')
+                         .replace(/dd/g, '%d')
+                         .replace(/HH/g, '%H')
+                         .replace(/mm/g, '%M')
+                         .replace(/ss/g, '%S');
+            }
+            return originalDateImpl.call(this, val, fmt, timezone);
+        };
+
+        // Override native date and aliases with the wrapper
+        if (originalDateImpl) {
+            this.liquid.registerFilter('date', dateWrapper);
+        }
+
         for (const [alias, original] of Object.entries(aliases)) {
             const impl = impls[original];
             if (impl) {
-                this.liquid.registerFilter(alias, impl);
+                if (original === 'date') {
+                    this.liquid.registerFilter(alias, dateWrapper);
+                } else {
+                    this.liquid.registerFilter(alias, impl);
+                }
             }
         }
     }
@@ -162,10 +193,15 @@ export class TemplateParser {
 
     async evaluateExpression(expression: string, context: any): Promise<any> {
         try {
-            const result = await this.liquid.parseAndRender(`{{ ${expression} }}`, context);
-            return this.coerce(result);
+            return await this.liquid.evalValue(expression, context);
         } catch {
-            return undefined;
+            try {
+                // Fallback for complex evaluations or filters if evalValue fails
+                const result = await this.liquid.parseAndRender(`{{ ${expression} }}`, context);
+                return this.coerce(result);
+            } catch {
+                return undefined;
+            }
         }
     }
 

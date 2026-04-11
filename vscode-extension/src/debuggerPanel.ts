@@ -440,14 +440,12 @@ function toggleTheme() {
 }
 
 async function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    try { await navigator.clipboard.writeText(text); return true; } catch {}
+  try {
+    const res = await api('POST', '/api/clipboard/copy', { text });
+    return res && res.ok;
+  } catch {
+    return false;
   }
-  const ta = document.createElement('textarea');
-  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px'; ta.style.top = '0';
-  document.body.appendChild(ta); ta.focus(); ta.select();
-  let ok = false; try { ok = document.execCommand('copy'); } catch {}
-  document.body.removeChild(ta); return ok;
 }
 
 async function copyTemplate(e) {
@@ -859,7 +857,8 @@ async function beautifyOutput() {
 
 function detectFormat(s) {
   const t=s.trim();
-  if ((t.startsWith('{')&&t.endsWith('}')||(t.startsWith('[')&&t.endsWith(']')))) { try{JSON.parse(t);return 'json';}catch{} }
+  const c=t.replace(/[\\u200B-\\u200D\\uFEFF\\u200e\\u200f\\u2028\\u2029\\u200A\\u2003]/g, ' ');
+  if ((c.startsWith('{')&&c.endsWith('}')||(c.startsWith('[')&&c.endsWith(']')))) { try{JSON.parse(c);return 'json';}catch{} }
   if (t.startsWith('<')&&t.includes('>')) return 'xml';
   if (t.includes(',')&&t.split('\\n').length>1) return 'csv';
   return 'text';
@@ -867,7 +866,8 @@ function detectFormat(s) {
 
 function beautifyContent(content, format) {
   if (format==='json') { 
-    let cleaned = content.replace(/,\s*([\]}])/g, '$1').replace(/:\s*,/g, ': null,').replace(/:\s*}/g, ': null}');
+    let sanitized = content.replace(/[\\u200B-\\u200D\\uFEFF\\u200e\\u200f\\u2028\\u2029\\u200A\\u2003]/g, ' ');
+    let cleaned = sanitized.replace(/,\s*([\]}])/g, '$1').replace(/:\s*,/g, ': null,').replace(/:\s*}/g, ': null}');
     return JSON.stringify(JSON.parse(cleaned),null,2); 
   }
   if (format==='xml') { const d=new DOMParser().parseFromString(content,'text/xml'); if(d.querySelector('parsererror')) throw new Error('Invalid XML'); return fmtXml(d.documentElement,0); }

@@ -266,6 +266,7 @@ export class DebugEngine {
         try {
             if (format === 'json') {
                 let cleanedOutput = output
+                    .replace(/[\u200B-\u200D\uFEFF\u200e\u200f\u2028\u2029\u2000-\u200A]/g, ' ') // Strip Em/En spaces and Zero-Width characters
                     .replace(/,(\s*[\]}])/g, ' $1') // trailing commas replaced by space, preserving length and newlines
                     .replace(/:\s*(?=,)/g, m => m + 'null') // empty value before comma, insert null, preserve newlines
                     .replace(/:\s*(?=})/g, m => m + 'null'); // empty value before }, insert null, preserve newlines

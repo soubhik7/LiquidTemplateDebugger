@@ -175,6 +175,12 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
         engine.removeWatch(id);
         return { ok: true };
     }
+    // POST /api/clipboard/copy
+    if (POST && urlPath === '/api/clipboard/copy') {
+        const text = body?.text ?? '';
+        await vscode.env.clipboard.writeText(text);
+        return { ok: true };
+    }
 
     return { error: `Unknown endpoint: ${method} ${urlPath}` };
 }
