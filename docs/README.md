@@ -5,6 +5,7 @@ A step-by-step debugger for [DotLiquid](https://github.com/dotliquid/dotliquid) 
 ## 🏗️ Architecture
 
 This project follows a **robust, modular architecture** with:
+
 - ✅ **Interface-based programming** for testability and flexibility
 - ✅ **Dependency injection** for loose coupling
 - ✅ **Comprehensive security** with input validation and rate limiting
@@ -97,6 +98,7 @@ dotnet run -- samples/csv-to-json.liquid samples/products.csv csv
 ```
 
 **Input (products.csv):**
+
 ```csv
 id,name,price,category
 1,Widget A,29.99,Electronics
@@ -104,6 +106,7 @@ id,name,price,category
 ```
 
 **Template (csv-to-json.liquid):**
+
 ```liquid
 [
 {% for item in rows %}
@@ -130,7 +133,7 @@ id,name,price,category
   "items": [
     { "name": "Widget A", "price": 29.99, "quantity": 2 },
     { "name": "Widget B", "price": 49.99, "quantity": 1 },
-    { "name": "Gadget C", "price": 15.50, "quantity": 3 }
+    { "name": "Gadget C", "price": 15.5, "quantity": 3 }
   ],
   "discount_percent": 10,
   "shipping": "express"
@@ -225,6 +228,7 @@ Variables:
 The `content` variable contains all input data as nested properties.
 
 Variables are color-coded by source:
+
 - `[INPUT]` — from input data
 - `[ASSIGN]` — created by `{% assign %}` in the template
 - `[FOR]` — loop iteration variable
@@ -376,38 +380,38 @@ dbg> quit               # exit the debugger
 
 ## Command Reference
 
-| Command | Shortcut | Description |
-|---|---|---|
-| `step` | `s`, `n` | Execute next element |
-| `stepin` | `si` | Step into block |
-| `stepover` | `so` | Step over entire block |
-| `stepout` | `sout` | Step out of current scope |
-| `continue` | `c` | Run until breakpoint or end |
-| `run <line>` | `r` | Run to specific line |
-| `reset` | | Restart execution |
-| `break <line> [cond]` | `bp` | Set breakpoint (optional condition) |
-| `breakpoints` | `bps` | List all breakpoints |
-| `delete <id>` | `del` | Remove breakpoint |
-| `toggle <id>` | | Enable/disable breakpoint |
-| `watch <expr>` | `w` | Add watch expression |
-| `watches` | `ws` | List all watches |
-| `unwatch <id>` | `uw` | Remove watch |
-| `vars [filter]` | `v` | Show variables (optional name filter) |
-| `inspect <var>` | `i` | Deep inspect a variable |
-| `inspect-line` | `il` | Inspect all expressions on current line |
-| `eval <expr>` | `e` | Evaluate a Liquid expression |
-| `origin <var>` | `o` | Show where a value came from |
-| `trace <var>` | `t` | Show full transformation history |
-| `output` | `out` | Show output generated so far |
-| `template` | `tpl` | Show template with line numbers |
-| `context` | `ctx` | Show current position in template |
-| `scope` | | Show scope stack |
-| `state` | | Show full debugger state |
-| `render` | | Show full DotLiquid render output |
-| `set <key> <val>` | | Change display settings |
-| `load <tpl> <data>` | `l` | Load template and data files |
-| `help` | `h`, `?` | Show help |
-| `quit` | `q`, `exit` | Exit debugger |
+| Command               | Shortcut    | Description                             |
+| --------------------- | ----------- | --------------------------------------- |
+| `step`                | `s`, `n`    | Execute next element                    |
+| `stepin`              | `si`        | Step into block                         |
+| `stepover`            | `so`        | Step over entire block                  |
+| `stepout`             | `sout`      | Step out of current scope               |
+| `continue`            | `c`         | Run until breakpoint or end             |
+| `run <line>`          | `r`         | Run to specific line                    |
+| `reset`               |             | Restart execution                       |
+| `break <line> [cond]` | `bp`        | Set breakpoint (optional condition)     |
+| `breakpoints`         | `bps`       | List all breakpoints                    |
+| `delete <id>`         | `del`       | Remove breakpoint                       |
+| `toggle <id>`         |             | Enable/disable breakpoint               |
+| `watch <expr>`        | `w`         | Add watch expression                    |
+| `watches`             | `ws`        | List all watches                        |
+| `unwatch <id>`        | `uw`        | Remove watch                            |
+| `vars [filter]`       | `v`         | Show variables (optional name filter)   |
+| `inspect <var>`       | `i`         | Deep inspect a variable                 |
+| `inspect-line`        | `il`        | Inspect all expressions on current line |
+| `eval <expr>`         | `e`         | Evaluate a Liquid expression            |
+| `origin <var>`        | `o`         | Show where a value came from            |
+| `trace <var>`         | `t`         | Show full transformation history        |
+| `output`              | `out`       | Show output generated so far            |
+| `template`            | `tpl`       | Show template with line numbers         |
+| `context`             | `ctx`       | Show current position in template       |
+| `scope`               |             | Show scope stack                        |
+| `state`               |             | Show full debugger state                |
+| `render`              |             | Show full DotLiquid render output       |
+| `set <key> <val>`     |             | Change display settings                 |
+| `load <tpl> <data>`   | `l`         | Load template and data files            |
+| `help`                | `h`, `?`    | Show help                               |
+| `quit`                | `q`, `exit` | Exit debugger                           |
 
 ## Display Settings
 
@@ -418,12 +422,12 @@ dbg> set scope_on_step true     # show scope after each step (default: on)
 dbg> set context_lines 4        # lines of context around current line (default: 2)
 ```
 
-
 ## 📚 Architecture & Documentation
 
 This project implements a comprehensive, production-ready architecture. See the following documents for details:
 
 ### Core Documentation
+
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, design patterns, and principles
 - **[INTERFACES.md](INTERFACES.md)** - Interface definitions and dependency injection guide
 - **[SECURITY.md](SECURITY.md)** - Security implementation, threat model, and best practices
@@ -431,6 +435,7 @@ This project implements a comprehensive, production-ready architecture. See the 
 - **[ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md)** - Executive summary of all architectural decisions
 
 ### Deployment Documentation
+
 - **[AZURE_DEPLOYMENT_MANUAL.md](AZURE_DEPLOYMENT_MANUAL.md)** - 📘 **Complete manual deployment guide** (Azure Portal, no CLI)
   - Detailed comparison: Azure Container Apps vs Azure Web App
   - Step-by-step instructions with screenshots guidance
@@ -439,6 +444,7 @@ This project implements a comprehensive, production-ready architecture. See the 
 - **[AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md)** - Azure deployment using CLI commands
 
 ### Key Features
+
 - ✅ **Modular Design** - Clear separation of concerns with interface-based programming
 - ✅ **Dependency Injection** - All services registered in DI container for testability
 - ✅ **Security First** - Input validation, rate limiting, audit logging
@@ -448,7 +454,9 @@ This project implements a comprehensive, production-ready architecture. See the 
 - ✅ **Backward Compatible** - API versioning and migration strategies
 
 ### Configuration
+
 The application uses a hierarchical configuration system:
+
 1. [`appsettings.json`](appsettings.json) - Base configuration
 2. [`appsettings.Development.json`](appsettings.Development.json) - Development overrides
 3. [`appsettings.Production.json`](appsettings.Production.json) - Production settings
@@ -456,7 +464,9 @@ The application uses a hierarchical configuration system:
 5. Command-line arguments - Override any setting
 
 ### Feature Flags
+
 Control features via configuration without code changes:
+
 ```json
 {
   "FeatureFlags": {
@@ -469,6 +479,7 @@ Control features via configuration without code changes:
 ```
 
 ### Development Setup
+
 ```bash
 # Clone repository
 git clone <repository-url>
@@ -488,6 +499,7 @@ dotnet run
 ```
 
 ### Contributing
+
 1. Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand the system design
 2. Follow [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for development workflow
 3. Ensure all tests pass and code coverage remains above 80%
@@ -497,7 +509,7 @@ dotnet run
 ## Project Structure
 
 ```
-LiquidTemplateDebugger/
+LiquidTemplateDebugger/blob/
 ├── Program.cs                     Entry point and CLI argument handling
 ├── Models/DebugModels.cs          Data models (DebugState, TrackedVariable, Breakpoint, etc.)
 ├── Engine/TemplateParser.cs       Parses Liquid templates into debuggable elements
