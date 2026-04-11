@@ -14,11 +14,11 @@ Stop guessing why your templates aren't rendering correctly. This extension prov
 
 ### 🔍 Deterministic Variable Tracking
 See exactly how variables are modified by filters. No more wondering why a string was truncated or a number was rounded incorrectly.
-![Variable Transformations](images/screenshot-transformations.png)
+![Variable Transformations](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-transformations.png)
 
 ### 🧩 Universal Data Support
 Whether you're working with enterprise XML payloads, modern JSON APIs, or flat CSV files, the debugger handles them with native performance and syntax awareness.
-![XML Debugging](images/screenshot-xml-debugging.png)
+![XML Debugging](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-xml-debugging.png)
 
 ---
 
@@ -26,15 +26,15 @@ Whether you're working with enterprise XML payloads, modern JSON APIs, or flat C
 
 ### 1. Interactive Step-by-Step Execution
 Set breakpoints, step into loops, and watch the output panel build in real-time. Use standard debugging shortcuts (`F5`, `F10`, `F11`) for a familiar workflow.
-![Full Debugger View](images/screenshot-full-debugger.png)
+![Full Debugger View](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger.png)
 
 ### 2. Live Evaluation & Watches
 Evaluate complex Liquid expressions on the fly and keep track of critical variables in the persistent Watch panel.
-![Evaluation and Watches](images/screenshot-evaluation.png)
+![Evaluation and Watches](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-evaluation.png)
 
 ### 3. Integrated Toolset
 Search, copy, format, and validate your code directly within the active debug session.
-![Editor Utilities](images/screenshot-output-menu.png)
+![Editor Utilities](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-output-menu.png)
 
 ---
 
@@ -43,9 +43,9 @@ Search, copy, format, and validate your code directly within the active debug se
 1.  **Install** the extension.
 2.  **Open** a `.liquid` template.
 3.  **Start Debugging**: Press `F5` or use the command palette (**Liquid: Start Debugging**).
-    ![Command Palette](images/screenshot-command-palette.png)
+    ![Command Palette](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-command-palette.png)
 4.  **Load Data**: Click **Load Sample** to instantly see the debugger in action with pre-configured templates and data.
-    ![Load Sample](images/screenshot-load-sample.png)
+    ![Load Sample](https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-load-sample.png)
 
 ---
 

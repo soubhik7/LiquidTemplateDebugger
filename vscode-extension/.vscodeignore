@@ -14,3 +14,7 @@ node_modules/**/*.map
 server/**
 SETUP.txt
 REINSTALL_GUIDE.md
+
+# ✅ IMPORTANT: include README and images
+!README.md
+!images/**
