@@ -3,7 +3,7 @@
   "displayName": "Dot Liquid Template Debugger",
   "description": "Professional dot Liquid template debugger with line-by-line execution, variable transformation history, and multi-format support (JSON, XML, CSV).",
   "icon": "images/ltdlogo.png",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "publisher": "SoubhikDevTools",
   "repository": {
     "type": "git",
