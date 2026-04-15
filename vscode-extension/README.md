@@ -1,99 +1,88 @@
-# Dot Liquid Template Debugger
+<p align="center">
+  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/ltdlogo2.png" width="180" alt="Dot Liquid Template Debugger Logo"/>
+</p>
 
-Professional-grade debugging environment for Liquid templates. Step through your logic line-by-line, visualize variable transformations in real-time, and validate outputs across JSON, XML, and CSV formats.
+<h1 align="center">Dot Liquid Template Debugger</h1>
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/SoubhikDevTools.dot-liquid-template-debugger)](https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger)
+<p align="center">
+  <b>The industry-standard debugging environment for complex Liquid templates.</b><br>
+  <i>Eliminate guesswork with deterministic, line-by-line execution and real-time visualization.</i>
+</p>
 
----
-
-## Why Use Dot Liquid Template Debugger?
-
-Stop guessing why your templates aren't rendering correctly. This extension provides full visibility into the Liquid execution engine, allowing you to see exactly how your data is transformed instruction by instruction.
-
-### Deterministic Variable Tracking
-
-See exactly how variables are modified by filters. No more wondering why a string was truncated or a number was rounded incorrectly.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-transformations.png" width="700" alt="Variable Transformations"/>
-
-### Universal Data Support
-
-Whether you're working with enterprise XML payloads, modern JSON APIs, or flat CSV files, the debugger handles them with native performance and syntax awareness.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-xml-debugging.png" width="700" alt="XML Debugging"/>
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger">
+    <img src="https://img.shields.io/visual-studio-marketplace/v/SoubhikDevTools.dot-liquid-template-debugger?style=for-the-badge&color=007acc" alt="Version"/>
+  </a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger">
+    <img src="https://img.shields.io/visual-studio-marketplace/i/SoubhikDevTools.dot-liquid-template-debugger?style=for-the-badge&color=4c1" alt="Installs"/>
+  </a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=SoubhikDevTools.dot-liquid-template-debugger">
+    <img src="https://img.shields.io/visual-studio-marketplace/r/SoubhikDevTools.dot-liquid-template-debugger?style=for-the-badge&color=orange" alt="Rating"/>
+  </a>
+</p>
 
 ---
 
-## Core Capabilities
+## Why Liquid Professionals Choose This?
+
+Modern Liquid templates are often deceptively complex. Whether you are building Azure Logic Apps, Shopify themes, or Jekyll sites, our debugger provides the visibility you need to build with confidence.
+
+| **Insight** | **Capability** |
+| :--- | :--- |
+| **Deterministic Tracking** | See exactly how variables are modified by filters in a step-by-step history. |
+| **Multi-Format Native** | First-class support for **JSON**, **XML**, and **CSV** payloads with syntax-aware rendering. |
+| **Enterprise Ready** | Handles massive payloads with local-first performance and zero data leakage. |
+
+---
+
+## High-Impact Features
 
 ### 1. Interactive Step-by-Step Execution
-
 Set breakpoints, step into loops, and watch the output panel build in real-time. Use standard debugging shortcuts (`F5`, `F10`, `F11`) for a familiar workflow.
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger.png" width="700" alt="Full Debugger View"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger.png" width="800" alt="Full Debugger View"/>
 
-#### Precision Breakpoint Management
+> [!TIP]
+> **Precision Breakpoint Management**: Use the dedicated breakpoint panel to manage complex execution paths and track hit counts across cycles.
+> <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-breakpoint.png" width="800" alt="Breakpoint Management"/>
 
-Manage breakpoints with ease. See exactly which lines will trigger a pause in execution and track hit counts for complex loops.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-breakpoint.png" width="700" alt="Breakpoint Management"/>
-
-
-### 2. Live Evaluation & Watches
-
+### 2. Live Evaluation & State Monitoring
 Evaluate complex Liquid expressions on the fly and keep track of critical variables in the persistent Watch panel.
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-evaluation.png" width="700" alt="Evaluation and Watches"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-evaluation.png" width="800" alt="Evaluation and Watches"/>
 
-### 3. Integrated Toolset
+### 3. Flexible Input Ecosystem
+Getting your data into the debugger is seamless. We support modern workflows without requiring complex configuration:
 
-Search, copy, format, and validate your code directly within the active debug session. The integrated menu bar provides quick access to common operations.
+*   **⚡ Drag & Drop**: Drag `.liquid`, `.json`, or `.xml` files directly into the setup modal.
+*   **📋 Direct Paste**: Paste Liquid snippets and payloads instantly for rapid prototyping.
+*   **📂 Local File Sync**: Sync with your workspace files for a persistent workflow.
 
-<div style="display: flex; gap: 10px;">
-  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-menu-bar.png" width="345" alt="Menu Bar"/>
-  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-template-menu.png" width="345" alt="Template Menu"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-drag-drop-modal.png" width="800" alt="Drag and Drop / Paste Modal"/>
+
+### 4. Integrated Developer Toolset
+The integrated toolset provides quick access to beautification, validation, and cloning operations, ensuring your output is production-ready.
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-menu-bar.png" width="45%" style="margin-right: 2%;"/>
+  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-template-menu.png" width="45%"/>
 </div>
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-output-menu.png" width="700" alt="Editor Utilities"/>
+---
 
-### 4. Flexible Input Methods
+## Quick Start (60 Seconds)
 
-Getting your data into the debugger is seamless. You don't need to manually configure paths if you don't want to:
+1.  **Launch**: Press `F5` in a Liquid file or open the Command Palette (`Cmd+Shift+P`) and type `Liquid: Start Debugging`.
+2.  **Configure**: Use the **Load Sample** button to see a pre-configured scenario or drag your own files into the modal.
+3.  **Debug**: Step through the logic using the debug toolbar or keyboard shortcuts.
 
-*   **Drag & Drop**: Simply drag your `.liquid` template and `.json` or `.xml` data files directly into the setup modal.
-*   **Direct Paste**: Have a snippet of Liquid or a JSON payload? Paste it directly into the editors to start debugging instantly.
-*   **Local Browsing**: Click to browse and select files from your local environment.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-drag-drop-modal.png" width="700" alt="Drag and Drop / Paste Modal"/>
-
-### 5. Visual Excellence in Any Theme
-
-Whether you prefer a dark or light environment, the Liquid Template Debugger adapts to your workspace with full VS Code theme compatibility.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger-dark.png" width="700" alt="Dark Mode Support"/>
-
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-command-palette.png" width="700" alt="Command Palette"/>
 
 ---
 
-## Quick Start in 60 Seconds
+## Professional Configuration
 
-1.  **Install** the extension.
-2.  **Open** a `.liquid` template.
-3.  **Start Debugging**: Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) to open the command palette, then type **Liquid: Start Debugging**. Alternatively, press `F5`.
-
-    <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-command-palette.png" width="650" alt="Command Palette"/>
-
-4.  **Load Data**: Click **Load Sample** to instantly see the debugger in action with pre-configured templates and data.
-
-    <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-load-sample.png" width="650" alt="Load Sample"/>
-
----
-
-## Configuration & Customization
-
-For persistent setups, create a `.vscode/launch.json`:
+For advanced teams, use a `.vscode/launch.json` for persistence:
 
 ```json
 {
@@ -105,36 +94,29 @@ For persistent setups, create a `.vscode/launch.json`:
       "name": "Debug Liquid Template",
       "template": "${file}",
       "data": "${workspaceFolder}/data.json",
-      "format": "json",
-      "stopOnEntry": true
+      "format": "json"
     }
   ]
 }
 ```
 
-### Essential Settings
-
-| Setting                        | Description                                |
-| :----------------------------- | :----------------------------------------- |
-| `liquid-debugger.start`        | Launches the interactive debugger.         |
-| `liquid-debugger.loadData`     | Programmatically loads a new data payload. |
-| `liquid-debugger.showDebugger` | Toggles debugger panel visibility.         |
-
 ---
 
-## Privacy & Data Security
+## 🔒 Security & Privacy
 
-**Your data never leaves your machine.**
-
-- **100% Local Execution**: All rendering and debugging happens entirely within your local environment.
-- **No Data Collection**: We do not track or transmit your templates, input data, or outputs.
-- **Secure Sandbox**: Protected by a strict Content Security Policy (CSP).
+We take developer privacy seriously.
+*   **Zero Egress**: Your code and data never leave your local machine.
+*   **Secure Sandbox**: All rendering is contained within a restricted Content Security Policy (CSP).
+*   **No Telemetry**: We do not track your templates or input data.
 
 ---
 
 ## Support & Community
 
-- **Found a bug?** [Open an Issue](https://github.com/soubhik7/LiquidTemplateDebugger/issues)
-- **Contribute**: [GitHub Repository](https://github.com/soubhik7/LiquidTemplateDebugger)
+- **Issue Tracker**: [Report a Bug](https://github.com/soubhik7/LiquidTemplateDebugger/issues)
+- **Contribution**: [GitHub Repository](https://github.com/soubhik7/LiquidTemplateDebugger)
 
-_Developed with ❤️ for the Liquid Community by Soubhik and Bob._
+<p align="center">
+  <i>Developed with ❤️ for the Liquid Community by Soubhik and Bob.</i>
+</p>
+
