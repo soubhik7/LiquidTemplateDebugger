@@ -1,23 +1,25 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Play, Package } from 'lucide-react';
+import { X, Upload, Play, Package, ChevronRight, FileJson, FileCode, FileText, LayoutTemplate } from 'lucide-react';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { modalOverlay, modalContent } from '../../utils/animation';
+import { SAMPLES, type SampleTransformation } from '../../data/samples';
+import { detectFormat } from '../../utils/helpers';
 
 interface LoadModalProps {
   open: boolean;
   onClose: () => void;
   onLoad: (template: string, data: string, format: string) => Promise<boolean>;
-  onLoadSample: () => void;
   prefillRef: React.MutableRefObject<((tpl: string) => void) | null>;
 }
 
-export function LoadModal({ open, onClose, onLoad, onLoadSample, prefillRef }: LoadModalProps) {
+export function LoadModal({ open, onClose, onLoad, prefillRef }: LoadModalProps) {
   const [template, setTemplate] = useState('');
   const [data, setData] = useState('');
   const [format, setFormat] = useState('json');
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSamples, setShowSamples] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Wire the prefill ref so the parent can inject a template
@@ -25,6 +27,16 @@ export function LoadModal({ open, onClose, onLoad, onLoadSample, prefillRef }: L
     prefillRef.current = (tpl: string) => setTemplate(tpl);
     return () => { prefillRef.current = null; };
   }, [prefillRef]);
+
+  // Auto-detect format when data changes
+  useEffect(() => {
+    if (data.trim() && !showSamples) {
+      const detected = detectFormat(data);
+      if (detected !== 'text') {
+        setFormat(detected);
+      }
+    }
+  }, [data, showSamples]);
 
   const handleFiles = useCallback((files: FileList) => {
     for (const f of Array.from(files)) {
@@ -35,8 +47,8 @@ export function LoadModal({ open, onClose, onLoad, onLoadSample, prefillRef }: L
           setTemplate(content);
         } else {
           setData(content);
-          if (f.name.endsWith('.xml')) setFormat('xml');
-          else if (f.name.endsWith('.json')) setFormat('json');
+          const detected = detectFormat(content);
+          if (detected !== 'text') setFormat(detected);
         }
       };
       reader.readAsText(f);
@@ -68,6 +80,22 @@ export function LoadModal({ open, onClose, onLoad, onLoadSample, prefillRef }: L
       const v = e.currentTarget.value;
       e.currentTarget.value = v.substring(0, s) + '  ' + v.substring(en);
       e.currentTarget.selectionStart = e.currentTarget.selectionEnd = s + 2;
+    }
+  };
+
+  const handleSelectSample = (sample: SampleTransformation) => {
+    setTemplate(sample.template);
+    setData(sample.data);
+    setFormat(sample.format);
+    setShowSamples(false);
+  };
+
+  const getFormatIcon = (format: string) => {
+    switch (format) {
+      case 'json': return <FileJson size={14} style={{ color: 'var(--blue)' }} />;
+      case 'xml': return <FileCode size={14} style={{ color: 'var(--orange)' }} />;
+      case 'text': return <FileText size={14} style={{ color: 'var(--green)' }} />;
+      default: return <LayoutTemplate size={14} />;
     }
   };
 
@@ -154,118 +182,175 @@ export function LoadModal({ open, onClose, onLoad, onLoadSample, prefillRef }: L
 
             {/* Body */}
             <div style={{ padding: '16px 24px' }}>
-              {/* Drop zone */}
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border-primary)'}`,
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '16px 20px',
-                  textAlign: 'center',
-                  color: dragging ? 'var(--accent)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  marginBottom: 16,
-                  background: dragging ? 'var(--accent-soft)' : 'var(--glass-bg)',
-                  transition: 'all var(--transition-base)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  fontSize: 13,
-                }}
-              >
-                <Upload size={16} />
-                Drop .liquid and .json/.xml files here, or click to browse
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                style={{ display: 'none' }}
-                onChange={(e) => e.target.files && handleFiles(e.target.files)}
-              />
+              {showSamples ? (
+                <div style={{ minHeight: 400 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Select a Sample Transformation</h3>
+                    <button 
+                      onClick={() => setShowSamples(false)}
+                      style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Back to Editor
+                    </button>
+                  </div>
+                  
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                    gap: 12,
+                    paddingBottom: 20
+                  }}>
+                    {SAMPLES.map((s, i) => (
+                      <motion.div
+                        key={s.name}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        onClick={() => handleSelectSample(s)}
+                        whileHover={{ scale: 1.02, background: 'var(--bg-hover)' }}
+                        whileTap={{ scale: 0.98 }}
+                        style={{
+                          padding: '12px 14px',
+                          background: 'var(--bg-primary)',
+                          border: '1px solid var(--border-primary)',
+                          borderRadius: 'var(--radius-lg)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          transition: 'border-color 0.2s',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{s.name}</span>
+                          {getFormatIcon(s.format)}
+                        </div>
+                        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                          {s.description}
+                        </p>
+                        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>
+                          Load <ChevronRight size={10} />
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Drop zone */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border-primary)'}`,
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      color: dragging ? 'var(--accent)' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      marginBottom: 16,
+                      background: dragging ? 'var(--accent-soft)' : 'var(--glass-bg)',
+                      transition: 'all var(--transition-base)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      fontSize: 13,
+                    }}
+                  >
+                    <Upload size={16} />
+                    Drop .liquid and .json/.xml files here, or click to browse
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                  />
 
-              {/* Template */}
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-                Template
-              </label>
-              <textarea
-                value={template}
-                onChange={(e) => setTemplate(e.target.value)}
-                onKeyDown={handleTab}
-                placeholder={'{% for item in items %}\n  {{ item.name }}\n{% endfor %}'}
-                style={{
-                  width: '100%',
-                  height: 140,
-                  resize: 'vertical',
-                  marginBottom: 14,
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border-primary)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  padding: '8px 12px',
-                  outline: 'none',
-                  transition: 'border-color var(--transition-fast)',
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-primary)'; }}
-              />
+                  {/* Template */}
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                    Template
+                  </label>
+                  <textarea
+                    value={template}
+                    onChange={(e) => setTemplate(e.target.value)}
+                    onKeyDown={handleTab}
+                    placeholder={'{% for item in items %}\n  {{ item.name }}\n{% endfor %}'}
+                    style={{
+                      width: '100%',
+                      height: 140,
+                      resize: 'vertical',
+                      marginBottom: 14,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-primary)',
+                      padding: '8px 12px',
+                      outline: 'none',
+                      transition: 'border-color var(--transition-fast)',
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-primary)'; }}
+                  />
 
-              {/* Data */}
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-                Data
-              </label>
-              <textarea
-                value={data}
-                onChange={(e) => setData(e.target.value)}
-                onKeyDown={handleTab}
-                placeholder={'{"items": [{"name": "Widget"}]}'}
-                style={{
-                  width: '100%',
-                  height: 120,
-                  resize: 'vertical',
-                  marginBottom: 14,
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border-primary)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  padding: '8px 12px',
-                  outline: 'none',
-                  transition: 'border-color var(--transition-fast)',
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-primary)'; }}
-              />
+                  {/* Data */}
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                    Data
+                  </label>
+                  <textarea
+                    value={data}
+                    onChange={(e) => setData(e.target.value)}
+                    onKeyDown={handleTab}
+                    placeholder={'{"items": [{"name": "Widget"}]}'}
+                    style={{
+                      width: '100%',
+                      height: 120,
+                      resize: 'vertical',
+                      marginBottom: 14,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-primary)',
+                      padding: '8px 12px',
+                      outline: 'none',
+                      transition: 'border-color var(--transition-fast)',
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-primary)'; }}
+                  />
 
-              {/* Format */}
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-                Data Format
-              </label>
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-                style={{
-                  width: '100%',
-                  fontSize: 13,
-                  padding: '7px 10px',
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border-primary)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                }}
-              >
-                <option value="json">JSON</option>
-                <option value="xml">XML</option>
-                <option value="text">Key=Value</option>
-              </select>
+                  {/* Format */}
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                    Data Format
+                  </label>
+                  <select
+                    value={format}
+                    onChange={(e) => setFormat(e.target.value)}
+                    style={{
+                      width: '100%',
+                      fontSize: 13,
+                      padding: '7px 10px',
+                      background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="json">JSON</option>
+                    <option value="xml">XML</option>
+                    <option value="text">Key=Value</option>
+                  </select>
+                </>
+              )}
             </div>
 
             {/* Footer */}
@@ -279,12 +364,12 @@ export function LoadModal({ open, onClose, onLoad, onLoadSample, prefillRef }: L
               }}
             >
               <AnimatedButton
-                variant="ghost"
+                variant={showSamples ? "primary" : "ghost"}
                 size="md"
                 icon={<Package size={14} />}
-                onClick={onLoadSample}
+                onClick={() => setShowSamples(!showSamples)}
               >
-                Load Sample
+                {showSamples ? 'Hide Samples' : 'Browse Samples'}
               </AnimatedButton>
               <AnimatedButton variant="ghost" size="md" onClick={onClose}>
                 Cancel

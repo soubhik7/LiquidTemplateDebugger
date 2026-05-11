@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Wand2, Copy, Check, CheckCircle, ListTree } from 'lucide-react';
+import { Search, Wand2, Copy, Check, CheckCircle, ListTree, X, AlertTriangle, FileText } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
@@ -21,12 +21,30 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
   const [copied, setCopied] = useState(false);
   const [beautified, setBeautified] = useState<string | null>(null);
   const [showTree, setShowTree] = useState(false);
+  const [lastValidation, setLastValidation] = useState<{ format: string; isValid: boolean } | null>(null);
 
   const state = debugState?.state;
   const loaded = !!debugState?.isLoaded;
   const outputRaw = state?.outputSoFar ?? '';
   const lastChunk = state?.lastOutputChunk;
   const scopeStack = state?.scopeStack ?? [];
+
+  // Reset local panel state when a new session is loaded
+  useEffect(() => {
+    setBeautified(null);
+    setLastValidation(null);
+    setSearch('');
+  }, [debugState?.templateSource, debugState?.dataContent]);
+
+  // Auto-detect format when output changes
+  useEffect(() => {
+    if (outputRaw.trim()) {
+      const detected = detectFormat(outputRaw);
+      if (detected !== 'text') {
+        setValidateFmt(detected);
+      }
+    }
+  }, [outputRaw]);
 
   const handleCopy = useCallback(async () => {
     onCopy(outputRaw);
@@ -48,9 +66,14 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
     const result = await onValidate(validateFmt);
     if (result.error) {
       onToast(result.error, 'error', 'Validation Error');
+      setLastValidation(null);
       return;
     }
-    if (result.isValid) {
+    
+    const isValid = !!result.isValid;
+    setLastValidation({ format: validateFmt, isValid });
+
+    if (isValid) {
       onToast(`Output is valid ${validateFmt.toUpperCase()}`, 'success');
     } else {
       const msg = result.errorMessage ?? 'Validation failed';
@@ -160,6 +183,41 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
           Output
         </span>
+        {outputRaw.trim() && (
+          <span style={{ 
+            fontSize: 9, 
+            padding: '1px 5px', 
+            borderRadius: 4, 
+            background: 'var(--bg-hover)', 
+            border: '1px solid var(--border-primary)',
+            color: 'var(--text-muted)', 
+            fontWeight: 600,
+            marginLeft: 4,
+            textTransform: 'uppercase'
+          }}>
+            {detectFormat(outputRaw)}
+          </span>
+        )}
+
+        {lastValidation && (
+          <span style={{ 
+            fontSize: 9, 
+            color: lastValidation.isValid ? 'var(--green)' : 'var(--red)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 3,
+            fontWeight: 700,
+            background: lastValidation.isValid ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+            padding: '1px 6px',
+            borderRadius: 4,
+            border: `1px solid ${lastValidation.isValid ? 'var(--green)' : 'var(--red)'}`,
+            marginLeft: 4
+          }}>
+            {lastValidation.isValid ? <Check size={10} /> : <X size={10} />}
+            {lastValidation.format.toUpperCase()}
+          </span>
+        )}
+
         <div style={{ flex: 1 }} />
 
         <AnimatedButton
@@ -236,7 +294,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
       <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
         {!loaded || !outputRaw ? (
           <EmptyState
-            icon="📝"
+            icon={<FileText size={24} />}
             message={loaded ? 'No output yet — step to generate' : 'Output will appear here as you step'}
           />
         ) : showTree ? (
@@ -256,7 +314,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               background: 'var(--bg-surface)',
               textAlign: 'center'
             }}>
-              <span style={{ fontSize: 24, marginBottom: 12 }}>⚠️</span>
+              <AlertTriangle size={24} style={{ marginBottom: 12 }} />
               <span style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Invalid JSON or XML</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Structured view unavailable. Check for syntax errors.</span>
               <button 

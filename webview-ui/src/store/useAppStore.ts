@@ -38,9 +38,9 @@ interface AppState {
   dataEditMode: boolean;
 
   // Navigation
-  activeView: 'debugger' | 'settings';
+  activeView: 'debugger' | 'settings' | 'guide';
   validationErrors: any[];
-  setActiveView: (view: 'debugger' | 'settings') => void;
+  setActiveView: (view: 'debugger' | 'settings' | 'guide') => void;
   setValidationErrors: (errors: any[]) => void;
 
   // Actions

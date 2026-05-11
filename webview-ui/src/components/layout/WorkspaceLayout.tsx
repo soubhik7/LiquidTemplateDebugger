@@ -10,6 +10,7 @@ import { OutputPanel } from '../panels/OutputPanel';
 import { VariablesPanel } from '../panels/VariablesPanel';
 import { InspectorPanel } from '../panels/InspectorPanel';
 import { SettingsPanel } from '../panels/SettingsPanel';
+import { GuidePanel } from '../panels/GuidePanel';
 import { LoadModal } from '../overlays/LoadModal';
 import { ToastContainer } from '../shared/Toast';
 import { useDebugger } from '../../hooks/useDebugger';
@@ -71,7 +72,7 @@ export function WorkspaceLayout() {
   const toast = useCallback(
     (message: string, type: 'success' | 'error' | 'info', title?: string, duration = 6000) => {
       const autoTitle =
-        title ?? (type === 'success' ? '✓ Success' : type === 'error' ? '✕ Error' : 'Info');
+        title ?? (type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Info');
       addToast({ title: autoTitle, message, type, duration });
     },
     [addToast]
@@ -159,14 +160,6 @@ export function WorkspaceLayout() {
     [loadTemplate, setValidationErrors, toast, setInspectorTab]
   );
 
-  const handleLoadSample = useCallback(async () => {
-    await loadSample();
-    // After sample loads, check validation (assuming sample might have issues or just to be safe)
-    if (debugState?.templateSource) {
-      const errors = validateTemplate(debugState.templateSource);
-      setValidationErrors(errors);
-    }
-  }, [loadSample, debugState, setValidationErrors]);
 
   const activeView = useAppStore((s) => s.activeView);
 
@@ -229,8 +222,10 @@ export function WorkspaceLayout() {
                 </ResizablePanel>
               </ResizablePanel>
             </ResizablePanel>
-          ) : (
+          ) : activeView === 'settings' ? (
             <SettingsPanel />
+          ) : (
+            <GuidePanel />
           )}
         </div>
       </div>
@@ -239,7 +234,6 @@ export function WorkspaceLayout() {
         open={showLoadModal}
         onClose={() => setShowLoadModal(false)}
         onLoad={handleLoadTemplate}
-        onLoadSample={handleLoadSample}
         prefillRef={tplPrefillRef}
       />
 

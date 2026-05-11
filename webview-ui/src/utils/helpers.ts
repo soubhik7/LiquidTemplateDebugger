@@ -78,16 +78,36 @@ export function formatRawValue(val: unknown, depth = 0): string {
 
 export function detectFormat(s: string): 'json' | 'xml' | 'csv' | 'text' {
   const t = s.trim();
+  if (!t) return 'text';
+
+  // Try JSON
   if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
     try {
       JSON.parse(t);
       return 'json';
     } catch {
-      // not JSON
+      // Might be partial or invalid JSON, but likely intended as JSON
+      return 'json';
     }
   }
-  if (t.startsWith('<') && t.includes('>')) return 'xml';
-  if (t.includes(',') && t.split('\n').length > 1) return 'csv';
+
+  // Try XML
+  if (t.startsWith('<') && (t.endsWith('>') || t.includes('/>'))) {
+    return 'xml';
+  }
+
+  // Try CSV (comma-separated with multiple lines and consistent column counts)
+  const lines = t.split('\n').filter((l) => l.trim());
+  if (lines.length >= 2) {
+    const firstLineCols = lines[0].split(',').length;
+    if (firstLineCols > 1) {
+      const secondLineCols = lines[1].split(',').length;
+      if (firstLineCols === secondLineCols) {
+        return 'csv';
+      }
+    }
+  }
+
   return 'text';
 }
 

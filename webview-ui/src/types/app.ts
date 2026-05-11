@@ -88,7 +88,10 @@ export type Theme =
   | 'dark-warm'
   | 'light-warm'
   | 'dark-cool'
-  | 'light-cool';
+  | 'light-cool'
+  | 'midnight'
+  | 'glass-dark'
+  | 'glass-light';
 
 export type AccentColor =
   | 'indigo'

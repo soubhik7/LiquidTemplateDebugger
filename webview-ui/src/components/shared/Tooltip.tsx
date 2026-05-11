@@ -24,11 +24,13 @@ export function Tooltip({ visible, x, y, content, loading }: TooltipProps) {
             pointerEvents: 'none',
             maxWidth: 400,
             background: 'var(--bg-panel)',
-            border: '1px solid var(--border-light)',
-            borderRadius: 'var(--radius)',
-            padding: '10px 14px',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+            border: '1px solid var(--border-secondary)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 16px',
+            boxShadow: 'var(--shadow-lg)',
             color: 'var(--text-primary)',
+            backdropFilter: 'blur(var(--glass-blur, 10px))',
+            WebkitBackdropFilter: 'blur(var(--glass-blur, 10px))',
           }}
         >
           {loading ? (

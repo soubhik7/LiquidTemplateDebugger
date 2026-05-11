@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Wand2, Edit3, Check, ListTree } from 'lucide-react';
+import { Wand2, Edit3, Check, ListTree, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { TreeView } from '../shared/TreeView';
@@ -150,7 +150,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
               background: 'var(--bg-surface)',
               textAlign: 'center'
             }}>
-              <span style={{ fontSize: 24, marginBottom: 12 }}>⚠️</span>
+              <AlertTriangle size={24} style={{ marginBottom: 12 }} />
               <span style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Invalid JSON or XML</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Structured view unavailable. Check for syntax errors.</span>
               <button 

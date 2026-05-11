@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { EmptyState } from '../shared/EmptyState';
 import { expandDown } from '../../utils/animation';
@@ -100,9 +100,9 @@ export function VariablesPanel() {
       {/* Table */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {!loaded || variables.length === 0 ? (
-          <EmptyState icon="📊" message={loaded ? 'No variables in scope' : 'Variables will appear here'} />
+          <EmptyState icon={<BarChart3 size={24} />} message={loaded ? 'No variables in scope' : 'Variables will appear here'} />
         ) : filtered.length === 0 ? (
-          <EmptyState icon="🔍" message="No matches" sub={`Searching for "${varFilter}"`} />
+          <EmptyState icon={<Search size={24} />} message="No matches" sub={`Searching for "${varFilter}"`} />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Play, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Play, ChevronDown, ChevronRight, Eye, Circle, Zap, Lock, CheckCircle, Hash, Target, FlaskConical, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
@@ -263,7 +263,7 @@ export function InspectorPanel({
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {watches.length === 0 ? (
-                  <EmptyState icon="👁" message="No watches" sub="Add an expression above" />
+                  <EmptyState icon={<Eye size={24} />} message="No watches" sub="Add an expression above" />
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <tbody>
@@ -422,7 +422,7 @@ export function InspectorPanel({
             >
               {breakpoints.length === 0 ? (
                 <EmptyState
-                  icon="🔴"
+                  icon={<Circle size={24} fill="var(--red)" stroke="none" />}
                   message="No breakpoints set"
                   sub="Click the gutter in the template panel to add one"
                 />
@@ -454,7 +454,7 @@ export function InspectorPanel({
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 0, display: 'flex' }}
                                 title={bp.isEnabled ? 'Disable' : 'Enable'}
                               >
-                                <span style={{ color: bp.isEnabled ? 'var(--bp-color)' : 'var(--text-muted)', opacity: bp.isEnabled ? 1 : 0.4 }}>●</span>
+                                <Circle size={10} fill="currentColor" stroke="none" style={{ color: bp.isEnabled ? 'var(--bp-color)' : 'var(--text-muted)', opacity: bp.isEnabled ? 1 : 0.4 }} />
                               </button>
                               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--bp-color)', fontWeight: 600, marginLeft: 2 }}>
                                 {bp.line}
@@ -807,9 +807,9 @@ export function InspectorPanel({
                                     }} />
                                     
                                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ fontSize: 12 }}>
-                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? '🔢' : 
-                                         ['round', 'floor', 'ceil', 'abs'].includes(t.operator) ? '🎯' : '🧪'}
+                                      <span style={{ display: 'flex', alignItems: 'center', color: 'var(--accent)' }}>
+                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? <Hash size={14} /> : 
+                                         ['round', 'floor', 'ceil', 'abs'].includes(t.operator) ? <Target size={14} /> : <FlaskConical size={14} />}
                                       </span>
                                       {t.name || (t.operator ? t.operator.toUpperCase() : 'STEP')}
                                     </div>
@@ -880,10 +880,10 @@ export function InspectorPanel({
                   </motion.div>
                 )}
                 {!evalResult && loaded && (
-                  <EmptyState icon="⚡" message="Ready to evaluate" sub="Enter a Liquid expression above" />
+                  <EmptyState icon={<Zap size={24} />} message="Ready to evaluate" sub="Enter a Liquid expression above" />
                 )}
                 {!loaded && (
-                  <EmptyState icon="🔒" message="Debugger inactive" sub="Load a template to start evaluating" />
+                  <EmptyState icon={<Lock size={24} />} message="Debugger inactive" sub="Load a template to start evaluating" />
                 )}
               </div>
             </motion.div>
@@ -900,7 +900,7 @@ export function InspectorPanel({
               style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
             >
               {validationErrors.length === 0 ? (
-                <EmptyState icon="✅" message="No syntax issues found" sub="Everything looks good for DotLiquid" />
+                <EmptyState icon={<CheckCircle size={24} />} message="No syntax issues found" sub="Everything looks good for DotLiquid" />
               ) : (
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   {validationErrors.map((err, idx) => (
@@ -913,7 +913,7 @@ export function InspectorPanel({
                       }}
                     >
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                        <span style={{ color: 'var(--red)', marginTop: 2 }}>●</span>
+                        <Circle size={8} fill="currentColor" stroke="none" style={{ color: 'var(--red)', marginTop: 4 }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.4 }}>
                             {err.message}

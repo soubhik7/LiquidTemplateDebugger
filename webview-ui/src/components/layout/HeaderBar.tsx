@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   FolderOpen, Play, Circle, CornerDownRight, ArrowDown,
-  ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake,
+  ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake, Search
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusIndicator } from '../shared/StatusIndicator';
@@ -15,9 +15,12 @@ const THEME_ICONS: Record<Theme, React.ReactNode> = {
   'light-warm': <Flame size={14} />,
   'dark-cool': <Waves size={14} />,
   'light-cool': <Wind size={14} />,
+  'midnight': <Moon size={14} />,
+  'glass-dark': <Moon size={14} />,
+  'glass-light': <Sun size={14} />,
 };
 
-const THEME_CYCLE: Theme[] = ['dark', 'light', 'dark-warm', 'light-warm', 'dark-cool', 'light-cool'];
+const THEME_CYCLE: Theme[] = ['dark', 'light', 'dark-warm', 'light-warm', 'dark-cool', 'light-cool', 'midnight', 'glass-dark', 'glass-light'];
 
 interface HeaderBarProps {
   onLoad: () => void;
@@ -65,7 +68,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
     >
       {/* Brand */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginRight: 6 }}>
-        <span style={{ fontSize: 16 }}>🔍</span>
+        <Search size={16} style={{ color: 'var(--accent)' }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '-0.3px' }}>
           Liquid
         </span>

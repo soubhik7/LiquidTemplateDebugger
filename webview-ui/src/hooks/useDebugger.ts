@@ -49,6 +49,8 @@ export function useDebugger() {
 
   const loadTemplate = useCallback(
     async (templateContent: string, dataContent: string, format: string) => {
+      setDebugState(null);
+      clearExpanded();
       setLoading(true);
       try {
         const s = await apiCall('POST', '/api/load', { templateContent, dataContent, format });
@@ -56,7 +58,6 @@ export function useDebugger() {
           addToast({ type: 'error', title: 'Load Failed', message: (s as WebUIState).error!, duration: 6000 });
           return false;
         }
-        clearExpanded();
         setDebugState(s as WebUIState);
         return true;
       } finally {

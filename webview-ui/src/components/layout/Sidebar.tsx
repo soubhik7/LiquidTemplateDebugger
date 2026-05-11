@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bug, Settings, ChevronRight } from 'lucide-react';
+import { Bug, Settings, ChevronRight, BookOpen } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 
 export function Sidebar() {
@@ -8,8 +8,9 @@ export function Sidebar() {
   const activeView = useAppStore((s) => s.activeView);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
-  const items: { icon: any; label: string; id: 'debugger' | 'settings' }[] = [
+  const items: { icon: any; label: string; id: 'debugger' | 'settings' | 'guide' }[] = [
     { icon: Bug, label: 'Debugger', id: 'debugger' },
+    { icon: BookOpen, label: 'Liquid Guide', id: 'guide' },
     { icon: Settings, label: 'Settings', id: 'settings' },
   ];
 

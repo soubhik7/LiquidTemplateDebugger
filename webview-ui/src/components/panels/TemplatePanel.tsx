@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Copy, Edit3, Check, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, Copy, Edit3, Check, ChevronRight, ChevronDown, FileCode, Play } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
@@ -171,17 +171,51 @@ export function TemplatePanel({
             visible: true,
             loading: false,
             content: (
-              <div key={expr} style={{ fontSize: 12 }}>
-                <div style={{ color: 'var(--blue)', fontWeight: 600, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+              <div key={expr} style={{ minWidth: 180 }}>
+                <div style={{ 
+                  color: 'var(--accent)', 
+                  fontWeight: 800, 
+                  marginBottom: 8, 
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  borderBottom: '1px solid var(--border-primary)',
+                  paddingBottom: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
                   {header}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
-                  <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>Value:</span>
-                  <span style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{res.value ?? 'nil'}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>Type:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{res.typeName ?? 'Null'}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', minWidth: 45 }}>Value</span>
+                    <span style={{ 
+                      color: 'var(--text-primary)', 
+                      wordBreak: 'break-all', 
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      background: 'var(--bg-hover)',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      border: '1px solid var(--border-primary)'
+                    }}>
+                      {res.value === '' ? '""' : (res.value ?? 'nil')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', minWidth: 45 }}>Type</span>
+                    <span style={{ 
+                      color: 'var(--accent)', 
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background: 'var(--accent-soft)',
+                      padding: '1px 6px',
+                      borderRadius: 4
+                    }}>
+                      {res.typeName ?? 'Null'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ),
@@ -353,7 +387,7 @@ export function TemplatePanel({
               onMouseLeave={handleMouseLeave}
             >
               {!loaded ? (
-                <EmptyState icon="📄" message="Load a template to start debugging" />
+                <EmptyState icon={<FileCode size={24} />} message="Load a template to start debugging" />
               ) : (
                 lines.map((line, i) => {
                   const ln = i + 1;
@@ -455,8 +489,8 @@ export function TemplatePanel({
 
                         {/* Current Line Indicator (overlay or tiny arrow) */}
                         {isCur && (
-                          <div style={{ position: 'absolute', right: -2, top: '50%', transform: 'translateY(-50%)', color: 'var(--yellow)', fontSize: 10, fontWeight: 900 }}>
-                            ▶
+                          <div style={{ position: 'absolute', right: -4, top: '50%', transform: 'translateY(-50%)', color: 'var(--yellow)', display: 'flex' }}>
+                            <Play size={8} fill="currentColor" stroke="none" />
                           </div>
                         )}
                       </div>
