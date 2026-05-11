@@ -1,0 +1,366 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ─── Dark (default) ─────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg-primary: #0a0a12;
+  --bg-surface: #111118;
+  --bg-panel: #16161f;
+  --bg-hover: #1c1c28;
+  --bg-active: #232338;
+
+  --border-primary: rgba(255, 255, 255, 0.07);
+  --border-secondary: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
+  --accent: #6366f1;
+  --accent-rgb: 99, 102, 241;
+  --accent-soft: rgba(99, 102, 241, 0.12);
+  --accent-glow: rgba(99, 102, 241, 0.28);
+
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-blur: 16px;
+
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --cyan: #22d3ee;
+  --orange: #fb923c;
+  --magenta: #e879f9;
+
+  --tok-output: #60a5fa;
+  --tok-tag: #a78bfa;
+  --tok-comment: #475569;
+
+  --bp-color: #ef4444;
+  --bp-glow: rgba(239, 68, 68, 0.3);
+  --current-line-bg: rgba(245, 158, 11, 0.07);
+  --current-line-border: #f59e0b;
+
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.65);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --transition-fast: 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-track: transparent;
+}
+
+/* ─── Light ──────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-panel: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --bg-active: #e2e8f0;
+
+  --border-primary: rgba(0, 0, 0, 0.07);
+  --border-secondary: rgba(0, 0, 0, 0.12);
+
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.06);
+
+  --tok-output: #2563eb;
+  --tok-tag: #7c3aed;
+  --tok-comment: #94a3b8;
+
+  --green: #059669;
+  --red: #dc2626;
+  --yellow: #d97706;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --cyan: #0891b2;
+  --orange: #ea580c;
+  --magenta: #c026d3;
+
+  --bp-color: #dc2626;
+  --bp-glow: rgba(220, 38, 38, 0.2);
+  --current-line-bg: rgba(217, 119, 6, 0.08);
+  --current-line-border: #d97706;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.14);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.18);
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+}
+
+/* ─── Dark Warm ──────────────────────────────────────────────── */
+[data-theme="dark-warm"] {
+  --bg-primary: #0d0906;
+  --bg-surface: #160e09;
+  --bg-panel: #1c1209;
+  --bg-hover: #231609;
+
+  --text-primary: #f0e6d8;
+  --text-secondary: #b09078;
+  --text-muted: #6b4e38;
+
+  --accent: #f97316;
+  --accent-rgb: 249, 115, 22;
+  --accent-soft: rgba(249, 115, 22, 0.12);
+  --accent-glow: rgba(249, 115, 22, 0.28);
+
+  --glass-bg: rgba(255, 200, 150, 0.03);
+  --glass-border: rgba(255, 200, 150, 0.08);
+
+  --tok-output: #fbbf24;
+  --tok-tag: #fb923c;
+
+  --current-line-bg: rgba(249, 115, 22, 0.08);
+  --current-line-border: #f97316;
+
+  --scrollbar-thumb: rgba(255, 180, 100, 0.1);
+}
+
+/* ─── Light Warm ─────────────────────────────────────────────── */
+[data-theme="light-warm"] {
+  --bg-primary: #fdf6ee;
+  --bg-surface: #ffffff;
+  --bg-panel: #fff8f2;
+  --bg-hover: #fef0e4;
+  --bg-active: #fde8d4;
+
+  --text-primary: #2c1608;
+  --text-secondary: #7c4824;
+  --text-muted: #b07040;
+
+  --accent: #ea580c;
+  --accent-rgb: 234, 88, 12;
+  --accent-soft: rgba(234, 88, 12, 0.1);
+  --accent-glow: rgba(234, 88, 12, 0.2);
+
+  --glass-bg: rgba(255, 240, 220, 0.75);
+  --glass-border: rgba(180, 100, 40, 0.1);
+
+  --tok-output: #b45309;
+  --tok-tag: #c2410c;
+}
+
+/* ─── Dark Cool ──────────────────────────────────────────────── */
+[data-theme="dark-cool"] {
+  --bg-primary: #060810;
+  --bg-surface: #0b1121;
+  --bg-panel: #0f162c;
+  --bg-hover: #141d38;
+
+  --text-primary: #d1e8f8;
+  --text-secondary: #7099c0;
+  --text-muted: #3a5880;
+
+  --accent: #06b6d4;
+  --accent-rgb: 6, 182, 212;
+  --accent-soft: rgba(6, 182, 212, 0.12);
+  --accent-glow: rgba(6, 182, 212, 0.28);
+
+  --glass-bg: rgba(100, 160, 255, 0.03);
+  --glass-border: rgba(100, 160, 255, 0.08);
+
+  --tok-output: #38bdf8;
+  --tok-tag: #818cf8;
+
+  --current-line-bg: rgba(6, 182, 212, 0.07);
+  --current-line-border: #06b6d4;
+
+  --scrollbar-thumb: rgba(100, 160, 255, 0.1);
+}
+
+/* ─── Light Cool ─────────────────────────────────────────────── */
+[data-theme="light-cool"] {
+  --bg-primary: #eef4fb;
+  --bg-surface: #ffffff;
+  --bg-panel: #f0f7ff;
+  --bg-hover: #e4f0fa;
+  --bg-active: #d4e7f7;
+
+  --text-primary: #0c2440;
+  --text-secondary: #3b6090;
+  --text-muted: #7099c0;
+
+  --accent: #0284c7;
+  --accent-rgb: 2, 132, 199;
+  --accent-soft: rgba(2, 132, 199, 0.1);
+  --accent-glow: rgba(2, 132, 199, 0.2);
+
+  --glass-bg: rgba(220, 240, 255, 0.75);
+  --glass-border: rgba(2, 132, 199, 0.1);
+
+  --tok-output: #0369a1;
+  --tok-tag: #4f46e5;
+}
+
+/* ─── Base reset ─────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track, transparent);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ─── Selection ──────────────────────────────────────────────── */
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+/* ─── Transitions ────────────────────────────────────────────── */
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  transition: all var(--transition-base);
+}
+
+/* ─── Glass card base ────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* ─── Focus ring ─────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─── Token syntax highlighting ──────────────────────────────── */
+.tok-output {
+  color: var(--tok-output);
+  cursor: help;
+}
+
+.tok-tag {
+  color: var(--tok-tag);
+}
+
+.tok-comment {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+
+/* ─── Search highlight ───────────────────────────────────────── */
+.search-highlight {
+  background: rgba(245, 158, 11, 0.3);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ─── Scope badge ────────────────────────────────────────────── */
+.scope-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.scope-input,
+.scope-global {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--green);
+}
+
+.scope-assign {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--yellow);
+}
+
+.scope-for {
+  background: rgba(167, 139, 250, 0.12);
+  color: var(--purple);
+}
+
+.scope-capture {
+  background: rgba(251, 146, 60, 0.12);
+  color: var(--orange);
+}
+
+.scope-increment,
+.scope-decrement {
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--cyan);
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
