@@ -162,11 +162,34 @@ export function useDebugger() {
   );
 
   const evaluate = useCallback(async (expression: string) => {
-    return apiCall('POST', '/api/evaluate', { expression }) as Promise<{
+    let finalExpr = expression.trim();
+    let isVirtual = false;
+
+    // Virtual Variable Resolution
+    const ds = useAppStore.getState().debugState;
+    const variables = ds?.state?.variables ?? [];
+    if (ds?.isLoaded && !variables.find(v => v.name === finalExpr)) {
+      const template = ds.templateSource ?? '';
+      // Look for "key": "{{ expr }}" or "key": {{ expr }}
+      const virtualMatch = template.match(new RegExp(`["']?${finalExpr}["']?\\s*:\\s*(?:&quot;|&#039;|["'])?\\s*\\{\\{\\s*(.*?)\\s*\\}\\}`, 'i'));
+      if (virtualMatch && virtualMatch[1]) {
+        finalExpr = virtualMatch[1].trim();
+        isVirtual = true;
+      }
+    }
+
+    const res = (await apiCall('POST', '/api/evaluate', { expression: finalExpr })) as {
       value?: string;
       typeName?: string;
       error?: string;
-    }>;
+      transformations?: any[];
+    };
+
+    if (isVirtual && res) {
+      res.typeName = res.typeName ? `${res.typeName} (Virtual)` : 'Virtual';
+    }
+
+    return res;
   }, []);
 
   const validateOutput = useCallback(async (format: string) => {

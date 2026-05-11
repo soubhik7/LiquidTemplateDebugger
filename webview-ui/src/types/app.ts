@@ -15,6 +15,7 @@ export interface Transformation {
   before?: unknown;
   after?: unknown;
   rightValue?: unknown;
+  args?: string;
 }
 
 export interface VariableOrigin {

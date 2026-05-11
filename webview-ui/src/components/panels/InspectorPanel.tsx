@@ -5,7 +5,8 @@ import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
 import { expandDown } from '../../utils/animation';
-import { truncate, formatRawValue } from '../../utils/helpers';
+import { TreeView } from '../shared/TreeView';
+import { truncate, formatRawValue, tryParseJson, detectFormat } from '../../utils/helpers';
 import type { InspectorTab, WatchExpression } from '../../types/app';
 
 interface InspectorPanelProps {
@@ -58,7 +59,7 @@ export function InspectorPanel({
 
   const [watchInput, setWatchInput] = useState('');
   const [evalInput, setEvalInput] = useState('');
-  const [evalResult, setEvalResult] = useState<{ value?: string; typeName?: string; error?: string } | null>(null);
+  const [evalResult, setEvalResult] = useState<{ value?: string; typeName?: string; error?: string; transformations?: any[] } | null>(null);
   const [bpEvaluations, setBpEvaluations] = useState<Record<number, Record<string, any>>>({});
 
   const loaded = !!debugState?.isLoaded;
@@ -76,8 +77,28 @@ export function InspectorPanel({
     const expr = evalInput.trim();
     if (!expr || !loaded) return;
     const r = await onEvaluate(expr);
-    setEvalResult(r);
-  }, [evalInput, loaded, onEvaluate]);
+    
+    let enriched = { ...r };
+    
+    // 1. Contextual Pipeline Stitching
+    const baseVarName = expr.split(/[\| \.\[]/)[0];
+    const variable = debugState?.state?.variables.find(v => v.name === baseVarName);
+    if (variable?.transformations) {
+      enriched.transformations = [...variable.transformations, ...(enriched.transformations ?? [])];
+    }
+    
+    // 2. Typo Hinting
+    if (enriched.value === 'nil' && !enriched.error) {
+      const suggestions = debugState?.state?.variables
+        .map(v => v.name)
+        .filter(name => name.startsWith(expr) || expr.startsWith(name));
+      if (suggestions && suggestions.length > 0 && suggestions[0] !== expr) {
+        enriched.error = `Variable "${expr}" not found. Did you mean "${suggestions[0]}"?`;
+      }
+    }
+    
+    setEvalResult(enriched);
+  }, [evalInput, loaded, onEvaluate, debugState?.state?.variables]);
 
   const handleBpExpand = useCallback(async (id: number, line: string) => {
     toggleBreakpointExpand(id);
@@ -342,59 +363,34 @@ export function InspectorPanel({
                                             <div
                                               key={idx}
                                               style={{
-                                                marginTop: 4,
-                                                padding: '5px 8px',
-                                                background: 'var(--bg-surface)',
-                                                border: '1px solid var(--border-primary)',
-                                                borderRadius: 'var(--radius-sm)',
+                                                marginTop: 6,
+                                                padding: '8px 12px',
+                                                background: 'var(--accent-soft)',
+                                                border: '1px solid var(--accent-glow)',
+                                                borderRadius: 'var(--radius-md)',
                                                 fontSize: 11,
                                                 fontFamily: 'var(--font-mono)',
+                                                boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.05)'
                                               }}
                                             >
-                                              {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
-                                                <>
-                                                  <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                                                    {idx === 0 ? (t.baseExpr ?? 'value') : 'result'} {t.operator} {t.rightVar}
-                                                  </span>
-                                                  <br />
-                                                  <span style={{ color: 'var(--text-muted)' }}>
-                                                    {String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}
-                                                  </span>
-                                                  {' → '}
-                                                  <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-                                                    {String(t.after ?? 'nil')}
-                                                  </span>
-                                                </>
-                                              ) : t.operator && ['round', 'floor', 'ceil', 'abs'].includes(t.operator) ? (
-                                                <>
-                                                  <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                                                    {t.operator}({idx === 0 ? (t.baseExpr ?? 'value') : 'result'}{t.rightVar ? `, ${t.rightVar}` : ''})
-                                                  </span>
-                                                  <br />
-                                                  <span style={{ color: 'var(--text-muted)' }}>
-                                                    {t.operator}({String(t.before ?? 'nil')}{t.rightValue !== undefined ? `, ${t.rightValue}` : ''})
-                                                  </span>
-                                                  {' → '}
-                                                  <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-                                                    {String(t.after ?? 'nil')}
-                                                  </span>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <span style={{ color: 'var(--purple)' }}>
-                                                    [{(t.type ?? 'FILTER').toUpperCase()}]
-                                                  </span>{' '}
-                                                  {t.name}
-                                                  <br />
-                                                  <span style={{ color: 'var(--red)', textDecoration: 'line-through' }}>
-                                                    {String(t.before ?? 'nil')}
-                                                  </span>
-                                                  {' → '}
-                                                  <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-                                                    {String(t.after ?? 'nil')}
-                                                  </span>
-                                                </>
-                                              )}
+                                              <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>
+                                                {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
+                                                  `${idx === 0 ? (t.baseExpr || 'value') : 'result'} ${t.operator} ${t.rightVar || '?'}`
+                                                ) : t.name ? (
+                                                  `${t.name}${t.args ? `(${t.args})` : ''}`
+                                                ) : (
+                                                  t.operator || 'Transformation'
+                                                )}
+                                              </div>
+                                              <div style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
+                                                  <span>{String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}</span>
+                                                ) : (
+                                                  <span>{String(t.before ?? 'nil')}</span>
+                                                )}
+                                                <span style={{ opacity: 0.5 }}>→</span>
+                                                <span style={{ color: 'var(--green)', fontWeight: 700 }}>{String(t.after ?? 'nil')}</span>
+                                              </div>
                                             </div>
                                           ))}
                                         </div>
@@ -704,35 +700,190 @@ export function InspectorPanel({
                 </AnimatedButton>
               </div>
 
-              <div style={{ flex: 1, padding: '8px 10px', overflowY: 'auto' }}>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
                 {evalResult && (
                   <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      padding: '8px 10px',
-                      background: 'var(--bg-primary)',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-primary)',
-                    }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{ padding: '4px 10px 20px' }}
                   >
                     {evalResult.error ? (
-                      <span style={{ color: 'var(--red)' }}>Error: {evalResult.error}</span>
-                    ) : (
-                      <>
-                        <span style={{ color: 'var(--text-muted)' }}>{'=> '}</span>
-                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{evalResult.value ?? 'nil'}</span>
-                        {evalResult.typeName && (
-                          <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>({evalResult.typeName})</span>
+                      <div style={{ 
+                        padding: '12px 16px', 
+                        background: 'rgba(239,68,68,0.05)', 
+                        border: '1px solid rgba(239,68,68,0.2)', 
+                        borderRadius: 'var(--radius-md)',
+                        color: 'var(--red)',
+                        fontSize: 12
+                      }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', fontSize: 10 }}>Evaluation Error</div>
+                        {evalResult.error.includes('Did you mean') ? (
+                          <>
+                            {evalResult.error.split('Did you mean')[0]}
+                            Did you mean{' '}
+                            <button
+                              onClick={() => {
+                                const match = evalResult.error?.match(/"(.*?)"\?$/);
+                                if (match && match[1]) {
+                                  setEvalInput(match[1]);
+                                  // Wait for state to update then eval
+                                  setTimeout(handleEval, 0);
+                                }
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                color: 'var(--accent)',
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                fontSize: 'inherit',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {evalResult.error.match(/"(.*?)"\?$/)?.[1]}
+                            </button>?
+                          </>
+                        ) : (
+                          evalResult.error
                         )}
-                      </>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {/* Summary Header */}
+                        <div style={{ borderBottom: '1px solid var(--border-primary)', paddingBottom: 10 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                            Expression Result
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <span style={{ 
+                              fontSize: 18, 
+                              fontWeight: 700, 
+                              color: evalResult.value === 'nil' ? 'var(--text-muted)' : 'var(--accent)', 
+                              fontFamily: 'var(--font-mono)',
+                              fontStyle: evalResult.value === 'nil' ? 'italic' : 'normal'
+                            }}>
+                              {truncate(evalResult.value ?? 'nil', 40)}
+                            </span>
+                            {(evalResult.typeName || evalResult.value === 'nil') && (
+                              <span style={{ 
+                                fontSize: 11, 
+                                color: evalResult.value === 'nil' ? 'var(--text-muted)' : 'var(--accent)', 
+                                background: evalResult.value === 'nil' ? 'var(--bg-hover)' : 'var(--accent-soft)', 
+                                padding: '1px 6px', 
+                                borderRadius: 4,
+                                fontWeight: 600
+                              }}>
+                                {evalResult.typeName || 'Null'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Transformation Pipeline */}
+                        {evalResult.transformations && evalResult.transformations.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>
+                              Transformation Pipeline
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, paddingLeft: 4 }}>
+                              {evalResult.transformations.map((t, idx) => (
+                                  <div style={{ position: 'relative', paddingLeft: 20, paddingBottom: 20 }}>
+                                    {/* Line connector */}
+                                    {idx < evalResult.transformations!.length - 1 && (
+                                      <div style={{ position: 'absolute', left: 4, top: 12, bottom: -4, width: 2, background: 'var(--border-primary)' }} />
+                                    )}
+                                    {/* Dot */}
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      left: 0, 
+                                      top: 4, 
+                                      width: 10, 
+                                      height: 10, 
+                                      borderRadius: '50%', 
+                                      background: 'var(--accent)', 
+                                      border: '2px solid var(--bg-surface)',
+                                      boxShadow: '0 0 4px var(--accent-glow)'
+                                    }} />
+                                    
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 12 }}>
+                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? '🔢' : 
+                                         ['round', 'floor', 'ceil', 'abs'].includes(t.operator) ? '🎯' : '🧪'}
+                                      </span>
+                                      {t.name || (t.operator ? t.operator.toUpperCase() : 'STEP')}
+                                    </div>
+
+                                    <div style={{ 
+                                      background: 'var(--accent-soft)', 
+                                      border: '1px solid var(--accent-glow)', 
+                                      borderRadius: 'var(--radius-md)', 
+                                      padding: '8px 12px',
+                                      fontSize: 11,
+                                      boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.05)'
+                                    }}>
+                                      {/* Expression View */}
+                                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>
+                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
+                                          `${idx === 0 ? (t.baseExpr || 'value') : 'result'} ${t.operator} ${t.rightVar || '?'}`
+                                        ) : t.name ? (
+                                          `${t.name}${t.args ? `(${t.args})` : ''}`
+                                        ) : (
+                                          t.operator || 'Transformation'
+                                        )}
+                                      </div>
+                                      
+                                      {/* Values Map */}
+                                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
+                                          <span>{String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}</span>
+                                        ) : (
+                                          <span>{String(t.before ?? 'nil')}</span>
+                                        )}
+                                        <span style={{ opacity: 0.5 }}>→</span>
+                                        <span style={{ color: 'var(--green)', fontWeight: 700 }}>{String(t.after ?? 'nil')}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                              ))}
+                              {/* Final result node */}
+                              <div style={{ position: 'relative', paddingLeft: 20 }}>
+                                <div style={{ 
+                                  position: 'absolute', 
+                                  left: 0, 
+                                  top: 4, 
+                                  width: 10, 
+                                  height: 10, 
+                                  borderRadius: '50%', 
+                                  background: 'var(--green)', 
+                                  border: '2px solid var(--bg-surface)'
+                                }} />
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase' }}>Final Value</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Rich Data View (TreeView) */}
+                        {(evalResult.typeName === 'Hash' || evalResult.typeName === 'Array' || detectFormat(evalResult.value ?? '') !== 'text') && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>
+                              Structure Details
+                            </div>
+                            <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', padding: 10, maxHeight: 300, overflowY: 'auto' }}>
+                              <TreeView data={tryParseJson(evalResult.value ?? '') || evalResult.value} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </motion.div>
                 )}
+                {!evalResult && loaded && (
+                  <EmptyState icon="⚡" message="Ready to evaluate" sub="Enter a Liquid expression above" />
+                )}
                 {!loaded && (
-                  <EmptyState icon="⚡" message="Load a template to evaluate" />
+                  <EmptyState icon="🔒" message="Debugger inactive" sub="Load a template to start evaluating" />
                 )}
               </div>
             </motion.div>

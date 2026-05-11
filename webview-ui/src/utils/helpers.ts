@@ -9,7 +9,17 @@ export function escapeHtml(s: string): string {
 
 export function highlightSyntax(escapedLine: string): string {
   let result = escapedLine;
-  // 1. Handle {{ expr }} -> Full hover
+
+  // 1. Handle "key": "{{ expr }}" or "key": {{ expr }} -> Hover on key (virtual)
+  // This must run before general {{ expr }} handling to capture the key
+  result = result.replace(
+    /((?:&quot;|&#039;|["'])?([a-zA-Z0-9_]+)(?:&quot;|&#039;|["'])?)(\s*:\s*(?:&quot;|&#039;|["'])?\s*)(\{\{-?\s*.*?\s*-?\}\})/g,
+    (match, keyPart, keyName, colonPart, exprPart) => {
+      return `<span class="tok-output" data-expr="${keyName}" data-type="virtual">${keyPart}</span>${colonPart}${exprPart}`;
+    }
+  );
+
+  // 2. Handle {{ expr }} -> Full hover
   result = result.replace(
     /(\{\{-?\s*)(.*?)(\s*-?\}\})/g,
     '<span class="tok-output" data-expr="$2" data-type="output">$1$2$3</span>'
