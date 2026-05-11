@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Wand2, Copy, Check, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Wand2, Copy, Check, CheckCircle, ListTree } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
-import { escapeHtml, escapeRegex, detectFormat, beautifyContent } from '../../utils/helpers';
+import { TreeView } from '../shared/TreeView';
+import { escapeHtml, escapeRegex, detectFormat, beautifyContent, tryParseJson, xmlToJson } from '../../utils/helpers';
 
 interface OutputPanelProps {
   onValidate: (format: string) => Promise<{ isValid?: boolean; errorMessage?: string; sourceLineNumber?: number; error?: string }>;
@@ -19,14 +20,13 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
   const [validateFmt, setValidateFmt] = useState('json');
   const [copied, setCopied] = useState(false);
   const [beautified, setBeautified] = useState<string | null>(null);
+  const [showTree, setShowTree] = useState(false);
 
   const state = debugState?.state;
   const loaded = !!debugState?.isLoaded;
   const outputRaw = state?.outputSoFar ?? '';
   const lastChunk = state?.lastOutputChunk;
   const scopeStack = state?.scopeStack ?? [];
-
-  const displayOutput = beautified ?? outputRaw;
 
   const handleCopy = useCallback(async () => {
     onCopy(outputRaw);
@@ -61,6 +61,20 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
     }
   }, [loaded, validateFmt, onValidate, onToast]);
 
+  const treeData = useMemo(() => {
+    if (!outputRaw) return null;
+    const fmt = detectFormat(outputRaw);
+    try {
+      if (fmt === 'json') return tryParseJson(outputRaw);
+      if (fmt === 'xml') return xmlToJson(outputRaw);
+    } catch {
+      return null;
+    }
+    return null;
+  }, [outputRaw]);
+
+  const treeError = showTree && !treeData && outputRaw.trim().length > 0;
+
   // Build highlighted HTML
   const getOutputHtml = () => {
     const src = beautified ?? outputRaw;
@@ -81,9 +95,6 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
   };
 
   const htmlContent = getOutputHtml();
-
-  // Invalidate beautified when output changes
-  const outputKey = outputRaw.length;
 
   return (
     <motion.div
@@ -151,6 +162,17 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         </span>
         <div style={{ flex: 1 }} />
 
+        <AnimatedButton
+          variant={showTree ? "primary" : "ghost"}
+          size="xs"
+          icon={<ListTree size={11} />}
+          onClick={() => setShowTree(!showTree)}
+          disabled={!loaded}
+          title="Toggle Tree View"
+        >
+          Tree
+        </AnimatedButton>
+
         <select
           value={validateFmt}
           onChange={(e) => setValidateFmt(e.target.value)}
@@ -172,9 +194,12 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         <AnimatedButton variant="ghost" size="xs" icon={<CheckCircle size={11} />} onClick={handleValidate} disabled={!loaded}>
           Validate
         </AnimatedButton>
-        <AnimatedButton variant="ghost" size="xs" icon={<Wand2 size={11} />} onClick={handleBeautify} disabled={!loaded || !outputRaw}>
-          Beautify
-        </AnimatedButton>
+        
+        {!showTree && (
+          <AnimatedButton variant="ghost" size="xs" icon={<Wand2 size={11} />} onClick={handleBeautify} disabled={!loaded || !outputRaw}>
+            Beautify
+          </AnimatedButton>
+        )}
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <Search size={10} style={{ position: 'absolute', left: 6, color: 'var(--text-muted)' }} />
@@ -208,12 +233,48 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflow: 'auto', position: 'relative' }} key={outputKey}>
+      <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
         {!loaded || !outputRaw ? (
           <EmptyState
             icon="📝"
             message={loaded ? 'No output yet — step to generate' : 'Output will appear here as you step'}
           />
+        ) : showTree ? (
+          treeData ? (
+            <div style={{ padding: 12, background: 'var(--bg-surface)', minHeight: '100%' }}>
+               <TreeView data={treeData} />
+            </div>
+          ) : treeError ? (
+            <div style={{ 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: 20, 
+              color: 'var(--red)',
+              background: 'var(--bg-surface)',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontSize: 24, marginBottom: 12 }}>⚠️</span>
+              <span style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Invalid JSON or XML</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Structured view unavailable. Check for syntax errors.</span>
+              <button 
+                onClick={() => setShowTree(false)}
+                style={{ 
+                  marginTop: 16, 
+                  fontSize: 11, 
+                  background: 'var(--bg-hover)', 
+                  border: '1px solid var(--border-primary)', 
+                  padding: '4px 12px', 
+                  borderRadius: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Raw View
+              </button>
+            </div>
+          ) : null
         ) : (
           <pre
             style={{

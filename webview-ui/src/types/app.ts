@@ -98,4 +98,4 @@ export type AccentColor =
   | 'orange'
   | 'rose';
 
-export type InspectorTab = 'watches' | 'breakpoints' | 'eval';
+export type InspectorTab = 'watches' | 'breakpoints' | 'eval' | 'problems';

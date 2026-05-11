@@ -130,6 +130,66 @@ export function beautifyContent(content: string, format: string): string {
   return content;
 }
 
+export function xmlToJson(xml: string): any {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'text/xml');
+  if (doc.querySelector('parsererror')) return { error: 'Invalid XML' };
+
+  function parse(node: Element): any {
+    const obj: any = {};
+    if (node.attributes.length > 0) {
+      obj['@attributes'] = {};
+      for (let i = 0; i < node.attributes.length; i++) {
+        const attr = node.attributes[i];
+        obj['@attributes'][attr.name] = attr.value;
+      }
+    }
+
+    const children = Array.from(node.childNodes);
+    if (children.length === 1 && children[0].nodeType === 3) {
+      const text = children[0].textContent?.trim();
+      if (Object.keys(obj).length === 0) return text;
+      obj['#text'] = text;
+      return obj;
+    }
+
+    for (const child of children) {
+      if (child.nodeType === 1) {
+        const childNode = child as Element;
+        const name = childNode.nodeName;
+        const value = parse(childNode);
+        if (obj[name]) {
+          if (!Array.isArray(obj[name])) obj[name] = [obj[name]];
+          obj[name].push(value);
+        } else {
+          obj[name] = value;
+        }
+      }
+    }
+    return obj;
+  }
+
+  return { [doc.documentElement.nodeName]: parse(doc.documentElement) };
+}
+
+export function tryParseJson(content: string): any {
+  if (!content) return null;
+  try {
+    return JSON.parse(content);
+  } catch {
+    try {
+      // Try cleaning trailing commas
+      const cleaned = content
+        .replace(/,\s*([\]}])/g, '$1')
+        .replace(/:\s*,/g, ': null,')
+        .replace(/:\s*}/g, ': null}');
+      return JSON.parse(cleaned);
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^=!:{}()|[\]\\]/g, '\\$&');
 }

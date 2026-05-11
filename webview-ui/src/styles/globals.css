@@ -418,6 +418,33 @@ select {
   color: var(--cyan);
 }
 
+/* ─── Folding ───────────────────────────────────────────────── */
+.fold-placeholder {
+  background: var(--bg-hover);
+  color: var(--accent);
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-primary);
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.fold-placeholder:hover {
+  background: var(--bg-active);
+  border-color: var(--accent);
+}
+
+/* ─── Tree View ────────────────────────────────────────────── */
+.tree-node-hover:hover {
+  background: var(--bg-hover);
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -1,12 +1,13 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Copy, Edit3, Check } from 'lucide-react';
+import { Search, Copy, Edit3, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
 import { Tooltip } from '../shared/Tooltip';
 import { useDebugger } from '../../hooks/useDebugger';
 import { escapeHtml, highlightSyntax, escapeRegex } from '../../utils/helpers';
+import { findFoldRanges, type FoldRange } from '../../utils/folding';
 import type { Breakpoint } from '../../types/app';
 
 interface TemplatePanelProps {
@@ -30,6 +31,7 @@ export function TemplatePanel({
   const [editContent, setEditContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
+  const [foldedLines, setFoldedLines] = useState<Set<number>>(new Set());
 
   const { evaluate } = useDebugger();
   const [tooltip, setTooltip] = useState<{
@@ -61,6 +63,22 @@ export function TemplatePanel({
       ? elements[state.currentElementIndex]?.lineNumber ?? -1
       : -1;
 
+  const foldRanges = useMemo(() => findFoldRanges(source), [source]);
+  const foldStartMap = useMemo(() => {
+    const map = new Map<number, FoldRange>();
+    foldRanges.forEach(r => map.set(r.startLine, r));
+    return map;
+  }, [foldRanges]);
+
+  const isLineFolded = (ln: number) => {
+    for (const range of foldRanges) {
+      if (foldedLines.has(range.startLine) && ln > range.startLine && ln <= range.endLine) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   useEffect(() => {
     if (templateEditMode && source) {
       setEditContent(source);
@@ -86,6 +104,13 @@ export function TemplatePanel({
     setTemplateEditMode(false);
   }, [editContent, onApplyEdits, setTemplateEditMode]);
 
+  const toggleFold = (ln: number) => {
+    const next = new Set(foldedLines);
+    if (next.has(ln)) next.delete(ln);
+    else next.add(ln);
+    setFoldedLines(next);
+  };
+
   const lines = source ? source.split('\n') : [];
 
   // Compute search matches
@@ -95,6 +120,19 @@ export function TemplatePanel({
     const matches = source.match(pattern);
     setMatchCount(matches?.length ?? 0);
   }, [search, source]);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const ln = e.detail;
+      if (typeof ln === 'number') {
+        const next = new Set(foldedLines);
+        next.delete(ln);
+        setFoldedLines(next);
+      }
+    };
+    window.addEventListener('unfold-line', handler);
+    return () => window.removeEventListener('unfold-line', handler);
+  }, [foldedLines]);
 
   const handleMouseMove = useCallback(
     async (e: React.MouseEvent) => {
@@ -329,6 +367,11 @@ export function TemplatePanel({
                       )
                     : highlightSyntax(rawLine);
 
+                  if (isLineFolded(ln)) return null;
+
+                  const range = foldStartMap.get(ln);
+                  const isFolded = foldedLines.has(ln);
+
                   return (
                     <div
                       key={ln}
@@ -343,78 +386,87 @@ export function TemplatePanel({
                     >
                       {/* Gutter */}
                       <div
+                        key={ln}
                         style={{
-                          width: 56,
-                          minWidth: 56,
+                          width: 48,
+                          minWidth: 48,
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'flex-end',
                           paddingRight: 4,
-                          gap: 2,
                           userSelect: 'none',
                           flexShrink: 0,
                           position: 'relative',
                           zIndex: 1,
                         }}
                       >
-                        {/* Breakpoint dot */}
+                        {/* Breakpoint & Hint */}
                         <div
                           title="Toggle breakpoint (right-click for condition)"
                           onClick={() => onToggleBreakpoint(ln)}
                           onContextMenu={(e) => { e.preventDefault(); onConditionalBreakpoint(ln); }}
                           style={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
+                            width: 14,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            flexShrink: 0,
                           }}
                         >
                           {bp ? (
                             <div
                               style={{
-                                width: 10,
-                                height: 10,
+                                width: 8,
+                                height: 8,
                                 borderRadius: '50%',
                                 background: 'var(--bp-color)',
-                                boxShadow: `0 0 8px 1px var(--bp-glow)`,
                                 opacity: bp.isEnabled ? 1 : 0.4,
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                border: '1px solid rgba(255,255,255,0.2)',
+                                boxShadow: bp.isEnabled ? `0 0 6px var(--bp-glow)` : 'none',
+                                border: '1px solid rgba(255,255,255,0.1)',
                               }}
                             />
                           ) : (
-                            <div
-                              className="bp-hint"
-                              style={{
-                                width: 7,
-                                height: 7,
-                                borderRadius: '50%',
-                                background: 'var(--bp-color)',
-                                opacity: 0,
-                                transition: 'opacity 0.15s',
-                              }}
-                            />
+                            <div className="bp-hint" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--bp-color)', opacity: 0 }} />
                           )}
                         </div>
 
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 22, textAlign: 'right' }}>
-                          {ln}
-                        </span>
-                        <span style={{ width: 14, color: 'var(--yellow)', fontWeight: 700, fontSize: 12 }}>
-                          {isCur ? '▶' : ' '}
-                        </span>
+                        {/* Line Number & Folding Combined Slot */}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, opacity: isCur ? 1 : 0.7 }}>
+                            {ln}
+                          </span>
+                          <div style={{ width: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {range && (
+                              <button
+                                onClick={() => toggleFold(ln)}
+                                style={{ 
+                                  background: 'none', 
+                                  border: 'none', 
+                                  cursor: 'pointer', 
+                                  padding: 0, 
+                                  display: 'flex',
+                                  color: 'var(--text-muted)',
+                                }}
+                              >
+                                {isFolded ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Current Line Indicator (overlay or tiny arrow) */}
+                        {isCur && (
+                          <div style={{ position: 'absolute', right: -2, top: '50%', transform: 'translateY(-50%)', color: 'var(--yellow)', fontSize: 10, fontWeight: 900 }}>
+                            ▶
+                          </div>
+                        )}
                       </div>
 
-                        {/* Line content */}
-                        <span
-                          style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 8, position: 'relative', zIndex: 1 }}
-                          dangerouslySetInnerHTML={{ __html: highlighted }}
-                        />
-                      </div>
+                      {/* Line content */}
+                      <span
+                        style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 8, position: 'relative', zIndex: 1 }}
+                        dangerouslySetInnerHTML={{ __html: isFolded ? `${highlighted} <span class="fold-placeholder" title="Expand block" onclick="window.dispatchEvent(new CustomEvent('unfold-line', {detail: ${ln}}))">...</span>` : highlighted }}
+                      />
+                    </div>
                   );
                 })
               )}

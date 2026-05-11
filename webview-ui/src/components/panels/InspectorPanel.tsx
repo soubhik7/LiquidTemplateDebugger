@@ -36,6 +36,7 @@ const TABS: { id: InspectorTab; label: string }[] = [
   { id: 'watches', label: 'Watches' },
   { id: 'breakpoints', label: 'Breakpoints' },
   { id: 'eval', label: 'Evaluate' },
+  { id: 'problems', label: 'Problems' },
 ];
 
 export function InspectorPanel({
@@ -53,6 +54,7 @@ export function InspectorPanel({
   const toggleWatchExpand = useAppStore((s) => s.toggleWatchExpand);
   const expandedBreakpoints = useAppStore((s) => s.expandedBreakpoints);
   const toggleBreakpointExpand = useAppStore((s) => s.toggleBreakpointExpand);
+  const validationErrors = useAppStore((s) => s.validationErrors);
 
   const [watchInput, setWatchInput] = useState('');
   const [evalInput, setEvalInput] = useState('');
@@ -169,6 +171,20 @@ export function InspectorPanel({
                 {breakpoints.length}
               </span>
             )}
+            {id === 'problems' && validationErrors.length > 0 && (
+              <span
+                style={{
+                  marginLeft: 4,
+                  fontSize: 9,
+                  padding: '0 4px',
+                  borderRadius: 8,
+                  background: 'rgba(239,68,68,0.1)',
+                  color: 'var(--red)',
+                }}
+              >
+                {validationErrors.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -248,43 +264,13 @@ export function InspectorPanel({
                                   {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
                                 </span>
                                 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontWeight: 600 }}>
-                                  {w.displayExpression ?? w.expression}
+                                  {w.expression}
                                 </span>
-                                {w.typeName && (
-                                  <span
-                                    style={{
-                                      fontSize: 9,
-                                      padding: '1px 5px',
-                                      borderRadius: 4,
-                                      background: 'var(--bg-hover)',
-                                      color: 'var(--cyan)',
-                                      fontWeight: 700,
-                                      border: '1px solid var(--border-primary)',
-                                      marginLeft: 4,
-                                    }}
-                                  >
-                                    {w.typeName.toUpperCase()}
-                                  </span>
-                                )}
                               </td>
-                              <td
-                                style={{
-                                  padding: '5px 8px',
-                                  fontFamily: 'var(--font-mono)',
-                                  color: w.hasChanged ? 'var(--yellow)' : 'var(--text-secondary)',
-                                  fontWeight: w.hasChanged ? 700 : 400,
-                                  maxWidth: 140,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  textAlign: 'right',
-                                }}
-                                title={w.currentValue ?? 'nil'}
-                              >
-                                {w.hasChanged && <span style={{ fontSize: 10, marginRight: 4 }}>•</span>}
-                                {truncate(w.currentValue ?? 'nil', 30)}
+                              <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>
+                                {truncate(w.currentValue ?? 'nil', 20)}
                               </td>
-                              <td style={{ padding: '5px 4px', width: 20 }}>
+                              <td style={{ padding: '5px 8px', width: 24 }}>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); onRemoveWatch(w.id); }}
                                   style={{
@@ -493,8 +479,6 @@ export function InspectorPanel({
                               >
                                 {codeSnippet || '(empty line)'}
                               </span>
-                            </td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                               {bp.hitCount > 0 && (
                                 <span
                                   className={`bp-hit-badge ${!bp.isEnabled ? 'disabled' : ''}`}
@@ -604,7 +588,7 @@ export function InspectorPanel({
                                                     <div
                                                       key={idx}
                                                       style={{
-                                                        padding: '4px 8px',
+                                                        padding: '4px 6px',
                                                         background: 'var(--bg-surface)',
                                                         border: '1px solid var(--border-primary)',
                                                         borderRadius: 'var(--radius-sm)',
@@ -748,11 +732,50 @@ export function InspectorPanel({
                   </motion.div>
                 )}
                 {!loaded && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                    Load a template to evaluate expressions
-                  </p>
+                  <EmptyState icon="⚡" message="Load a template to evaluate" />
                 )}
               </div>
+            </motion.div>
+          )}
+
+          {/* Problems */}
+          {activeTab === 'problems' && (
+            <motion.div
+              key="problems"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.15 }}
+              style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+            >
+              {validationErrors.length === 0 ? (
+                <EmptyState icon="✅" message="No syntax issues found" sub="Everything looks good for DotLiquid" />
+              ) : (
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {validationErrors.map((err, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '10px 12px',
+                        borderBottom: '1px solid var(--border-primary)',
+                        background: err.severity === 'error' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{ color: 'var(--red)', marginTop: 2 }}>●</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.4 }}>
+                            {err.message}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                            Line {err.line}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

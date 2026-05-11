@@ -39,7 +39,9 @@ interface AppState {
 
   // Navigation
   activeView: 'debugger' | 'settings';
+  validationErrors: any[];
   setActiveView: (view: 'debugger' | 'settings') => void;
+  setValidationErrors: (errors: any[]) => void;
 
   // Actions
   setDebugState: (state: WebUIState | null) => void;
@@ -80,6 +82,7 @@ export const useAppStore = create<AppState>()(
       templateEditMode: false,
       dataEditMode: false,
       activeView: 'debugger',
+      validationErrors: [],
 
       setActiveView: (view) => set({ activeView: view }),
       setDebugState: (state) => set({ debugState: state }),
@@ -111,6 +114,7 @@ export const useAppStore = create<AppState>()(
 
       setInspectorTab: (tab) => set({ activeInspectorTab: tab }),
       setVarFilter: (v) => set({ varFilter: v }),
+      setValidationErrors: (errors) => set({ validationErrors: errors }),
 
       addToast: (t) =>
         set((s) => ({

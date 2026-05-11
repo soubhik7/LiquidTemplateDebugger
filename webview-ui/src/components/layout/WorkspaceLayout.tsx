@@ -14,12 +14,15 @@ import { LoadModal } from '../overlays/LoadModal';
 import { ToastContainer } from '../shared/Toast';
 import { useDebugger } from '../../hooks/useDebugger';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { validateTemplate } from '../../utils/validator';
 
 export function WorkspaceLayout() {
   const showLoadModal = useAppStore((s) => s.showLoadModal);
   const setShowLoadModal = useAppStore((s) => s.setShowLoadModal);
   const debugState = useAppStore((s) => s.debugState);
   const addToast = useAppStore((s) => s.addToast);
+  const setValidationErrors = useAppStore((s) => s.setValidationErrors);
+  const setInspectorTab = useAppStore((s) => s.setInspectorTab);
 
   const {
     init,
@@ -60,7 +63,10 @@ export function WorkspaceLayout() {
   // Initialize on mount
   useEffect(() => {
     init();
-  }, [init]);
+    if (debugState?.templateSource) {
+      setValidationErrors(validateTemplate(debugState.templateSource));
+    }
+  }, [init, debugState?.templateSource, setValidationErrors]);
 
   const toast = useCallback(
     (message: string, type: 'success' | 'error' | 'info', title?: string, duration = 6000) => {
@@ -90,14 +96,24 @@ export function WorkspaceLayout() {
 
   const handleApplyEdits = useCallback(
     async (template: string) => {
+      const errors = validateTemplate(template);
+      setValidationErrors(errors);
+      
       const ds = debugState;
       if (!ds?.isLoaded) return;
       const data = ds.dataContent ?? '';
       const format = ds.dataFormat ?? 'json';
       const ok = await loadTemplate(template, data, format);
-      if (ok) toast('Changes applied and debugging restarted', 'success');
+      if (ok) {
+        if (errors.length > 0) {
+          toast(`Applied changes with ${errors.length} validation issues`, 'info');
+          setInspectorTab('problems');
+        } else {
+          toast('Changes applied and debugging restarted', 'success');
+        }
+      }
     },
-    [debugState, loadTemplate, toast]
+    [debugState, loadTemplate, toast, setValidationErrors, setInspectorTab]
   );
 
   const handleApplyDataEdits = useCallback(
@@ -125,9 +141,32 @@ export function WorkspaceLayout() {
     [copyToClipboard]
   );
 
+  const handleLoadTemplate = useCallback(
+    async (template: string, data: string, format: string) => {
+      const errors = validateTemplate(template);
+      setValidationErrors(errors);
+      const ok = await loadTemplate(template, data, format);
+      if (ok) {
+        if (errors.length > 0) {
+          toast(`Loaded template with ${errors.length} validation issues`, 'info');
+          setInspectorTab('problems');
+        } else {
+          toast('Template loaded successfully', 'success');
+        }
+      }
+      return ok;
+    },
+    [loadTemplate, setValidationErrors, toast, setInspectorTab]
+  );
+
   const handleLoadSample = useCallback(async () => {
     await loadSample();
-  }, [loadSample]);
+    // After sample loads, check validation (assuming sample might have issues or just to be safe)
+    if (debugState?.templateSource) {
+      const errors = validateTemplate(debugState.templateSource);
+      setValidationErrors(errors);
+    }
+  }, [loadSample, debugState, setValidationErrors]);
 
   const activeView = useAppStore((s) => s.activeView);
 
@@ -199,7 +238,7 @@ export function WorkspaceLayout() {
       <LoadModal
         open={showLoadModal}
         onClose={() => setShowLoadModal(false)}
-        onLoad={loadTemplate}
+        onLoad={handleLoadTemplate}
         onLoadSample={handleLoadSample}
         prefillRef={tplPrefillRef}
       />
