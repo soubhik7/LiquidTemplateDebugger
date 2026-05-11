@@ -26,7 +26,10 @@ export function VariablesPanel() {
     : variables;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -241,7 +244,7 @@ export function VariablesPanel() {
                                         fontFamily: 'var(--font-mono)',
                                       }}
                                     >
-                                      {t.operator ? (
+                                      {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
                                         <>
                                           <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
                                             {idx === 0 ? (t.baseExpr ?? 'value') : 'result'} {t.operator} {t.rightVar}
@@ -249,6 +252,20 @@ export function VariablesPanel() {
                                           <br />
                                           <span style={{ color: 'var(--text-muted)' }}>
                                             {String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}
+                                          </span>
+                                          {' → '}
+                                          <span style={{ color: 'var(--green)', fontWeight: 600 }}>
+                                            {String(t.after ?? 'nil')}
+                                          </span>
+                                        </>
+                                      ) : t.operator && ['round', 'floor', 'ceil', 'abs'].includes(t.operator) ? (
+                                        <>
+                                          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                                            {t.operator}({idx === 0 ? (t.baseExpr ?? 'value') : 'result'}{t.rightVar ? `, ${t.rightVar}` : ''})
+                                          </span>
+                                          <br />
+                                          <span style={{ color: 'var(--text-muted)' }}>
+                                            {t.operator}({String(t.before ?? 'nil')}{t.rightValue !== undefined ? `, ${t.rightValue}` : ''})
                                           </span>
                                           {' → '}
                                           <span style={{ color: 'var(--green)', fontWeight: 600 }}>
@@ -319,6 +336,6 @@ export function VariablesPanel() {
           </table>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

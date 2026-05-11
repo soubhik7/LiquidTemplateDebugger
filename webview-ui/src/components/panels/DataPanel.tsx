@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Wand2, Edit3, Check } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
@@ -39,7 +40,10 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
   }, [editContent, onApplyEdits, setDataEditMode]);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1, ease: [0.2, 0.8, 0.2, 1] }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -133,6 +137,6 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
           placeholder={loaded ? '' : 'Load a template to see input data…'}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }

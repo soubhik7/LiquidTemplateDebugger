@@ -13,6 +13,7 @@ interface AppState {
   // Expanded rows
   expandedVars: Set<string>;
   expandedWatches: Set<number>;
+  expandedBreakpoints: Set<number>;
 
   // Inspector
   activeInspectorTab: InspectorTab;
@@ -36,11 +37,16 @@ interface AppState {
   templateEditMode: boolean;
   dataEditMode: boolean;
 
+  // Navigation
+  activeView: 'debugger' | 'settings';
+  setActiveView: (view: 'debugger' | 'settings') => void;
+
   // Actions
   setDebugState: (state: WebUIState | null) => void;
   setLoading: (v: boolean) => void;
   toggleVarExpand: (name: string) => void;
   toggleWatchExpand: (id: number) => void;
+  toggleBreakpointExpand: (id: number) => void;
   setInspectorTab: (tab: InspectorTab) => void;
   setVarFilter: (v: string) => void;
   addToast: (t: Omit<Toast, 'id'>) => void;
@@ -62,6 +68,7 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       expandedVars: new Set(),
       expandedWatches: new Set(),
+      expandedBreakpoints: new Set(),
       activeInspectorTab: 'watches',
       varFilter: '',
       toasts: [],
@@ -72,7 +79,9 @@ export const useAppStore = create<AppState>()(
       showLoadModal: false,
       templateEditMode: false,
       dataEditMode: false,
+      activeView: 'debugger',
 
+      setActiveView: (view) => set({ activeView: view }),
       setDebugState: (state) => set({ debugState: state }),
       setLoading: (v) => set({ isLoading: v }),
 
@@ -90,6 +99,14 @@ export const useAppStore = create<AppState>()(
           if (next.has(id)) next.delete(id);
           else next.add(id);
           return { expandedWatches: next };
+        }),
+
+      toggleBreakpointExpand: (id) =>
+        set((s) => {
+          const next = new Set(s.expandedBreakpoints);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return { expandedBreakpoints: next };
         }),
 
       setInspectorTab: (tab) => set({ activeInspectorTab: tab }),
@@ -110,7 +127,7 @@ export const useAppStore = create<AppState>()(
       setShowLoadModal: (v) => set({ showLoadModal: v }),
       setTemplateEditMode: (v) => set({ templateEditMode: v }),
       setDataEditMode: (v) => set({ dataEditMode: v }),
-      clearExpandedState: () => set({ expandedVars: new Set(), expandedWatches: new Set() }),
+      clearExpandedState: () => set({ expandedVars: new Set(), expandedWatches: new Set(), expandedBreakpoints: new Set() }),
     }),
     {
       name: 'liquid-debugger-ui',
@@ -127,6 +144,7 @@ export const useAppStore = create<AppState>()(
         // Always start with fresh expanded state and non-serializable Sets
         expandedVars: new Set(),
         expandedWatches: new Set(),
+        expandedBreakpoints: new Set(),
       }),
     }
   )

@@ -4,6 +4,8 @@ import { Search, Copy, Edit3, Check } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
+import { Tooltip } from '../shared/Tooltip';
+import { useDebugger } from '../../hooks/useDebugger';
 import { escapeHtml, highlightSyntax, escapeRegex } from '../../utils/helpers';
 import type { Breakpoint } from '../../types/app';
 
@@ -28,6 +30,21 @@ export function TemplatePanel({
   const [editContent, setEditContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
+
+  const { evaluate } = useDebugger();
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    content: React.ReactNode;
+    visible: boolean;
+    loading?: boolean;
+  }>({
+    x: 0,
+    y: 0,
+    content: null,
+    visible: false,
+    loading: false,
+  });
 
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -79,8 +96,75 @@ export function TemplatePanel({
     setMatchCount(matches?.length ?? 0);
   }, [search, source]);
 
+  const handleMouseMove = useCallback(
+    async (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const tokOutput = target.closest('.tok-output') as HTMLElement;
+
+      if (!tokOutput) {
+        setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        return;
+      }
+
+      const expr = tokOutput.getAttribute('data-expr');
+      const type = tokOutput.getAttribute('data-type') || 'output';
+      if (!expr) return;
+
+      const rect = tokOutput.getBoundingClientRect();
+      const x = Math.min(rect.left, window.innerWidth - 300);
+      const y = rect.bottom + 8;
+
+      // Avoid re-evaluating if we are already showing this expression
+      if (tooltip.visible && tooltip.content && (tooltip.content as any).key === expr) {
+        // Just update position if it moved slightly but still in same element
+        setTooltip((prev) => ({ ...prev, x, y }));
+        return;
+      }
+
+      setTooltip({ x, y, visible: true, loading: true, content: null });
+
+      try {
+        const res = await evaluate(expr);
+        if (res) {
+          const header = type === 'output' ? `{{ ${expr} }}` : expr;
+          setTooltip({
+            x,
+            y,
+            visible: true,
+            loading: false,
+            content: (
+              <div key={expr} style={{ fontSize: 12 }}>
+                <div style={{ color: 'var(--blue)', fontWeight: 600, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+                  {header}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
+                  <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>Value:</span>
+                  <span style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{res.value ?? 'nil'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>Type:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{res.typeName ?? 'Null'}</span>
+                </div>
+              </div>
+            ),
+          });
+        }
+      } catch {
+        setTooltip((prev) => ({ ...prev, visible: false }));
+      }
+    },
+    [evaluate, tooltip.visible, tooltip.content]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setTooltip((prev) => ({ ...prev, visible: false }));
+  }, []);
+
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -227,6 +311,8 @@ export function TemplatePanel({
                 fontSize: 13,
                 lineHeight: 1.7,
               }}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
             >
               {!loaded ? (
                 <EmptyState icon="📄" message="Load a template to start debugging" />
@@ -247,19 +333,12 @@ export function TemplatePanel({
                     <div
                       key={ln}
                       data-line={ln}
+                      className={`code-line ${isCur ? 'code-line-active' : ''}`}
                       style={{
                         display: 'flex',
                         minHeight: 22,
                         paddingRight: 12,
-                        background: isCur ? 'var(--current-line-bg)' : undefined,
-                        borderLeft: isCur ? `2px solid var(--current-line-border)` : '2px solid transparent',
-                        transition: 'background var(--transition-fast)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isCur) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isCur) (e.currentTarget as HTMLElement).style.background = '';
+                        borderLeft: '2px solid transparent',
                       }}
                     >
                       {/* Gutter */}
@@ -274,6 +353,8 @@ export function TemplatePanel({
                           gap: 2,
                           userSelect: 'none',
                           flexShrink: 0,
+                          position: 'relative',
+                          zIndex: 1,
                         }}
                       >
                         {/* Breakpoint dot */}
@@ -295,12 +376,14 @@ export function TemplatePanel({
                           {bp ? (
                             <div
                               style={{
-                                width: 9,
-                                height: 9,
+                                width: 10,
+                                height: 10,
                                 borderRadius: '50%',
                                 background: 'var(--bp-color)',
-                                boxShadow: `0 0 5px var(--bp-glow)`,
-                                opacity: bp.isEnabled ? 1 : 0.35,
+                                boxShadow: `0 0 8px 1px var(--bp-glow)`,
+                                opacity: bp.isEnabled ? 1 : 0.4,
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
                               }}
                             />
                           ) : (
@@ -326,12 +409,12 @@ export function TemplatePanel({
                         </span>
                       </div>
 
-                      {/* Line content */}
-                      <span
-                        style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 8 }}
-                        dangerouslySetInnerHTML={{ __html: highlighted }}
-                      />
-                    </div>
+                        {/* Line content */}
+                        <span
+                          style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 8, position: 'relative', zIndex: 1 }}
+                          dangerouslySetInnerHTML={{ __html: highlighted }}
+                        />
+                      </div>
                   );
                 })
               )}
@@ -339,6 +422,7 @@ export function TemplatePanel({
           )}
         </AnimatePresence>
       </div>
-    </div>
+      <Tooltip {...tooltip} />
+    </motion.div>
   );
 }

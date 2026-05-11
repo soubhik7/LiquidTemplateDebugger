@@ -128,6 +128,7 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
     if (POST && urlPath === '/api/evaluate') {
         const expr: string = body?.expression ?? '';
         const value = await engine.evaluateExpression(expr);
+        const transformations = await engine.extractTransformationsFromExpression(expr, engine.buildContext());
         const fmtValue = value === null || value === undefined ? 'nil' : String(value);
         const typeName = value === null || value === undefined ? 'Null'
             : Array.isArray(value) ? 'Array'
@@ -135,7 +136,7 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
             : typeof value === 'boolean' ? 'Boolean'
             : typeof value === 'number' ? (Number.isInteger(value) ? 'Integer' : 'Double')
             : 'String';
-        return { value: fmtValue, typeName };
+        return { value: fmtValue, typeName, transformations };
     }
 
     // POST /api/validate  { format }

@@ -5,8 +5,8 @@ out/test/**
 **/*.map
 **/*.ts
 !out/**
+!webview-ui/
 !webview-ui/dist/**
-node_modules/**
 webview-ui/node_modules/**
 webview-ui/src/**
 webview-ui/index.html

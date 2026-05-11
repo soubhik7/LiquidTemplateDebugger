@@ -9,14 +9,29 @@ export function escapeHtml(s: string): string {
 
 export function highlightSyntax(escapedLine: string): string {
   let result = escapedLine;
+  // 1. Handle {{ expr }} -> Full hover
   result = result.replace(
     /(\{\{-?\s*)(.*?)(\s*-?\}\})/g,
-    '<span class="tok-output" data-expr="$2">$1$2$3</span>'
+    '<span class="tok-output" data-expr="$2" data-type="output">$1$2$3</span>'
   );
+
+  // 2. Handle {% assign var = expr %} -> Hover on var and expr separately
+  result = result.replace(
+    /(\{%-?\s*assign\s+)([a-zA-Z0-9_]+)(\s*=\s*)(.*?)(\s*-?%\})/g,
+    (match, p1, p2, p3, p4, p5) => {
+      return `${p1}<span class="tok-output" data-expr="${p2}" data-type="var">${p2}</span>${p3}<span class="tok-output" data-expr="${p4}" data-type="expr">${p4}</span>${p5}`;
+    }
+  );
+
+  // 3. Handle other tags
   result = result.replace(
     /(\{%-?\s*)(.*?)(\s*-?%\})/g,
-    '<span class="tok-tag">$1$2$3</span>'
+    (match, p1, p2, p3) => {
+      if (match.includes('<span')) return match; // Already processed
+      return `<span class="tok-tag">${p1}${p2}${p3}</span>`;
+    }
   );
+
   return result;
 }
 

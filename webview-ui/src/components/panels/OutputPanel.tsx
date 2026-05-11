@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Search, Wand2, Copy, Check, CheckCircle, XCircle } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
@@ -85,7 +86,10 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
   const outputKey = outputRaw.length;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -226,6 +230,6 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
           />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

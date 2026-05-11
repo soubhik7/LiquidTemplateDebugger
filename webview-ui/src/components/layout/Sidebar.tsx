@@ -5,10 +5,12 @@ import { useAppStore } from '../../store/useAppStore';
 export function Sidebar() {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggle = useAppStore((s) => s.toggleSidebar);
+  const activeView = useAppStore((s) => s.activeView);
+  const setActiveView = useAppStore((s) => s.setActiveView);
 
-  const items = [
-    { icon: Bug, label: 'Debugger', active: true },
-    { icon: Settings, label: 'Settings', active: false },
+  const items: { icon: any; label: string; id: 'debugger' | 'settings' }[] = [
+    { icon: Bug, label: 'Debugger', id: 'debugger' },
+    { icon: Settings, label: 'Settings', id: 'settings' },
   ];
 
   return (
@@ -26,24 +28,27 @@ export function Sidebar() {
       }}
     >
       <div style={{ flex: 1, paddingTop: 8 }}>
-        {items.map(({ icon: Icon, label, active }) => (
-          <div
-            key={label}
-            title={collapsed ? label : undefined}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '8px 14px',
-              cursor: 'pointer',
-              color: active ? 'var(--accent)' : 'var(--text-muted)',
-              background: active ? 'var(--accent-soft)' : 'transparent',
-              borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
-              transition: 'all var(--transition-fast)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-            }}
-          >
+        {items.map(({ icon: Icon, label, id }) => {
+          const active = activeView === id;
+          return (
+            <div
+              key={id}
+              onClick={() => setActiveView(id)}
+              title={collapsed ? label : undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
+                background: active ? 'var(--accent-soft)' : 'transparent',
+                borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
+                transition: 'all var(--transition-fast)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+              }}
+            >
             <Icon size={18} style={{ flexShrink: 0 }} />
             <AnimatePresence>
               {!collapsed && (
@@ -58,8 +63,9 @@ export function Sidebar() {
                 </motion.span>
               )}
             </AnimatePresence>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       <button

@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { HeaderBar } from './HeaderBar';
 import { Sidebar } from './Sidebar';
@@ -8,6 +9,7 @@ import { DataPanel } from '../panels/DataPanel';
 import { OutputPanel } from '../panels/OutputPanel';
 import { VariablesPanel } from '../panels/VariablesPanel';
 import { InspectorPanel } from '../panels/InspectorPanel';
+import { SettingsPanel } from '../panels/SettingsPanel';
 import { LoadModal } from '../overlays/LoadModal';
 import { ToastContainer } from '../shared/Toast';
 import { useDebugger } from '../../hooks/useDebugger';
@@ -127,8 +129,13 @@ export function WorkspaceLayout() {
     await loadSample();
   }, [loadSample]);
 
+  const activeView = useAppStore((s) => s.activeView);
+
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -146,43 +153,46 @@ export function WorkspaceLayout() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {activeView === 'debugger' ? (
+            <ResizablePanel direction="horizontal" initialSize={34} minSize={120}>
+              {/* Column 1: Template */}
+              <TemplatePanel
+                onToggleBreakpoint={toggleBreakpoint}
+                onConditionalBreakpoint={handleConditionalBreakpoint}
+                onCopy={handleCopyTemplate}
+                onApplyEdits={handleApplyEdits}
+              />
 
-        {/* Main 3-column area */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <ResizablePanel direction="horizontal" initialSize={34} minSize={120}>
-            {/* Column 1: Template */}
-            <TemplatePanel
-              onToggleBreakpoint={toggleBreakpoint}
-              onConditionalBreakpoint={handleConditionalBreakpoint}
-              onCopy={handleCopyTemplate}
-              onApplyEdits={handleApplyEdits}
-            />
+              {/* Columns 2+3 */}
+              <ResizablePanel direction="horizontal" initialSize={50} minSize={120}>
+                {/* Column 2: Data + Output */}
+                <ResizablePanel direction="vertical" initialSize={40} minSize={80}>
+                  <DataPanel onApplyEdits={handleApplyDataEdits} onToast={toast} />
+                  <OutputPanel
+                    onValidate={validateOutput}
+                    onCopy={handleCopyOutput}
+                    onToast={toast}
+                  />
+                </ResizablePanel>
 
-            {/* Columns 2+3 */}
-            <ResizablePanel direction="horizontal" initialSize={50} minSize={120}>
-              {/* Column 2: Data + Output */}
-              <ResizablePanel direction="vertical" initialSize={40} minSize={80}>
-                <DataPanel onApplyEdits={handleApplyDataEdits} onToast={toast} />
-                <OutputPanel
-                  onValidate={validateOutput}
-                  onCopy={handleCopyOutput}
-                  onToast={toast}
-                />
-              </ResizablePanel>
-
-              {/* Column 3: Variables + Inspector */}
-              <ResizablePanel direction="vertical" initialSize={55} minSize={80}>
-                <VariablesPanel />
-                <InspectorPanel
-                  onAddWatch={addWatch}
-                  onRemoveWatch={removeWatch}
-                  onToggleBreakpoint={toggleBreakpointById}
-                  onRemoveBreakpoint={removeBreakpoint}
-                  onEvaluate={evaluate}
-                />
+                {/* Column 3: Variables + Inspector */}
+                <ResizablePanel direction="vertical" initialSize={55} minSize={80}>
+                  <VariablesPanel />
+                    <InspectorPanel
+                      onAddWatch={addWatch}
+                      onRemoveWatch={removeWatch}
+                      onToggleBreakpoint={toggleBreakpointById}
+                      onRemoveBreakpoint={removeBreakpoint}
+                      onEvaluate={evaluate}
+                      onReset={reset}
+                    />
+                </ResizablePanel>
               </ResizablePanel>
             </ResizablePanel>
-          </ResizablePanel>
+          ) : (
+            <SettingsPanel />
+          )}
         </div>
       </div>
 
@@ -195,6 +205,6 @@ export function WorkspaceLayout() {
       />
 
       <ToastContainer />
-    </div>
+    </motion.div>
   );
 }

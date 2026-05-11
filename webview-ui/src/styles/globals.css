@@ -308,6 +308,70 @@ select {
   font-style: italic;
 }
 
+/* ─── Premium Entrance ────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeInScale 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* ─── Snappy Hover Styles ─────────────────────────────────────── */
+.code-line {
+  position: relative;
+  transition: border-left 0.1s ease;
+}
+
+.code-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg-hover);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.code-line:hover .bp-hint {
+  opacity: 0.4 !important;
+}
+
+.code-line:hover::after {
+  opacity: 1;
+}
+
+.code-line-active {
+  background: var(--current-line-bg) !important;
+  border-left: 2px solid var(--current-line-border) !important;
+}
+
+.code-line-active::after {
+  display: none;
+}
+
 /* ─── Search highlight ───────────────────────────────────────── */
 .search-highlight {
   background: rgba(245, 158, 11, 0.3);

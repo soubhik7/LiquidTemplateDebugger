@@ -76,7 +76,7 @@
   "scripts": {
     "vscode:prepublish": "npm run build-all",
     "build-all": "npm run build-webview && npm run compile",
-    "build-webview": "cd ../webview-ui && npm install && npm run build",
+    "build-webview": "cd ../webview-ui && npm install && npm run build && mkdir -p ../vscode-extension/webview-ui && cp -r dist ../vscode-extension/webview-ui/",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",

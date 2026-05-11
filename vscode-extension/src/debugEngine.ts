@@ -72,7 +72,7 @@ export class DebugEngine {
         format: string,
         templatePath = ''
     ): Promise<void> {
-        const savedBreakpoints = [...this.state.breakpoints]; // preserve BPs across reloads
+        const savedBreakpoints = this.state.breakpoints.map(bp => ({ ...bp, hitCount: 0 })); // Reset hits for new run
         this.state = this.createInitialState();
         this.state.breakpoints = savedBreakpoints;
         this.parsedTemplate = null;
@@ -225,7 +225,15 @@ export class DebugEngine {
     }
 
     async checkBreakpoint(): Promise<boolean> {
-        const { currentLine, breakpoints } = this.state;
+        const { currentElement, currentLine, breakpoints } = this.state;
+        if (!this.parsedTemplate) return false;
+        
+        // Only trigger breakpoint on the FIRST element of a line to avoid multiple hits per line
+        // (e.g. literal + output + literal on one line)
+        const elements = this.parsedTemplate.elements;
+        const isFirstOnLine = currentElement === 0 || elements[currentElement - 1].line !== currentLine;
+        if (!isFirstOnLine) return false;
+
         for (const bp of breakpoints) {
             if (bp.enabled && bp.line === currentLine) {
                 if (bp.condition && bp.condition.trim().length > 0) {
@@ -446,7 +454,7 @@ export class DebugEngine {
         this.state.variables.set(name, variable);
     }
 
-    private buildContext(): Record<string, any> {
+    public buildContext(): Record<string, any> {
         const ctx: Record<string, any> = {};
         for (const [name, v] of this.state.variables) { ctx[name] = v.value; }
         return ctx;
@@ -884,7 +892,7 @@ export class DebugEngine {
         }
     }
 
-    private async extractTransformationsFromExpression(expr: string, context: Record<string, any>): Promise<any[]> {
+    public async extractTransformationsFromExpression(expr: string, context: Record<string, any>): Promise<any[]> {
         const parts = expr.split('|');
         if (parts.length <= 1) return [];
         const baseExpr = parts[0].trim();
@@ -911,6 +919,7 @@ export class DebugEngine {
                 else if (name === 'times') operator = '*';
                 else if (name === 'dividedby' || name === 'divided_by') operator = '/';
                 else if (name === 'modulo') operator = '%';
+                else if (['round', 'floor', 'ceil', 'abs'].includes(name)) operator = name;
                 
                 if (arg) {
                     rightVar = arg;
