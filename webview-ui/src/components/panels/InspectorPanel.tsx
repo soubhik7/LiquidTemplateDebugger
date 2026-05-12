@@ -16,6 +16,7 @@ interface InspectorPanelProps {
   onRemoveBreakpoint: (id: number) => void;
   onEvaluate: (expr: string) => Promise<{ value?: string; typeName?: string; error?: string; transformations?: any[] }>;
   onReset?: () => void;
+  forceTab?: InspectorTab;
 }
 
 function extractExpressions(text: string): string[] {
@@ -47,10 +48,13 @@ export function InspectorPanel({
   onRemoveBreakpoint,
   onEvaluate,
   onReset,
+  forceTab,
 }: InspectorPanelProps) {
   const debugState = useAppStore((s) => s.debugState);
-  const activeTab = useAppStore((s) => s.activeInspectorTab);
+  const activeInspectorTab = useAppStore((s) => s.activeInspectorTab);
   const setTab = useAppStore((s) => s.setInspectorTab);
+  
+  const activeTab = forceTab ?? activeInspectorTab;
   const expandedWatches = useAppStore((s) => s.expandedWatches);
   const toggleWatchExpand = useAppStore((s) => s.toggleWatchExpand);
   const expandedBreakpoints = useAppStore((s) => s.expandedBreakpoints);
@@ -130,85 +134,88 @@ export function InspectorPanel({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        flex: 1,
+        minHeight: 0,
         background: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-primary)',
         overflow: 'hidden',
       }}
     >
       {/* Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          borderBottom: '1px solid var(--border-primary)',
-          background: 'var(--bg-panel)',
-          flexShrink: 0,
-        }}
-      >
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            style={{
-              flex: 1,
-              padding: '7px 4px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: `2px solid ${activeTab === id ? 'var(--accent)' : 'transparent'}`,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: 600,
-              color: activeTab === id ? 'var(--accent)' : 'var(--text-muted)',
-              transition: 'all var(--transition-fast)',
-              letterSpacing: '0.3px',
-            }}
-          >
-            {label}
-            {id === 'watches' && watches.length > 0 && (
-              <span
-                style={{
-                  marginLeft: 4,
-                  fontSize: 9,
-                  padding: '0 4px',
-                  borderRadius: 8,
-                  background: 'var(--accent-soft)',
-                  color: 'var(--accent)',
-                }}
-              >
-                {watches.length}
-              </span>
-            )}
-            {id === 'breakpoints' && breakpoints.length > 0 && (
-              <span
-                style={{
-                  marginLeft: 4,
-                  fontSize: 9,
-                  padding: '0 4px',
-                  borderRadius: 8,
-                  background: 'rgba(239,68,68,0.1)',
-                  color: 'var(--red)',
-                }}
-              >
-                {breakpoints.length}
-              </span>
-            )}
-            {id === 'problems' && validationErrors.length > 0 && (
-              <span
-                style={{
-                  marginLeft: 4,
-                  fontSize: 9,
-                  padding: '0 4px',
-                  borderRadius: 8,
-                  background: 'rgba(239,68,68,0.1)',
-                  color: 'var(--red)',
-                }}
-              >
-                {validationErrors.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {!forceTab && (
+        <div
+          style={{
+            display: 'flex',
+            borderBottom: '1px solid var(--border-primary)',
+            background: 'var(--bg-panel)',
+            flexShrink: 0,
+          }}
+        >
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              style={{
+                flex: 1,
+                padding: '7px 4px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${activeTab === id ? 'var(--accent)' : 'transparent'}`,
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 600,
+                color: activeTab === id ? 'var(--accent)' : 'var(--text-muted)',
+                transition: 'all var(--transition-fast)',
+                letterSpacing: '0.3px',
+              }}
+            >
+              {label}
+              {id === 'watches' && watches.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 9,
+                    padding: '0 4px',
+                    borderRadius: 8,
+                    background: 'var(--accent-soft)',
+                    color: 'var(--accent)',
+                  }}
+                >
+                  {watches.length}
+                </span>
+              )}
+              {id === 'breakpoints' && breakpoints.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 9,
+                    padding: '0 4px',
+                    borderRadius: 8,
+                    background: 'rgba(239,68,68,0.1)',
+                    color: 'var(--red)',
+                  }}
+                >
+                  {breakpoints.length}
+                </span>
+              )}
+              {id === 'problems' && validationErrors.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 9,
+                    padding: '0 4px',
+                    borderRadius: 8,
+                    background: 'rgba(239,68,68,0.1)',
+                    color: 'var(--red)',
+                  }}
+                >
+                  {validationErrors.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -354,47 +361,40 @@ export function InspectorPanel({
                                         </div>
                                       )}
 
-                                      {w.transformations && w.transformations.length > 0 && (
-                                        <div style={{ marginTop: 8 }}>
-                                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                                            Transformations
-                                          </span>
-                                          {w.transformations.map((t, idx) => (
-                                            <div
-                                              key={idx}
-                                              style={{
-                                                marginTop: 6,
-                                                padding: '8px 12px',
-                                                background: 'var(--accent-soft)',
-                                                border: '1px solid var(--accent-glow)',
-                                                borderRadius: 'var(--radius-md)',
-                                                fontSize: 11,
-                                                fontFamily: 'var(--font-mono)',
-                                                boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.05)'
-                                              }}
-                                            >
-                                              <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>
-                                                {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
-                                                  `${idx === 0 ? (t.baseExpr || 'value') : 'result'} ${t.operator} ${t.rightVar || '?'}`
-                                                ) : t.name ? (
-                                                  `${t.name}${t.args ? `(${t.args})` : ''}`
-                                                ) : (
-                                                  t.operator || 'Transformation'
-                                                )}
-                                              </div>
-                                              <div style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
-                                                  <span>{String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}</span>
-                                                ) : (
-                                                  <span>{String(t.before ?? 'nil')}</span>
-                                                )}
-                                                <span style={{ opacity: 0.5 }}>→</span>
-                                                <span style={{ color: 'var(--green)', fontWeight: 700 }}>{String(t.after ?? 'nil')}</span>
-                                              </div>
+                                          {w.transformations && w.transformations.length > 0 && (
+                                            <div style={{ marginTop: 10 }}>
+                                              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6, display: 'block' }}>
+                                                Transformations
+                                              </span>
+                                              {w.transformations.map((t, idx) => (
+                                                <div
+                                                  key={idx}
+                                                  style={{
+                                                    marginTop: 6,
+                                                    padding: '8px 12px',
+                                                    background: 'var(--bg-panel)',
+                                                    border: '1px solid var(--border-primary)',
+                                                    borderRadius: 8,
+                                                    fontFamily: 'var(--font-mono)',
+                                                    boxShadow: 'var(--shadow-sm)',
+                                                  }}
+                                                >
+                                                  <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                                    {w.expression} = {idx === 0 ? (t.baseExpr || 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
+                                                  </div>
+                                                  <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                                                    <span style={{ color: 'var(--red)' }}>
+                                                      {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                                    </span>
+                                                    <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                                    <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                                      {String(t.after ?? 'nil')}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              ))}
                                             </div>
-                                          ))}
-                                        </div>
-                                      )}
+                                          )}
                                     </motion.div>
                                   </td>
                                 </tr>
@@ -578,34 +578,35 @@ export function InspectorPanel({
                                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>{expr}</span>
                                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-primary)', fontWeight: 600 }}>{res.value ?? 'nil'}</span>
                                               </div>
-                                              {res.transformations && res.transformations.length > 0 && (
-                                                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                  {res.transformations.map((t: any, idx: number) => (
-                                                    <div
-                                                      key={idx}
-                                                      style={{
-                                                        padding: '4px 6px',
-                                                        background: 'var(--bg-surface)',
-                                                        border: '1px solid var(--border-primary)',
-                                                        borderRadius: 'var(--radius-sm)',
-                                                        fontSize: 10,
-                                                        fontFamily: 'var(--font-mono)',
-                                                      }}
-                                                    >
-                                                      <div style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: 2 }}>
-                                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator)
-                                                          ? `${idx === 0 ? (t.baseExpr ?? 'value') : 'result'} ${t.operator} ${t.rightVar}`
-                                                          : (t.name ?? 'filter')}
-                                                      </div>
-                                                      <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <span>{String(t.before)}</span>
-                                                        <span style={{ opacity: 0.5 }}>→</span>
-                                                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{String(t.after)}</span>
-                                                      </div>
+                                                  {res.transformations && res.transformations.length > 0 && (
+                                                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                      {res.transformations.map((t: any, idx: number) => (
+                                                        <div
+                                                          key={idx}
+                                                          style={{
+                                                            padding: '6px 10px',
+                                                            background: 'var(--bg-panel)',
+                                                            border: '1px solid var(--border-primary)',
+                                                            borderRadius: 8,
+                                                            fontFamily: 'var(--font-mono)',
+                                                          }}
+                                                        >
+                                                          <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                                            {expr} = {idx === 0 ? (t.baseExpr ?? 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
+                                                          </div>
+                                                          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                                            <span style={{ color: 'var(--red)' }}>
+                                                              {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                                            </span>
+                                                            <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                                            <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                                              {String(t.after ?? 'nil')}
+                                                            </span>
+                                                          </div>
+                                                        </div>
+                                                      ))}
                                                     </div>
-                                                  ))}
-                                                </div>
-                                              )}
+                                                  )}
                                             </div>
                                           ))}
                                         </div>
@@ -815,33 +816,24 @@ export function InspectorPanel({
                                     </div>
 
                                     <div style={{ 
-                                      background: 'var(--accent-soft)', 
-                                      border: '1px solid var(--accent-glow)', 
-                                      borderRadius: 'var(--radius-md)', 
+                                      background: 'var(--bg-panel)', 
+                                      border: '1px solid var(--border-primary)', 
+                                      borderRadius: 8, 
                                       padding: '8px 12px',
-                                      fontSize: 11,
-                                      boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.05)'
+                                      fontFamily: 'var(--font-mono)',
+                                      boxShadow: 'var(--shadow-sm)',
                                     }}>
-                                      {/* Expression View */}
-                                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>
-                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
-                                          `${idx === 0 ? (t.baseExpr || 'value') : 'result'} ${t.operator} ${t.rightVar || '?'}`
-                                        ) : t.name ? (
-                                          `${t.name}${t.args ? `(${t.args})` : ''}`
-                                        ) : (
-                                          t.operator || 'Transformation'
-                                        )}
+                                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                        {evalInput} = {idx === 0 ? (t.baseExpr || 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
                                       </div>
-                                      
-                                      {/* Values Map */}
-                                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
-                                          <span>{String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}</span>
-                                        ) : (
-                                          <span>{String(t.before ?? 'nil')}</span>
-                                        )}
-                                        <span style={{ opacity: 0.5 }}>→</span>
-                                        <span style={{ color: 'var(--green)', fontWeight: 700 }}>{String(t.after ?? 'nil')}</span>
+                                      <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                                        <span style={{ color: 'var(--red)' }}>
+                                          {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                        </span>
+                                        <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                        <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                          {String(t.after ?? 'nil')}
+                                        </span>
                                       </div>
                                     </div>
                                   </div>
@@ -897,7 +889,7 @@ export function InspectorPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.15 }}
-              style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+              style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
             >
               {validationErrors.length === 0 ? (
                 <EmptyState icon={<CheckCircle size={24} />} message="No syntax issues found" sub="Everything looks good for DotLiquid" />

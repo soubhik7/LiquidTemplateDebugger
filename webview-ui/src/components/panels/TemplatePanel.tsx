@@ -246,88 +246,129 @@ export function TemplatePanel({
         overflow: 'hidden',
       }}
     >
-      {/* Header */}
+      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
+          gap: 12,
+          padding: '8px 16px',
           background: 'var(--bg-panel)',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-          Template
-        </span>
-        {loaded && (
-          <span
-            style={{
-              fontSize: 10,
-              padding: '1px 7px',
-              borderRadius: 20,
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              fontWeight: 600,
-            }}
-          >
-            {elements.length} el
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileCode size={14} style={{ color: 'var(--accent)' }} />
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Template
           </span>
-        )}
+        </div>
+        
         <div style={{ flex: 1 }} />
 
-        {/* Search */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search size={11} style={{ position: 'absolute', left: 6, color: 'var(--text-muted)' }} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search…"
-            style={{
-              width: 130,
-              padding: '2px 8px 2px 22px',
-              fontSize: 11,
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--border-primary)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-            }}
-          />
-          {matchCount > 0 && (
-            <span style={{ position: 'absolute', right: 6, fontSize: 9, color: 'var(--text-muted)' }}>
-              {matchCount}
-            </span>
+        {/* Integrated Control Group */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          background: 'var(--bg-surface)', 
+          border: '1px solid var(--border-primary)', 
+          borderRadius: 8,
+          padding: 2,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          {/* Search Sub-group */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: 4 }}>
+            <Search size={12} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Find in template..."
+              style={{
+                width: 160,
+                padding: '4px 8px 4px 28px',
+                fontSize: 11,
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                fontWeight: 600
+              }}
+            />
+            {matchCount > 0 && (
+              <span style={{ position: 'absolute', right: 8, fontSize: 10, color: 'var(--accent)', fontWeight: 800 }}>
+                {matchCount}
+              </span>
+            )}
+          </div>
+
+          <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
+
+          {templateEditMode ? (
+            <button 
+              onClick={handleApply}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                borderRadius: 6,
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              <Check size={12} strokeWidth={3} /> Save
+            </button>
+          ) : (
+            <button
+              disabled={!loaded}
+              onClick={() => setTemplateEditMode(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 6,
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: loaded ? 'pointer' : 'not-allowed',
+                opacity: loaded ? 1 : 0.5
+              }}
+            >
+              <Edit3 size={12} /> Edit
+            </button>
           )}
-        </div>
 
-        {templateEditMode ? (
-          <AnimatedButton variant="primary" size="xs" icon={<Check size={11} />} onClick={handleApply}>
-            Apply
-          </AnimatedButton>
-        ) : (
-          <AnimatedButton
-            variant="ghost"
-            size="xs"
-            icon={<Edit3 size={11} />}
-            onClick={() => setTemplateEditMode(true)}
+          <button
             disabled={!loaded}
+            onClick={handleCopy}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: copied ? 'var(--green-soft)' : 'transparent',
+              color: copied ? 'var(--green)' : 'var(--text-secondary)',
+              border: 'none',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: loaded ? 'pointer' : 'not-allowed',
+              opacity: loaded ? 1 : 0.5
+            }}
           >
-            Edit
-          </AnimatedButton>
-        )}
-
-        <AnimatedButton
-          variant="ghost"
-          size="xs"
-          icon={copied ? <Check size={11} /> : <Copy size={11} />}
-          onClick={handleCopy}
-          disabled={!loaded}
-          style={copied ? { color: 'var(--green)', borderColor: 'var(--green)' } : undefined}
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </AnimatedButton>
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -415,15 +456,16 @@ export function TemplatePanel({
                         display: 'flex',
                         minHeight: 22,
                         paddingRight: 12,
-                        borderLeft: '2px solid transparent',
+                        background: isCur ? 'var(--accent-soft)' : 'transparent',
+                        borderLeft: `3px solid ${isCur ? 'var(--accent)' : 'transparent'}`,
+                        transition: 'background 0.3s ease'
                       }}
                     >
                       {/* Gutter */}
                       <div
-                        key={ln}
                         style={{
-                          width: 48,
-                          minWidth: 48,
+                          width: 44,
+                          minWidth: 44,
                           display: 'flex',
                           alignItems: 'center',
                           paddingRight: 4,
@@ -431,6 +473,9 @@ export function TemplatePanel({
                           flexShrink: 0,
                           position: 'relative',
                           zIndex: 1,
+                          borderRight: '1px solid var(--border-primary)',
+                          background: isCur ? 'var(--accent-soft)' : 'var(--bg-panel)',
+                          opacity: isCur ? 1 : 0.8
                         }}
                       >
                         {/* Breakpoint & Hint */}
@@ -465,7 +510,7 @@ export function TemplatePanel({
 
                         {/* Line Number & Folding Combined Slot */}
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, opacity: isCur ? 1 : 0.7 }}>
+                          <span style={{ fontSize: 10, color: isCur ? 'var(--accent)' : 'var(--text-muted)', fontWeight: isCur ? 800 : 500 }}>
                             {ln}
                           </span>
                           <div style={{ width: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -478,7 +523,7 @@ export function TemplatePanel({
                                   cursor: 'pointer', 
                                   padding: 0, 
                                   display: 'flex',
-                                  color: 'var(--text-muted)',
+                                  color: isCur ? 'var(--accent)' : 'var(--text-muted)',
                                 }}
                               >
                                 {isFolded ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
@@ -489,7 +534,7 @@ export function TemplatePanel({
 
                         {/* Current Line Indicator (overlay or tiny arrow) */}
                         {isCur && (
-                          <div style={{ position: 'absolute', right: -4, top: '50%', transform: 'translateY(-50%)', color: 'var(--yellow)', display: 'flex' }}>
+                          <div style={{ position: 'absolute', right: -4, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)', display: 'flex', zIndex: 10 }}>
                             <Play size={8} fill="currentColor" stroke="none" />
                           </div>
                         )}

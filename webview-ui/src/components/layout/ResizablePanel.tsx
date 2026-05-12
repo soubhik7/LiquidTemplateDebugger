@@ -86,24 +86,35 @@ export function ResizablePanel({
       {/* Drag handle */}
       <div
         onMouseDown={startDrag}
+        className="resize-handle"
         style={{
           flexShrink: 0,
-          width: isH ? 4 : '100%',
-          height: isH ? '100%' : 4,
+          width: isH ? 1 : '100%',
+          height: isH ? '100%' : 1,
           cursor: isH ? 'col-resize' : 'row-resize',
-          background: 'transparent',
-          transition: 'background 0.2s',
-          zIndex: 10,
+          background: 'var(--border-primary)',
+          transition: 'all 0.2s',
+          zIndex: 40,
           position: 'relative',
+          margin: isH ? '0 -1px' : '-1px 0'
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.background = 'var(--accent)';
+          const el = e.currentTarget as HTMLElement;
+          el.classList.add('resize-handle-active');
         }}
         onMouseLeave={(e) => {
-          if (!dragging.current)
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
+          if (!dragging.current) {
+            const el = e.currentTarget as HTMLElement;
+            el.classList.remove('resize-handle-active');
+          }
         }}
-      />
+      >
+        <div style={{
+          position: 'absolute',
+          inset: isH ? '0 -4px' : '-4px 0',
+          cursor: isH ? 'col-resize' : 'row-resize'
+        }} />
+      </div>
 
       <div style={{ flex: 1, overflow: 'hidden', minWidth: isH ? minSize : undefined, minHeight: !isH ? minSize : undefined }}>
         {children[1]}

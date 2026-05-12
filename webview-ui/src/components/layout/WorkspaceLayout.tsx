@@ -7,8 +7,7 @@ import { ResizablePanel } from './ResizablePanel';
 import { TemplatePanel } from '../panels/TemplatePanel';
 import { DataPanel } from '../panels/DataPanel';
 import { OutputPanel } from '../panels/OutputPanel';
-import { VariablesPanel } from '../panels/VariablesPanel';
-import { InspectorPanel } from '../panels/InspectorPanel';
+import { RightSidePanel } from './RightSidePanel';
 import { SettingsPanel } from '../panels/SettingsPanel';
 import { GuidePanel } from '../panels/GuidePanel';
 import { LoadModal } from '../overlays/LoadModal';
@@ -185,48 +184,76 @@ export function WorkspaceLayout() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {activeView === 'debugger' ? (
-            <ResizablePanel direction="horizontal" initialSize={34} minSize={120}>
-              {/* Column 1: Template */}
-              <TemplatePanel
-                onToggleBreakpoint={toggleBreakpoint}
-                onConditionalBreakpoint={handleConditionalBreakpoint}
-                onCopy={handleCopyTemplate}
-                onApplyEdits={handleApplyEdits}
-              />
-
-              {/* Columns 2+3 */}
-              <ResizablePanel direction="horizontal" initialSize={50} minSize={120}>
-                {/* Column 2: Data + Output */}
-                <ResizablePanel direction="vertical" initialSize={40} minSize={80}>
-                  <DataPanel onApplyEdits={handleApplyDataEdits} onToast={toast} />
-                  <OutputPanel
-                    onValidate={validateOutput}
-                    onCopy={handleCopyOutput}
-                    onToast={toast}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          <AnimatePresence mode="wait">
+            {activeView === 'debugger' ? (
+              <motion.div
+                key="debugger"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                style={{ height: '100%', width: '100%', position: 'absolute', inset: 0 }}
+              >
+                <ResizablePanel direction="horizontal" initialSize={34} minSize={120}>
+                  {/* Column 1: Template */}
+                  <TemplatePanel
+                    onToggleBreakpoint={toggleBreakpoint}
+                    onConditionalBreakpoint={handleConditionalBreakpoint}
+                    onCopy={handleCopyTemplate}
+                    onApplyEdits={handleApplyEdits}
                   />
-                </ResizablePanel>
 
-                {/* Column 3: Variables + Inspector */}
-                <ResizablePanel direction="vertical" initialSize={55} minSize={80}>
-                  <VariablesPanel />
-                    <InspectorPanel
-                      onAddWatch={addWatch}
-                      onRemoveWatch={removeWatch}
-                      onToggleBreakpoint={toggleBreakpointById}
-                      onRemoveBreakpoint={removeBreakpoint}
-                      onEvaluate={evaluate}
-                      onReset={reset}
-                    />
+                  {/* Columns 2+3 */}
+                  <ResizablePanel direction="horizontal" initialSize={50} minSize={120}>
+                    {/* Column 2: Data + Output */}
+                    <ResizablePanel direction="vertical" initialSize={40} minSize={80}>
+                      <DataPanel onApplyEdits={handleApplyDataEdits} onToast={toast} />
+                      <OutputPanel
+                        onValidate={validateOutput}
+                        onCopy={handleCopyOutput}
+                        onToast={toast}
+                      />
+                    </ResizablePanel>
+
+                    {/* Column 3: Right Side (Accordion) */}
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                      <RightSidePanel
+                        onAddWatch={addWatch}
+                        onRemoveWatch={removeWatch}
+                        onToggleBreakpoint={toggleBreakpointById}
+                        onRemoveBreakpoint={removeBreakpoint}
+                        onEvaluate={evaluate}
+                        onReset={reset}
+                      />
+                    </div>
+                  </ResizablePanel>
                 </ResizablePanel>
-              </ResizablePanel>
-            </ResizablePanel>
-          ) : activeView === 'settings' ? (
-            <SettingsPanel />
-          ) : (
-            <GuidePanel />
-          )}
+              </motion.div>
+            ) : activeView === 'settings' ? (
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                style={{ height: '100%', width: '100%', position: 'absolute', inset: 0 }}
+              >
+                <SettingsPanel />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="guide"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                style={{ height: '100%', width: '100%', position: 'absolute', inset: 0 }}
+              >
+                <GuidePanel />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

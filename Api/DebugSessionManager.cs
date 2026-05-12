@@ -25,6 +25,14 @@ public class DebugSessionManager
     /// </summary>
     public void Load(string templateContent, string dataContent, string format)
     {
+        // Validate template syntax and root-level content rules
+        var parser = new TemplateParser();
+        var validation = parser.ValidateSyntax(templateContent);
+        if (!validation.IsValid)
+        {
+            throw new InvalidOperationException(validation.ErrorMessage);
+        }
+
         TemplateSource = templateContent;
         DataContent = dataContent;
         DataFormat = format;

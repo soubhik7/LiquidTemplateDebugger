@@ -109,10 +109,14 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         new RegExp(escapeRegex(escapeHtml(search)), 'gi'),
         (m) => `<span class="search-highlight">${m}</span>`
       );
-    } else if (!beautified && lastChunk && src.endsWith(lastChunk)) {
-      const before = escapeHtml(src.substring(0, src.length - lastChunk.length));
-      const last = `<span style="background:rgba(16,185,129,0.1);border-left:2px solid var(--green);padding-left:4px">${escapeHtml(lastChunk)}</span>`;
-      return before + last;
+    } else if (!beautified && lastChunk) {
+      const idx = src.lastIndexOf(lastChunk);
+      if (idx !== -1) {
+        const before = escapeHtml(src.substring(0, idx));
+        const last = `<span class="output-flash-highlight">${escapeHtml(lastChunk)}</span>`;
+        const after = escapeHtml(src.substring(idx + lastChunk.length));
+        return before + last + after;
+      }
     }
     return escaped;
   };
@@ -168,126 +172,185 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         </div>
       )}
 
-      {/* Header */}
+      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
+          gap: 12,
+          padding: '8px 16px',
           background: 'var(--bg-panel)',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-          Output
-        </span>
-        {outputRaw.trim() && (
-          <span style={{ 
-            fontSize: 9, 
-            padding: '1px 5px', 
-            borderRadius: 4, 
-            background: 'var(--bg-hover)', 
-            border: '1px solid var(--border-primary)',
-            color: 'var(--text-muted)', 
-            fontWeight: 600,
-            marginLeft: 4,
-            textTransform: 'uppercase'
-          }}>
-            {detectFormat(outputRaw)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileText size={14} style={{ color: 'var(--accent)' }} />
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Output
           </span>
-        )}
-
+        </div>
+        
         {lastValidation && (
-          <span style={{ 
+          <div style={{ 
             fontSize: 9, 
             color: lastValidation.isValid ? 'var(--green)' : 'var(--red)', 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 3,
-            fontWeight: 700,
+            gap: 4,
+            fontWeight: 800,
             background: lastValidation.isValid ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-            padding: '1px 6px',
-            borderRadius: 4,
+            padding: '2px 8px',
+            borderRadius: 6,
             border: `1px solid ${lastValidation.isValid ? 'var(--green)' : 'var(--red)'}`,
-            marginLeft: 4
+            textTransform: 'uppercase'
           }}>
-            {lastValidation.isValid ? <Check size={10} /> : <X size={10} />}
-            {lastValidation.format.toUpperCase()}
-          </span>
+            {lastValidation.isValid ? <Check size={10} strokeWidth={3} /> : <X size={10} strokeWidth={3} />}
+            {lastValidation.format} Valid
+          </div>
         )}
 
         <div style={{ flex: 1 }} />
 
-        <AnimatedButton
-          variant={showTree ? "primary" : "ghost"}
-          size="xs"
-          icon={<ListTree size={11} />}
-          onClick={() => setShowTree(!showTree)}
-          disabled={!loaded}
-          title="Toggle Tree View"
-        >
-          Tree
-        </AnimatedButton>
-
-        <select
-          value={validateFmt}
-          onChange={(e) => setValidateFmt(e.target.value)}
-          style={{
-            fontSize: 11,
-            padding: '2px 6px',
-            background: 'var(--bg-hover)',
-            border: '1px solid var(--border-primary)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            outline: 'none',
-          }}
-        >
-          <option value="json">JSON</option>
-          <option value="xml">XML</option>
-          <option value="csv">CSV</option>
-        </select>
-
-        <AnimatedButton variant="ghost" size="xs" icon={<CheckCircle size={11} />} onClick={handleValidate} disabled={!loaded}>
-          Validate
-        </AnimatedButton>
-        
-        {!showTree && (
-          <AnimatedButton variant="ghost" size="xs" icon={<Wand2 size={11} />} onClick={handleBeautify} disabled={!loaded || !outputRaw}>
-            Beautify
-          </AnimatedButton>
-        )}
-
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search size={10} style={{ position: 'absolute', left: 6, color: 'var(--text-muted)' }} />
-          <input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setBeautified(null); }}
-            placeholder="Search…"
+        {/* Integrated Control Group */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          background: 'var(--bg-surface)', 
+          border: '1px solid var(--border-primary)', 
+          borderRadius: 8,
+          padding: 2,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <button
+            onClick={() => setShowTree(!showTree)}
+            disabled={!loaded}
             style={{
-              width: 110,
-              padding: '2px 8px 2px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: showTree ? 'var(--accent-soft)' : 'transparent',
+              color: showTree ? 'var(--accent)' : 'var(--text-secondary)',
+              border: 'none',
               fontSize: 11,
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--border-primary)',
-              borderRadius: 'var(--radius-sm)',
+              fontWeight: 700,
+              cursor: loaded ? 'pointer' : 'not-allowed',
+              opacity: loaded ? 1 : 0.5
+            }}
+          >
+            <ListTree size={12} /> Tree
+          </button>
+
+          {!showTree && (
+            <button
+              disabled={!loaded || !outputRaw}
+              onClick={handleBeautify}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 6,
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: (loaded && outputRaw) ? 'pointer' : 'not-allowed',
+                opacity: (loaded && outputRaw) ? 1 : 0.5
+              }}
+            >
+              <Wand2 size={12} /> Format
+            </button>
+          )}
+
+          <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
+
+          <select
+            value={validateFmt}
+            onChange={(e) => setValidateFmt(e.target.value)}
+            style={{
+              fontSize: 11,
+              padding: '2px 4px',
+              background: 'transparent',
+              border: 'none',
               color: 'var(--text-primary)',
               outline: 'none',
+              fontWeight: 700
             }}
-          />
-        </div>
+          >
+            <option value="json">JSON</option>
+            <option value="xml">XML</option>
+            <option value="csv">CSV</option>
+          </select>
 
-        <AnimatedButton
-          variant="ghost"
-          size="xs"
-          icon={copied ? <Check size={11} /> : <Copy size={11} />}
-          onClick={handleCopy}
-          disabled={!loaded || !outputRaw}
-          style={copied ? { color: 'var(--green)' } : undefined}
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </AnimatedButton>
+          <button
+            disabled={!loaded}
+            onClick={handleValidate}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              border: 'none',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: loaded ? 'pointer' : 'not-allowed',
+              opacity: loaded ? 1 : 0.5
+            }}
+          >
+            <CheckCircle size={12} /> Check
+          </button>
+
+          <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
+
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={12} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setBeautified(null); }}
+              placeholder="Find..."
+              style={{
+                width: 100,
+                padding: '4px 8px 4px 28px',
+                fontSize: 11,
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                fontWeight: 600
+              }}
+            />
+          </div>
+
+          <button
+            disabled={!loaded || !outputRaw}
+            onClick={handleCopy}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: copied ? 'var(--green-soft)' : 'transparent',
+              color: copied ? 'var(--green)' : 'var(--text-secondary)',
+              border: 'none',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: (loaded && outputRaw) ? 'pointer' : 'not-allowed',
+              opacity: (loaded && outputRaw) ? 1 : 0.5
+            }}
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
       </div>
 
       {/* Body */}

@@ -155,6 +155,7 @@ export const useAppStore = create<AppState>()(
 );
 
 // Derived selector for accent hex
-export function getAccentHex(color: AccentColor): string {
+export function getAccentHex(color: string): string {
+  if (color.startsWith('#')) return color;
   return ACCENT_COLORS.find((c) => c.value === color)?.hex ?? '#6366f1';
 }

@@ -3,7 +3,7 @@
   Converts XML data to JSON format
 {% endcomment %}
 {
-{% for prop in root %}
+{% for prop in content.root %}
   "{{ prop[0] }}": {% if prop[1].size %}[
     {% for item in prop[1] %}
     {

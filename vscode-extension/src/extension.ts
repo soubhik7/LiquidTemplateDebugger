@@ -108,8 +108,10 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
     // POST /api/step  { action: 'next' | 'into' | 'over' | 'out' | 'continue' }
     if (POST && urlPath === '/api/step') {
         const action: string = body?.action ?? 'next';
-        if (action === 'continue' || action === 'out') {
+        if (action === 'continue') {
             await engine.continue();
+        } else if (action === 'out') {
+            await engine.stepOut();
         } else if (action === 'over') {
             await engine.stepOver();
         } else {

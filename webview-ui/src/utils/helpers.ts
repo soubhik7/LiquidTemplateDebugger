@@ -233,8 +233,9 @@ export function getScopeColor(scope: string | undefined): string {
     input: 'var(--green)',
     global: 'var(--green)',
     assign: 'var(--yellow)',
-    for: 'var(--purple)',
-    capture: 'var(--orange)',
+    local: 'var(--yellow)',
+    for: 'var(--blue)',
+    capture: 'var(--purple)',
     increment: 'var(--cyan)',
     decrement: 'var(--cyan)',
   };

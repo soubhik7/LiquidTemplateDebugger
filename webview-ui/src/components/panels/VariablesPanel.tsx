@@ -33,7 +33,8 @@ export function VariablesPanel() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        flex: 1,
+        minHeight: 0,
         background: 'var(--bg-surface)',
         overflow: 'hidden',
       }}
@@ -143,41 +144,53 @@ export function VariablesPanel() {
                         cursor: 'pointer',
                         borderBottom: '1px solid var(--border-primary)',
                         transition: 'background var(--transition-fast)',
+                        background: expanded ? 'var(--bg-active)' : 'transparent'
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}
+                      onMouseEnter={(e) => { if (!expanded) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { if (!expanded) (e.currentTarget as HTMLElement).style.background = ''; }}
                     >
-                      <td style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
-                          {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                      <td style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: expanded ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>
+                          {expanded ? <ChevronDown size={12} strokeWidth={3} /> : <ChevronRight size={12} />}
                         </span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: expanded ? 'var(--accent)' : 'var(--text-primary)', fontSize: 13 }}>
                           {v.name}
                         </span>
                       </td>
-                      <td style={{ padding: '5px 10px' }}>
+                      <td style={{ padding: '8px 12px' }}>
                         <span
                           className={`scope-badge scope-${v.scopeTag ?? ''}`}
-                          style={{ color: scopeColor }}
+                          style={{ 
+                            color: scopeColor, 
+                            background: `rgba(var(--${v.scopeTag}-rgb, 100, 100, 100), 0.1)`,
+                            borderColor: scopeColor,
+                            border: '1px solid',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontSize: 9,
+                            fontWeight: 900
+                          }}
                         >
                           {(v.scopeTag ?? '').toUpperCase()}
                         </span>
                       </td>
                       <td
                         style={{
-                          padding: '5px 10px',
+                          padding: '8px 12px',
                           fontFamily: 'var(--font-mono)',
-                          color: 'var(--text-secondary)',
+                          color: 'var(--text-primary)',
+                          fontWeight: 700,
                           maxWidth: 200,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          fontSize: 13
                         }}
                         title={v.currentValue ?? ''}
                       >
                         {truncate(v.currentValue, 40)}
                       </td>
-                      <td style={{ padding: '5px 10px', fontSize: 10, color: 'var(--text-muted)' }}>
+                      <td style={{ padding: '8px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>
                         {v.typeName}
                       </td>
                     </tr>
@@ -226,72 +239,42 @@ export function VariablesPanel() {
                                 </p>
                               )}
 
-                              {v.transformations && v.transformations.length > 0 && (
-                                <div style={{ marginTop: 6 }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                                    Transformations
-                                  </span>
-                                  {v.transformations.map((t, idx) => (
-                                    <div
-                                      key={idx}
-                                      style={{
-                                        marginTop: 4,
-                                        padding: '5px 8px',
-                                        background: 'var(--bg-surface)',
-                                        border: '1px solid var(--border-primary)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        fontSize: 11,
-                                        fontFamily: 'var(--font-mono)',
-                                      }}
-                                    >
-                                      {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? (
-                                        <>
-                                          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                                            {idx === 0 ? (t.baseExpr ?? 'value') : 'result'} {t.operator} {t.rightVar}
-                                          </span>
-                                          <br />
-                                          <span style={{ color: 'var(--text-muted)' }}>
-                                            {String(t.before ?? 'nil')} {t.operator} {String(t.rightValue ?? 'nil')}
-                                          </span>
-                                          {' → '}
-                                          <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-                                            {String(t.after ?? 'nil')}
-                                          </span>
-                                        </>
-                                      ) : t.operator && ['round', 'floor', 'ceil', 'abs'].includes(t.operator) ? (
-                                        <>
-                                          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                                            {t.operator}({idx === 0 ? (t.baseExpr ?? 'value') : 'result'}{t.rightVar ? `, ${t.rightVar}` : ''})
-                                          </span>
-                                          <br />
-                                          <span style={{ color: 'var(--text-muted)' }}>
-                                            {t.operator}({String(t.before ?? 'nil')}{t.rightValue !== undefined ? `, ${t.rightValue}` : ''})
-                                          </span>
-                                          {' → '}
-                                          <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-                                            {String(t.after ?? 'nil')}
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <span style={{ color: 'var(--purple)' }}>
-                                            [{(t.type ?? 'FILTER').toUpperCase()}]
-                                          </span>{' '}
-                                          {t.name}
-                                          <br />
-                                          <span style={{ color: 'var(--red)', textDecoration: 'line-through' }}>
-                                            {String(t.before ?? 'nil')}
-                                          </span>
-                                          {' → '}
-                                          <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-                                            {String(t.after ?? 'nil')}
-                                          </span>
-                                        </>
-                                      )}
+                                  {v.transformations && v.transformations.length > 0 && (
+                                    <div style={{ marginTop: 10 }}>
+                                      <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6, display: 'block' }}>
+                                        Transformations
+                                      </span>
+                                      {v.transformations.map((t, idx) => (
+                                        <div
+                                          key={idx}
+                                          style={{
+                                            marginTop: 6,
+                                            padding: '8px 12px',
+                                            background: 'var(--bg-panel)',
+                                            border: '1px solid var(--border-primary)',
+                                            borderRadius: 8,
+                                            fontFamily: 'var(--font-mono)',
+                                            boxShadow: 'var(--shadow-sm)',
+                                          }}
+                                        >
+                                          {/* Expression Line */}
+                                          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                            {v.name} = {idx === 0 ? (t.baseExpr ?? 'val') : 'result'} {t.operator ? t.operator : ''} {t.rightVar ? t.rightVar : (t.name || '')}
+                                          </div>
+                                          {/* Calculation Line */}
+                                          <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                                            <span style={{ color: 'var(--red)' }}>
+                                              {String(t.before ?? 'nil')} {t.operator ? t.operator : ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                            </span>
+                                            <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                            <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                              {String(t.after ?? 'nil')}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
-                                </div>
-                              )}
+                                  )}
 
                               {v.history && v.history.length > 0 && (
                                 <div style={{ marginTop: 6 }}>

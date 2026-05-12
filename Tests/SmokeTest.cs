@@ -192,6 +192,37 @@ public static class SmokeTest
         }
         Console.WriteLine();
 
+        // Test 13: Root-level content validation
+        Console.WriteLine("[Test 13] Root-level Content Validation");
+        {
+            var parser = new TemplateParser();
+            
+            var valid = parser.ValidateSyntax("Hello {{ content.name }}!");
+            Assert(valid.IsValid, "Valid template with 'content.' prefix passes");
+
+            var invalid = parser.ValidateSyntax("Hello {{ name }}!");
+            Assert(!invalid.IsValid, "Invalid template without 'content.' prefix fails");
+            Assert(invalid.ErrorMessage != null && invalid.ErrorMessage.Contains("content."), "Error message mentions content prefix");
+
+            var validLocal = parser.ValidateSyntax("{% assign x = 1 %}{{ x }}");
+            Assert(validLocal.IsValid, "Local variable access without 'content.' prefix passes");
+
+            var validFilter = parser.ValidateSyntax("{{ content.price | Times: content.qty }}");
+            Assert(validFilter.IsValid, "Filter with 'content.' prefixed arguments passes");
+
+            var invalidFilterArg = parser.ValidateSyntax("{{ content.price | Times: qty }}");
+            Assert(!invalidFilterArg.IsValid, "Filter with non-prefixed root argument fails");
+
+            var validCapture = parser.ValidateSyntax("{% capture fullName %}{{ content.user.firstName }}{% endcapture %}{{ fullName }}");
+            Assert(validCapture.IsValid, "Captured variable access without prefix passes");
+
+            var validKeywords = parser.ValidateSyntax("{% if content.x > 0 and content.y < 10 %}OK{% endif %}");
+            Assert(validKeywords.IsValid, "Logical operators like 'and' are ignored by validator");
+
+            var invalidElsif = parser.ValidateSyntax("{%- if content.x -%}{%- elsif y -%}{%- endif -%}");
+            Assert(!invalidElsif.IsValid, "elsif with whitespace control marker and missing prefix fails");
+        }
+
         // Summary
         Console.WriteLine(new string('=', 40));
         Console.WriteLine($"Results: {passed} passed, {failed} failed, {passed + failed} total");

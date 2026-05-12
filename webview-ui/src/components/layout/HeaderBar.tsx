@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import {
   FolderOpen, Play, Circle, CornerDownRight, ArrowDown,
-  ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake, Search
+  ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake, Search,
+  Terminal, Shield, Zap
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusIndicator } from '../shared/StatusIndicator';
@@ -45,65 +46,79 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
   };
 
   const debugActions = [
-    { id: 'continue', key: 'F5', label: 'Continue', icon: <Play size={13} />, action: () => onStep('continue') },
-    { id: 'bp', key: 'F9', label: 'Breakpoint', icon: <Circle size={13} />, action: onToggleBPAtCurrentLine },
-    { id: 'over', key: 'F10', label: 'Over', icon: <CornerDownRight size={13} />, action: () => onStep('over') },
-    { id: 'into', key: 'F11', label: 'Into', icon: <ArrowDown size={13} />, action: () => onStep('into') },
-    { id: 'out', key: '⇧F11', label: 'Out', icon: <ArrowUp size={13} />, action: () => onStep('out') },
+    { id: 'continue', key: 'F5', label: 'Continue', icon: <Play size={14} />, color: 'var(--green)', action: () => onStep('continue') },
+    { id: 'bp', key: 'F9', label: 'Breakpoint', icon: <Circle size={14} />, color: 'var(--rose)', action: onToggleBPAtCurrentLine },
+    { id: 'over', key: 'F10', label: 'Step Over', icon: <CornerDownRight size={14} />, color: 'var(--blue)', action: () => onStep('over') },
+    { id: 'into', key: 'F11', label: 'Step Into', icon: <ArrowDown size={14} />, color: 'var(--accent)', action: () => onStep('into') },
+    { id: 'out', key: '⇧F11', label: 'Step Out', icon: <ArrowUp size={14} />, color: 'var(--purple)', action: () => onStep('out') },
   ];
 
   return (
     <header
       style={{
-        height: 52,
+        height: 60,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '0 12px',
+        gap: 12,
+        padding: '0 20px',
         background: 'var(--bg-surface)',
         borderBottom: '1px solid var(--border-primary)',
-        zIndex: 20,
+        zIndex: 30,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}
     >
-      {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginRight: 6 }}>
-        <Search size={16} style={{ color: 'var(--accent)' }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '-0.3px' }}>
-          Liquid
-        </span>
+      {/* Brand & Load */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ 
+          padding: 6, 
+          borderRadius: 8, 
+          background: 'linear-gradient(135deg, var(--accent), var(--purple))', 
+          color: 'white',
+          boxShadow: '0 4px 8px var(--accent-soft)'
+        }}>
+          <Zap size={18} strokeWidth={2.5} fill="white" />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.2px', lineHeight: 1 }}>
+            Liquid Debugger
+          </span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
+            v1.2.0 Enterprise
+          </span>
+        </div>
       </div>
 
-      <div style={{ width: 1, height: 20, background: 'var(--border-primary)', margin: '0 4px' }} />
+      <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 8px' }} />
 
-      {/* Load */}
       <AnimatedButton
-        variant="primary"
+        variant="ghost"
         size="sm"
-        icon={<FolderOpen size={13} />}
+        icon={<FolderOpen size={14} />}
         onClick={onLoad}
+        style={{ fontWeight: 800, padding: '6px 12px', background: 'var(--bg-hover)' }}
       >
-        Load
+        Load Template
       </AnimatedButton>
 
-      <div style={{ width: 1, height: 20, background: 'var(--border-primary)', margin: '0 4px' }} />
-
-      {/* Debug actions */}
+      {/* Control Cluster */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          padding: '2px 6px',
-          background: 'var(--glass-bg)',
+          padding: '3px',
+          background: 'var(--bg-panel)',
           border: '1px solid var(--border-primary)',
-          borderRadius: 'var(--radius-md)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)',
+          margin: '0 8px'
         }}
       >
-        {debugActions.map(({ id, key, label, icon, action }) => (
+        {debugActions.map(({ id, key, label, icon, color, action }) => (
           <motion.button
             key={id}
-            whileHover={disabled ? {} : { background: 'var(--bg-hover)' }}
+            whileHover={disabled ? {} : { background: 'var(--bg-hover)', y: -1 }}
             whileTap={disabled ? {} : { scale: 0.94 }}
             onClick={action}
             disabled={disabled}
@@ -111,84 +126,83 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-sm)',
+              gap: 8,
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-md)',
               background: 'transparent',
               border: 'none',
               cursor: disabled ? 'not-allowed' : 'pointer',
-              color: disabled ? 'var(--text-muted)' : 'var(--text-secondary)',
-              fontSize: 11,
-              fontWeight: 500,
-              opacity: disabled ? 0.35 : 1,
-              transition: 'all var(--transition-fast)',
+              color: disabled ? 'var(--text-muted)' : 'var(--text-primary)',
+              fontSize: 12,
+              fontWeight: 800,
+              opacity: disabled ? 0.3 : 1,
+              transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
             }}
           >
-            <kbd
-              style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-secondary)',
-                borderRadius: 3,
-                padding: '0 4px',
-                fontSize: 9,
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 700,
-                color: 'var(--accent)',
-                minWidth: 22,
-                textAlign: 'center',
-              }}
-            >
-              {key}
-            </kbd>
-            <span>{label}</span>
+            <div style={{ color: disabled ? 'var(--text-muted)' : color, display: 'flex' }}>
+              {icon}
+            </div>
+            <span style={{ fontSize: 11, letterSpacing: '-0.1px' }}>{label}</span>
           </motion.button>
         ))}
       </div>
 
-      <div style={{ width: 1, height: 20, background: 'var(--border-primary)', margin: '0 4px' }} />
-
-      {/* Reset */}
       <AnimatedButton
         variant="ghost"
         size="sm"
-        icon={<RotateCcw size={12} />}
+        icon={<RotateCcw size={14} />}
         onClick={onReset}
         disabled={!loaded || isLoading}
+        style={{ fontWeight: 800 }}
       >
         Reset
       </AnimatedButton>
 
-      {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Theme toggle */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.92 }}
-        onClick={cycleTheme}
-        title={`Theme: ${theme}`}
-        style={{
+      {/* Right Side Info */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Theme */}
+        <motion.button
+          whileHover={{ scale: 1.05, background: 'var(--bg-hover)' }}
+          whileTap={{ scale: 0.95 }}
+          onClick={cycleTheme}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '6px 14px',
+            borderRadius: 10,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-primary)',
+            cursor: 'pointer',
+            color: 'var(--text-primary)',
+            fontSize: 11,
+            fontWeight: 800,
+            textTransform: 'capitalize',
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        >
+          {THEME_ICONS[theme]}
+          <span>{theme}</span>
+        </motion.button>
+
+        <div style={{ width: 1, height: 24, background: 'var(--border-primary)' }} />
+
+        {/* Enhanced Status Indicator */}
+        <div style={{
+          padding: '6px 16px',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 12,
           display: 'flex',
           alignItems: 'center',
-          gap: 5,
-          padding: '4px 10px',
-          borderRadius: 'var(--radius-md)',
-          background: 'var(--glass-bg)',
-          border: '1px solid var(--border-primary)',
-          cursor: 'pointer',
-          color: 'var(--text-secondary)',
-          fontSize: 11,
-          fontWeight: 500,
-        }}
-      >
-        {THEME_ICONS[theme]}
-        <span style={{ textTransform: 'capitalize' }}>{theme}</span>
-      </motion.button>
-
-      <div style={{ width: 1, height: 20, background: 'var(--border-primary)', margin: '0 4px' }} />
-
-      {/* Status */}
-      <StatusIndicator debugState={debugState} />
+          gap: 10,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <StatusIndicator debugState={debugState} />
+        </div>
+      </div>
     </header>
   );
 }

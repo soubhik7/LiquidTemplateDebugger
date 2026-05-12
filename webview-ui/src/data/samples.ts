@@ -8,6 +8,143 @@ export interface SampleTransformation {
 
 export const SAMPLES: SampleTransformation[] = [
   {
+    name: 'Comprehensive JSON Transformation',
+    description: 'A deep-dive sample covering variables, math, flow control (case/if), loops, capture, and complex JSON construction',
+    format: 'json',
+    data: `{
+  "user": {
+    "id": "u-1001",
+    "firstName": "  Soubhik ",
+    "lastName": "Mukherjee",
+    "email": "SOUBHIK@EXAMPLE.COM",
+    "role": "admin",
+    "status": "active",
+    "createdDate": "2026-01-15T10:30:00Z"
+  },
+  "numbers": {
+    "price": 99.567,
+    "quantity": 3,
+    "discount": -10,
+    "tax": 18
+  },
+  "tags": "azure,logic,apps,liquid",
+  "items": [
+    { "id": 1, "name": "item1", "type": "A", "price": 10, "available": true },
+    { "id": 2, "name": "item2", "type": "B", "price": 20, "available": false },
+    { "id": 3, "name": "item3", "type": "A", "price": 30, "available": true }
+  ],
+  "address": {
+    "city": "Bangalore",
+    "country": "India"
+  },
+  "emptyValue": null
+}`,
+    template: `{% assign baseTotal = content.numbers.price | Times: content.numbers.quantity %}
+{% assign discountedTotal = baseTotal | Plus: content.numbers.discount %}
+{% assign taxAmount = discountedTotal | Times: content.numbers.tax | DividedBy: 100 %}
+{% assign grandTotal = discountedTotal | Plus: taxAmount %}
+
+{% capture fullName %}
+{{ content.user.firstName | Strip }} {{ content.user.lastName | Strip }}
+{% endcapture %}
+
+{
+  "content.userSummary": {
+    "id": "{{ content.user.id }}",
+    "name": "{{ fullName | Strip }}",
+    "email": "{{ content.user.email | Downcase }}",
+    "status": "{% if content.user.status == 'active' %}ACTIVE{% else %}INACTIVE{% endif %}",
+    "roleLabel": "{%- case content.user.role -%}
+                    {%- when 'admin' -%}Administrator{%- when 'editor' -%}Editor
+                    {%- else -%}content.user
+                    {%- endcase -%}",
+    "createdDate": "{{ content.user.createdDate | Date: 'yyyy-MM-dd' }}"
+  },
+
+  "orderFlags": {
+    "isBulkOrder": {% if content.numbers.quantity >= 3 and content.numbers.price > 50 %}true{% else %}false{% endif %},
+    "hasDiscount": {% if content.numbers.discount < 0 %}true{% else %}false{% endif %},
+    "needsManualReview": {% if content.user.role != 'admin' or content.numbers.discount < -20 %}true{% else %}false{% endif %}
+  },
+
+  "pricing": {
+    "unitPrice": {{ content.numbers.price | Round: 2 }},
+    "quantity": {{ content.numbers.quantity }},
+    "baseTotal": {{ baseTotal | Round: 2 }},
+    "discount": {{ content.numbers.discount }},
+    "taxPercent": {{ content.numbers.tax }},
+    "taxAmount": {{ taxAmount | Round: 2 }},
+    "grandTotal": {{ grandTotal | Round: 2 }},
+    "pricingCategory": "{%- if content.numbers.price > 100 -%}Premium
+                        {%- elsif content.numbers.price > 50 -%}Standard{%- else -%}Budget
+                        {%- endif -%}"
+  },
+
+  "content.tagsInfo": {
+    "original": "{{ content.tags }}",
+    "normalized": "{{ content.tags | Downcase }}",
+    "content.tagsArray": "{{ content.tags | Split: ',' | Join: '|' }}",
+    "firstTag": "{{ content.tags | Split: ',' | First }}",
+    "content.tagsCount": {{ content.tags | Split: ',' | Size }},
+    "shortcontent.tags": "{{ content.tags | Truncate: 12 }}"
+  },
+
+  "content.items": [
+    {% if content.items != null and content.items.size > 0 %}
+      {% for item in content.items %}
+      {
+        "id": {{ item.id }},
+        "name": "{{ item.name }}",
+        "type": "{{ item.type }}",
+        "price": {{ item.price }},
+        "available": {{ item.available | Downcase }},
+        "availabilityLabel": "{% if item.available == true %}InStock{% else %}OutOfStock{% endif %}",
+        "priceClass": "{% if item.price >= 25 %}High{% else %}Low{% endif %}",
+        "index": {{ forloop.index }},
+        "isFirst": {{ forloop.first }},
+        "isLast": {{ forloop.last }}
+      }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    {% else %}
+      {
+        "message": "No content.items available"
+      }
+    {% endif %}
+  ],
+
+  "typeAcontent.itemsOnly": [
+    {% if content.items != null and content.items.size > 0 %}
+      {% assign firstA = true %}
+      {% for item in content.items %}
+        {% if item.type != 'A' %}
+          {% continue %}
+        {% endif %}
+        {% if firstA == false %},{% endif %}
+        {
+          "name": "{{ item.name }}",
+          "price": {{ item.price }}
+        }
+        {% assign firstA = false %}
+      {% endfor %}
+    {% else %}
+      {
+        "message": "No Type A content.items"
+      }
+    {% endif %}
+  ],
+
+  "location": {
+    "city": "{{ content.address.city | Default: 'Unknown' }}",
+    "country": "{{ content.address.country | Upcase }}"
+  },
+
+  "safeValues": {
+    "emptyHandled": "{{ content.emptyValue | Default: 'N/A' }}",
+    "emailEncoded": "{{ content.user.email | Downcase | UrlEncode }}"
+  }
+}`
+  },
+  {
     name: 'JSON to JSON',
     description: 'Advanced transformation with nested iterations, multiple variables, and conditional logic',
     format: 'json',

@@ -188,6 +188,31 @@ export class DebugEngine {
         return this.step();
     }
 
+    async stepOut(): Promise<StepResult> {
+        if (!this.state.isRunning || !this.parsedTemplate) {
+            throw new Error('No active debug session');
+        }
+
+        const startExecutionDepth = this.executionStack.length;
+        const startForDepth = this.forLoopStack.length;
+        const startCaseDepth = this.caseValueStack.length;
+
+        let result: StepResult;
+        do {
+            result = await this.step();
+            if (await this.checkBreakpoint()) { break; }
+            
+            // If we've popped any stack, we've "stepped out" of the current scope
+            if (this.executionStack.length < startExecutionDepth || 
+                this.forLoopStack.length < startForDepth || 
+                this.caseValueStack.length < startCaseDepth) {
+                break;
+            }
+        } while (!result.completed);
+        
+        return result;
+    }
+
     async continue(): Promise<StepResult> {
         let result: StepResult;
         do {

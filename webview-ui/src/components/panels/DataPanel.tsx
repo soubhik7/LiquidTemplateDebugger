@@ -69,66 +69,126 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
         overflow: 'hidden',
       }}
     >
-      {/* Header */}
+      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
+          gap: 12,
+          padding: '8px 16px',
           background: 'var(--bg-panel)',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-          Input Data
-        </span>
-        {loaded && (
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            ({dataFormat})
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ListTree size={14} style={{ color: 'var(--accent)' }} />
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Input Data
           </span>
-        )}
+        </div>
+        
         <div style={{ flex: 1 }} />
 
-        <AnimatedButton
-          variant={showTree ? "primary" : "ghost"}
-          size="xs"
-          icon={<ListTree size={11} />}
-          onClick={() => setShowTree(!showTree)}
-          disabled={!loaded || dataEditMode}
-          title="Toggle Tree View"
-        >
-          Tree
-        </AnimatedButton>
-
-        {!showTree && (
-          <AnimatedButton
-            variant="ghost"
-            size="xs"
-            icon={<Wand2 size={11} />}
-            onClick={handleBeautify}
-            disabled={!loaded}
+        {/* Integrated Control Group */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          background: 'var(--bg-surface)', 
+          border: '1px solid var(--border-primary)', 
+          borderRadius: 8,
+          padding: 2,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <button
+            onClick={() => setShowTree(!showTree)}
+            disabled={!loaded || dataEditMode}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: showTree ? 'var(--accent-soft)' : 'transparent',
+              color: showTree ? 'var(--accent)' : 'var(--text-secondary)',
+              border: 'none',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: (loaded && !dataEditMode) ? 'pointer' : 'not-allowed',
+              opacity: (loaded && !dataEditMode) ? 1 : 0.5
+            }}
           >
-            Beautify
-          </AnimatedButton>
-        )}
+            <ListTree size={12} /> Tree
+          </button>
 
-        {dataEditMode ? (
-          <AnimatedButton variant="primary" size="xs" icon={<Check size={11} />} onClick={handleApply}>
-            Apply
-          </AnimatedButton>
-        ) : (
-          <AnimatedButton
-            variant="ghost"
-            size="xs"
-            icon={<Edit3 size={11} />}
-            onClick={() => setDataEditMode(true)}
-            disabled={!loaded || showTree}
-          >
-            Edit
-          </AnimatedButton>
-        )}
+          {!showTree && (
+            <button
+              disabled={!loaded}
+              onClick={handleBeautify}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 6,
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: loaded ? 'pointer' : 'not-allowed',
+                opacity: loaded ? 1 : 0.5
+              }}
+            >
+              <Wand2 size={12} /> Format
+            </button>
+          )}
+
+          <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
+
+          {dataEditMode ? (
+            <button 
+              onClick={handleApply}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                borderRadius: 6,
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              <Check size={12} strokeWidth={3} /> Save
+            </button>
+          ) : (
+            <button
+              disabled={!loaded || showTree}
+              onClick={() => setDataEditMode(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 6,
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: (loaded && !showTree) ? 'pointer' : 'not-allowed',
+                opacity: (loaded && !showTree) ? 1 : 0.5
+              }}
+            >
+              <Edit3 size={12} /> Edit
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Body */}

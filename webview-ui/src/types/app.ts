@@ -93,13 +93,6 @@ export type Theme =
   | 'glass-dark'
   | 'glass-light';
 
-export type AccentColor =
-  | 'indigo'
-  | 'violet'
-  | 'blue'
-  | 'cyan'
-  | 'emerald'
-  | 'orange'
-  | 'rose';
+export type AccentColor = string;
 
 export type InspectorTab = 'watches' | 'breakpoints' | 'eval' | 'problems';
