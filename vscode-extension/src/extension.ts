@@ -7,6 +7,9 @@ import { AIProvider } from './aiProvider';
 // Constants for security limits
 const MAX_TEMPLATE_SIZE = 512 * 1024;  // 512KB
 const MAX_DATA_SIZE = 1024 * 1024;     // 1MB
+const MAX_EXPR_LENGTH = 2000;          // 2000 characters
+const VALID_FORMATS = ['json', 'xml', 'csv', 'text'] as const;
+const VALID_ACTIONS = ['continue', 'out', 'over', 'next', 'into'] as const;
 
 // One engine per workspace — persists across panel open/close
 const engine = new DebugEngine();
@@ -110,6 +113,11 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
             throw new Error(`Data exceeds size limit of ${MAX_DATA_SIZE / 1024}KB`);
         }
 
+        // Security: Whitelist format
+        if (!VALID_FORMATS.includes(format?.toLowerCase())) {
+            throw new Error('Invalid format. Supported: json, xml, csv, text');
+        }
+
         await engine.initializeFromContent(templateContent, dataContent, format);
         return engine.getWebUIState();
     }
@@ -122,7 +130,7 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
 
     // POST /api/step  { action: 'next' | 'into' | 'over' | 'out' | 'continue' }
     if (POST && urlPath === '/api/step') {
-        const action: string = body?.action ?? 'next';
+        const action: any = VALID_ACTIONS.includes(body?.action) ? body.action : 'next';
         if (action === 'continue') {
             await engine.continue();
         } else if (action === 'out') {
@@ -144,6 +152,9 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
     // POST /api/evaluate  { expression }
     if (POST && urlPath === '/api/evaluate') {
         const expr: string = body?.expression ?? '';
+        if (expr.length > MAX_EXPR_LENGTH) {
+            throw new Error(`Expression exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+        }
         const value = await engine.evaluateExpression(expr);
         const transformations = await engine.extractTransformationsFromExpression(expr, engine.buildContext());
         const fmtValue = value === null || value === undefined ? 'nil' : String(value);
@@ -158,12 +169,20 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
 
     // POST /api/validate  { format }
     if (POST && urlPath === '/api/validate') {
-        return engine.validateOutput(body?.format ?? 'json');
+        const format = (body?.format || 'json').toLowerCase();
+        if (!VALID_FORMATS.includes(format as any)) {
+            throw new Error('Invalid format. Supported: json, xml, csv, text');
+        }
+        return engine.validateOutput(format);
     }
 
     // POST /api/breakpoint  { line, condition }
     if (POST && urlPath === '/api/breakpoint') {
-        const bp = engine.setBreakpoint(body.line, body.condition ?? undefined);
+        const condition = body.condition ?? undefined;
+        if (condition && condition.length > MAX_EXPR_LENGTH) {
+            throw new Error(`Condition exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+        }
+        const bp = engine.setBreakpoint(body.line, condition);
         return { id: bp.id, line: bp.line };
     }
 
@@ -186,7 +205,11 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
 
     // POST /api/watch  { expression }
     if (POST && urlPath === '/api/watch') {
-        const w = await engine.addWatch(body.expression);
+        const expr = body.expression ?? '';
+        if (expr.length > MAX_EXPR_LENGTH) {
+            throw new Error(`Expression exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+        }
+        const w = await engine.addWatch(expr);
         return { id: w.id };
     }
 

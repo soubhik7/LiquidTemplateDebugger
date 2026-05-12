@@ -82,7 +82,7 @@ export class DebuggerPanel {
             `style-src ${webview.cspSource}`,
             `script-src ${webview.cspSource} 'nonce-${nonce}'`,
             `font-src ${webview.cspSource}`,
-            `img-src ${webview.cspSource} data:`,
+            `img-src ${webview.cspSource}`,
         ].join('; ');
 
         return `<!DOCTYPE html>

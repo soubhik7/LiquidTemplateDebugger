@@ -230,6 +230,15 @@ export function useDebugger() {
     if (!s || !s.isLoaded) {
       setShowLoadModal(true);
     }
+    // Restore AI enabled state from SecretStorage
+    try {
+      const { hasKey } = (await apiCall('GET', '/api/ai/get-key-status')) as { hasKey: boolean };
+      if (hasKey) {
+        useAppStore.getState().setAIConfig({ apiKey: '••••••••', enabled: true });
+      }
+    } catch (err) {
+      console.error('Failed to check AI key status:', err);
+    }
   }, [refreshState, setShowLoadModal]);
 
   return {

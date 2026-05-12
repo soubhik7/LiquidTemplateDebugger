@@ -37,7 +37,7 @@ export function AIGeneratorView() {
       return;
     }
 
-    if (!aiConfig.apiKey) {
+    if (!aiConfig.enabled) {
       addToast({
         title: 'AI Not Configured',
         message: 'Please go to Settings and validate your Gemini API key.',
