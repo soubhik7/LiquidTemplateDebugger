@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Book, Code, ExternalLink, Hash, Info, Lightbulb, 
@@ -20,7 +20,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 export function GuidePanel() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'theory' | 'filters' | 'tags' | 'references'>('theory');
-  const [selectedItem, setSelectedItem] = useState<{ type: 'filter' | 'tag' | 'theory', data: any } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ type: 'filter' | 'tag' | 'theory', data: any, subId?: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
@@ -76,6 +76,33 @@ export function GuidePanel() {
       return next;
     });
   };
+
+  const handleSelectTheory = (section: LiquidTheorySection, subId?: string) => {
+    setSelectedItem({ type: 'theory', data: section, subId });
+  };
+
+  // Auto-scroll logic for detail panel
+  const detailContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedItem?.subId && detailContainerRef.current) {
+      // Small delay to allow for drawer animation and content rendering
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`sub-${selectedItem.subId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Highlight effect
+          element.style.transition = 'all 0.5s ease';
+          element.style.borderColor = 'var(--accent)';
+          element.style.boxShadow = '0 0 20px var(--accent-soft)';
+          setTimeout(() => {
+            element.style.borderColor = 'var(--border-primary)';
+            element.style.boxShadow = 'none';
+          }, 2000);
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedItem]);
 
   return (
     <div style={{
@@ -207,7 +234,7 @@ export function GuidePanel() {
                     <motion.div
                       whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      onClick={() => setSelectedItem({ type: 'theory', data: section })}
+                      onClick={() => handleSelectTheory(section)}
                       style={{
                         padding: '28px 32px',
                         cursor: 'pointer',
@@ -272,7 +299,10 @@ export function GuidePanel() {
                         {section.subsections.slice(0, 4).map((sub) => (
                           <div
                             key={sub.id}
-                            onClick={() => setSelectedItem({ type: 'theory', data: section })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectTheory(section, sub.id);
+                            }}
                             style={{
                               padding: '12px',
                               background: 'var(--bg-hover)',
@@ -438,7 +468,9 @@ export function GuidePanel() {
             style={{
               width: selectedItem.type === 'theory' ? 600 : 450,
               height: '100%',
-              background: 'var(--bg-surface)',
+              background: 'var(--bg-surface-glass)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
               borderLeft: '1px solid var(--border-primary)',
               zIndex: 30,
               boxShadow: 'var(--shadow-xl)',
@@ -469,7 +501,10 @@ export function GuidePanel() {
               </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+            <div 
+              ref={detailContainerRef}
+              style={{ flex: 1, overflowY: 'auto', padding: '32px', scrollBehavior: 'smooth' }}
+            >
               {selectedItem.type === 'theory' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
                   <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
@@ -479,12 +514,17 @@ export function GuidePanel() {
                   {/* Subsections */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     {selectedItem.data.subsections.map((sub: any) => (
-                      <div key={sub.id} style={{
-                        background: 'var(--bg-panel)',
-                        border: '1px solid var(--border-primary)',
-                        borderRadius: 'var(--radius-xl)',
-                        overflow: 'hidden'
-                      }}>
+                      <div 
+                        key={sub.id} 
+                        id={`sub-${sub.id}`}
+                        style={{
+                          background: 'var(--bg-panel)',
+                          border: '1px solid var(--border-primary)',
+                          borderRadius: 'var(--radius-xl)',
+                          overflow: 'hidden',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
                         <div style={{
                           padding: '16px 20px',
                           background: 'var(--bg-hover)',
@@ -670,5 +710,3 @@ export function GuidePanel() {
     </div>
   );
 }
-
-// Made with Bob

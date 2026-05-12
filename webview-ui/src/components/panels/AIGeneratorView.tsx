@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Brain, Loader, Wand2, ArrowLeft, RefreshCw, Copy, Check, Play, FileJson, FileCode, FileText, LayoutTemplate, AlertTriangle } from 'lucide-react';
+import { Sparkles, Brain, Loader, Wand2, ArrowLeft, RefreshCw, Copy, Check, Play, FileJson, FileCode, FileText, LayoutTemplate, AlertTriangle, FileSpreadsheet, Paperclip } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useDebugger } from '../../hooks/useDebugger';
 import { AnimatedButton } from '../shared/AnimatedButton';
@@ -13,6 +13,7 @@ export function AIGeneratorView() {
   const setGeneratorState = useAppStore((s) => s.setGeneratorState);
   const setActiveView = useAppStore((s) => s.setActiveView);
   const addToast = useAppStore((s) => s.addToast);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -24,7 +25,7 @@ export function AIGeneratorView() {
   };
 
   const handleGenerate = async () => {
-    const { prompt, data, format } = generatorState;
+    const { prompt, data, format, mappingDetails } = generatorState;
     if (!prompt.trim() || !aiConfig.apiKey) return;
     
     setIsGenerating(true);
@@ -43,7 +44,8 @@ export function AIGeneratorView() {
         aiConfig.apiKey,
         aiConfig.defaultModel || 'gemini-1.5-flash',
         dataContext,
-        format
+        format,
+        mappingDetails
       );
 
       if (res.template) {
@@ -115,6 +117,32 @@ export function AIGeneratorView() {
         type: 'info',
         duration: 2000
     });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      setGeneratorState({ mappingDetails: content });
+      addToast({
+        title: 'File Attached',
+        message: `Content from "${file.name}" imported to mapping details.`,
+        type: 'success',
+        duration: 3000
+      });
+    };
+    reader.onerror = () => {
+      addToast({
+        title: 'Error',
+        message: 'Failed to read the file. Please ensure it is a text-based file.',
+        type: 'error',
+        duration: 5000
+      });
+    };
+    reader.readAsText(file);
   };
 
   const getFormatIcon = (f: string) => {
@@ -266,6 +294,53 @@ export function AIGeneratorView() {
           </div>
 
           <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <FileSpreadsheet size={18} style={{ color: 'var(--accent)' }} />
+                <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Business Mapping (Optional)</h3>
+              </div>
+              <input 
+                type="file" 
+                ref={inputRef} 
+                onChange={handleFileUpload} 
+                style={{ display: 'none' }} 
+                accept=".txt,.csv,.json,.md,.html,.xml"
+              />
+              <AnimatedButton 
+                variant="ghost" 
+                size="sm" 
+                icon={<Paperclip size={14} />} 
+                onClick={() => inputRef.current?.click()}
+              >
+                Attach Doc
+              </AnimatedButton>
+            </div>
+            <textarea
+              value={generatorState.mappingDetails}
+              onChange={(e) => setGeneratorState({ mappingDetails: e.target.value })}
+              placeholder="Paste mapping details from Excel/Word here, or attach a document... (e.g., 'Source Field A -> Target Property B')"
+              style={{
+                width: '100%',
+                height: 100,
+                padding: '16px',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 'var(--radius-lg)',
+                color: 'var(--text-primary)',
+                fontSize: 13,
+                fontFamily: 'var(--font-sans)',
+                lineHeight: 1.5,
+                outline: 'none',
+                resize: 'none',
+                transition: 'border-color 0.2s',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
+            />
+          </div>
+
+          <div style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <Wand2 size={18} style={{ color: 'var(--accent)' }} />
               <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Requirements</h3>
@@ -276,7 +351,7 @@ export function AIGeneratorView() {
               placeholder="e.g., Extract user profile, calculate total price with tax, and format all dates to YYYY-MM-DD..."
               style={{
                 width: '100%',
-                height: 140,
+                height: 120,
                 padding: '16px',
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-primary)',

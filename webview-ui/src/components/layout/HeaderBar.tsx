@@ -1,8 +1,8 @@
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FolderOpen, Play, Circle, CornerDownRight, ArrowDown,
-  ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake, Search,
-  Terminal, Shield, Zap, Sparkles, Settings, BookOpen, Bug
+  ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Zap, Sparkles, Settings, BookOpen, Bug
 } from 'lucide-react';
 const STROKE_WIDTH = 1.5;
 import { useAppStore } from '../../store/useAppStore';
@@ -32,10 +32,21 @@ interface HeaderBarProps {
 }
 
 export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: HeaderBarProps) {
+  const [activeShortcut, setActiveShortcut] = useState<string | null>(null);
   const debugState = useAppStore((s) => s.debugState);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
   const isLoading = useAppStore((s) => s.isLoading);
+
+  // Robust theme detection
+  const isDark = theme.includes('dark') || theme === 'midnight';
+  
+  // High contrast colors for all themes
+  const btnBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+  const btnBorder = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+  const textColor = isDark ? '#ffffff' : 'var(--text-primary)';
+  const clusterBg = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)';
+  const clusterBorder = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
 
   const loaded = !!debugState?.isLoaded;
   const complete = loaded && !!debugState?.state?.isComplete;
@@ -49,35 +60,55 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
     setTheme(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]);
   };
 
-  const debugActions = [
-    { id: 'continue', key: 'F5', label: 'Continue', icon: <Play size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--green)', action: () => onStep('continue') },
-    { id: 'bp', key: 'F9', label: 'Breakpoint', icon: <Circle size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--rose)', action: onToggleBPAtCurrentLine },
-    { id: 'over', key: 'F10', label: 'Step Over', icon: <CornerDownRight size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--blue)', action: () => onStep('over') },
-    { id: 'into', key: 'F11', label: 'Step Into', icon: <ArrowDown size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--accent)', action: () => onStep('into') },
-    { id: 'out', key: '⇧F11', label: 'Step Out', icon: <ArrowUp size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--purple)', action: () => onStep('out') },
-  ];
+  const debugActions = useMemo(() => [
+    { id: 'continue', key: 'F5', label: 'Continue', icon: <Play size={14} strokeWidth={STROKE_WIDTH} />, color: '#10b981', action: () => onStep('continue') },
+    { id: 'bp', key: 'F9', label: 'Breakpoint', icon: <Circle size={14} strokeWidth={STROKE_WIDTH} />, color: '#f43f5e', action: onToggleBPAtCurrentLine },
+    { id: 'over', key: 'F10', label: 'Step Over', icon: <CornerDownRight size={14} strokeWidth={STROKE_WIDTH} />, color: '#3b82f6', action: () => onStep('over') },
+    { id: 'into', key: 'F11', label: 'Step Into', icon: <ArrowDown size={14} strokeWidth={STROKE_WIDTH} />, color: '#6366f1', action: () => onStep('into') },
+    { id: 'out', key: '⇧F11', label: 'Step Out', icon: <ArrowUp size={14} strokeWidth={STROKE_WIDTH} />, color: '#a855f7', action: () => onStep('out') },
+  ], [onStep, onToggleBPAtCurrentLine]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const shortcut = debugActions.find(a => 
+        a.key === e.key || 
+        (a.key === '⇧F11' && e.key === 'F11' && e.shiftKey)
+      );
+      
+      if (shortcut && !disabled) {
+        setActiveShortcut(shortcut.id);
+        setTimeout(() => setActiveShortcut(null), 300);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [debugActions, disabled]);
 
   return (
     <header
       style={{
-        height: 60,
+        height: 64,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 16,
         padding: '0 24px',
-        background: 'rgba(var(--bg-surface-rgb), 0.75)',
-        backdropFilter: 'blur(16px) saturate(180%)',
+        background: 'rgba(var(--bg-surface-rgb), 0.85)',
+        backdropFilter: 'blur(20px) saturate(180%)',
         borderBottom: '1px solid var(--border-primary)',
         zIndex: 100,
         position: 'relative',
-        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
       }}
     >
       {/* Brand & Load */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ 
-          padding: 6, 
+          width: 32,
+          height: 32,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           borderRadius: 8, 
           background: 'linear-gradient(135deg, var(--accent), var(--purple))', 
           color: 'white',
@@ -85,24 +116,39 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
         }}>
           <Zap size={18} strokeWidth={2.5} fill="white" />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.2px', lineHeight: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.2px', lineHeight: 1.2 }}>
             Liquid Debugger
           </span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>
             v1.2.0 Enterprise
           </span>
         </div>
       </div>
 
-      <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 8px' }} />
+      <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 4px' }} />
 
       <AnimatedButton
         variant="ghost"
         size="sm"
         icon={<FolderOpen size={14} strokeWidth={STROKE_WIDTH} />}
         onClick={onLoad}
-        style={{ fontWeight: 800, padding: '8px 16px', background: 'var(--bg-panel)', borderRadius: 10 }}
+        style={{ 
+          height: 36,
+          fontWeight: 900, 
+          padding: '0 20px', 
+          background: btnBg, 
+          border: `1px solid ${btnBorder}`,
+          borderRadius: 12,
+          boxShadow: 'var(--shadow-sm)',
+          textTransform: 'uppercase',
+          fontSize: 10,
+          letterSpacing: '1px',
+          color: textColor,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}
       >
         Load Template
       </AnimatedButton>
@@ -113,42 +159,88 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          padding: '3px',
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)',
-          margin: '0 8px'
+          background: clusterBg,
+          border: `1px solid ${clusterBorder}`,
+          borderRadius: '16px',
+          boxShadow: isDark ? 'inset 0 1px 2px rgba(0,0,0,0.2)' : 'var(--shadow-sm)',
+          margin: '0 4px',
+          padding: '4px',
+          backdropFilter: 'blur(12px)',
+          height: 48
         }}
       >
         {debugActions.map(({ id, key, label, icon, color, action }) => (
           <motion.button
             key={id}
-            whileHover={disabled ? {} : { background: 'var(--bg-hover)', y: -1 }}
-            whileTap={disabled ? {} : { scale: 0.94 }}
-            onClick={action}
+            layout
+            initial={false}
+            animate={activeShortcut === id ? { 
+              scale: 0.9, 
+              background: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 0 15px var(--accent-glow)'
+            } : { 
+              scale: 1, 
+              background: 'transparent',
+              boxShadow: 'none'
+            }}
+            whileHover={disabled ? {} : { 
+              background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)', 
+              y: -1
+            }}
+            whileTap={disabled ? {} : { scale: 0.92 }}
+            onClick={(e) => {
+              if (disabled) return;
+              setActiveShortcut(id);
+              setTimeout(() => setActiveShortcut(null), 200);
+              action();
+            }}
             disabled={disabled}
-            title={`${label} (${key})`}
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 8,
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-md)',
-              background: 'transparent',
-              border: 'none',
+              justifyContent: 'center',
+              gap: 1,
+              padding: '4px 12px',
+              minWidth: 72,
+              height: '100%',
+              borderRadius: 12,
+              border: activeShortcut === id ? '1px solid var(--accent)' : '1px solid transparent',
               cursor: disabled ? 'not-allowed' : 'pointer',
-              color: disabled ? 'var(--text-muted)' : 'var(--text-primary)',
-              fontSize: 12,
-              fontWeight: 800,
-              opacity: disabled ? 0.3 : 1,
-              transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+              color: disabled ? (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)') : textColor,
+              opacity: disabled ? 0.6 : 1,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative'
             }}
           >
-            <div style={{ color: disabled ? 'var(--text-muted)' : color, display: 'flex' }}>
+            <div style={{ 
+              color: disabled ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') : color, 
+              display: 'flex',
+              marginBottom: 1,
+              filter: disabled ? 'grayscale(1) brightness(0.6)' : 'none',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
               {icon}
             </div>
-            <span style={{ fontSize: 11, letterSpacing: '-0.1px' }}>{label}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, justifyContent: 'center' }}>
+              <span style={{ 
+                fontSize: 9, 
+                fontWeight: 900, 
+                letterSpacing: '0.4px', 
+                textTransform: 'uppercase', 
+                color: activeShortcut === id ? 'var(--accent)' : (disabled ? (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') : textColor),
+                lineHeight: 1
+              }}>{label}</span>
+              <span style={{ 
+                fontSize: 7, 
+                fontWeight: 800, 
+                color: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                marginTop: 2,
+                fontFamily: 'var(--font-mono)',
+                lineHeight: 1
+              }}>{key}</span>
+            </div>
           </motion.button>
         ))}
       </div>
@@ -159,12 +251,28 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
         icon={<RotateCcw size={14} strokeWidth={STROKE_WIDTH} />}
         onClick={onReset}
         disabled={!loaded || isLoading}
-        style={{ fontWeight: 800, color: 'var(--text-muted)' }}
+        style={{ 
+          height: 36,
+          fontWeight: 900, 
+          color: textColor,
+          background: btnBg,
+          border: `1px solid ${btnBorder}`,
+          borderRadius: 12,
+          padding: '0 20px',
+          boxShadow: 'var(--shadow-sm)',
+          fontSize: 10,
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+          opacity: disabled ? 0.5 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}
       >
         Reset
       </AnimatedButton>
 
-      <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 8px' }} />
+      <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 4px' }} />
 
       {/* View Switcher */}
       <div style={{
@@ -174,7 +282,9 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
         borderRadius: 12,
         border: '1px solid var(--border-primary)',
         gap: 4,
-        position: 'relative'
+        position: 'relative',
+        height: 40,
+        alignItems: 'center'
       }}>
         {[
           { id: 'debugger', label: 'Debugger', icon: Bug },
@@ -190,8 +300,10 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 8,
-                padding: '8px 16px',
+                padding: '0 16px',
+                height: 32,
                 borderRadius: 9,
                 border: isActive ? '1px solid var(--accent-glow)' : '1px solid transparent',
                 background: isActive ? 'var(--accent)' : 'transparent',
@@ -207,7 +319,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
               }}
             >
               <v.icon size={14} strokeWidth={STROKE_WIDTH} />
-              <span style={{ position: 'relative', zIndex: 11 }}>{v.label}</span>
+              <span style={{ position: 'relative', zIndex: 11, lineHeight: 1 }}>{v.label}</span>
               {isActive && (
                 <motion.div 
                   layoutId="header-active-pill"
@@ -239,8 +351,10 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 10,
-            padding: '6px 14px',
+            padding: '0 14px',
+            height: 36,
             borderRadius: 10,
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-primary)',
@@ -252,20 +366,24 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
             boxShadow: 'var(--shadow-sm)'
           }}
         >
-          {THEME_ICONS[theme]}
-          <span>{theme}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {THEME_ICONS[theme]}
+          </div>
+          <span style={{ lineHeight: 1 }}>{theme}</span>
         </motion.button>
 
         <div style={{ width: 1, height: 24, background: 'var(--border-primary)' }} />
 
         {/* Enhanced Status Indicator */}
         <div style={{
-          padding: '6px 16px',
+          height: 36,
+          padding: '0 16px',
           background: 'var(--bg-panel)',
           border: '1px solid var(--border-primary)',
           borderRadius: 12,
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: 10,
           boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
         }}>

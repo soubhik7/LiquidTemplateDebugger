@@ -43,7 +43,8 @@ function AccordionSection({ id, title, icon, count, isOpen, onToggle, children, 
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          padding: '10px 14px',
+          padding: '0 14px',
+          height: 40,
           background: 'var(--bg-panel)',
           border: 'none',
           width: '100%',
@@ -55,10 +56,10 @@ function AccordionSection({ id, title, icon, count, isOpen, onToggle, children, 
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-panel)'; }}
       >
-        <div style={{ color: isOpen ? 'var(--accent)' : 'var(--text-muted)', display: 'flex' }}>
+        <div style={{ color: isOpen ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 14 }}>
           {isOpen ? <ChevronDown size={14} strokeWidth={3} /> : <ChevronRight size={14} />}
         </div>
-        <div style={{ color: isOpen ? (color || 'var(--accent)') : 'var(--text-secondary)', display: 'flex' }}>
+        <div style={{ color: isOpen ? (color || 'var(--accent)') : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {icon}
         </div>
         <span style={{ 
@@ -67,7 +68,8 @@ function AccordionSection({ id, title, icon, count, isOpen, onToggle, children, 
           color: isOpen ? 'var(--text-primary)' : 'var(--text-muted)',
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
-          flex: 1
+          flex: 1,
+          lineHeight: 1
         }}>
           {title}
         </span>
@@ -75,11 +77,12 @@ function AccordionSection({ id, title, icon, count, isOpen, onToggle, children, 
           <span style={{
             fontSize: 10,
             fontWeight: 800,
-            padding: '1px 6px',
+            padding: '2px 6px',
             borderRadius: 10,
             background: isOpen ? (color ? `rgba(var(--${id}-rgb, 100, 100, 100), 0.15)` : 'var(--accent-soft)') : 'var(--bg-hover)',
             color: isOpen ? (color || 'var(--accent)') : 'var(--text-muted)',
-            border: isOpen ? `1px solid ${color || 'var(--accent-glow)'}` : '1px solid var(--border-primary)'
+            border: isOpen ? `1px solid ${color || 'var(--accent-glow)'}` : '1px solid var(--border-primary)',
+            lineHeight: 1
           }}>
             {count}
           </span>

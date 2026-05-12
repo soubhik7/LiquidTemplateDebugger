@@ -202,9 +202,14 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
 
     // POST /api/ai/generate
     if (POST && urlPath === '/api/ai/generate') {
-        const { prompt, apiKey, model, dataContext, outputFormat } = body;
-        const fullPrompt = `Generate a Liquid template based on this requirement: "${prompt}".
-Input data context: ${JSON.stringify(dataContext)}
+        const { prompt, apiKey, model, dataContext, outputFormat, mappingDetails } = body;
+        let fullPrompt = `Generate a Liquid template based on this requirement: "${prompt}".`;
+        
+        if (mappingDetails && mappingDetails.trim()) {
+            fullPrompt += `\n\nReference Business Mapping Details:\n${mappingDetails}`;
+        }
+
+        fullPrompt += `\n\nInput data context: ${JSON.stringify(dataContext)}
 Expected output format: ${outputFormat}
 
 IMPORTANT RULES for Azure Logic Apps compatibility:

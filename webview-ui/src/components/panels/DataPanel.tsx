@@ -81,9 +81,9 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32 }}>
           <ListTree size={14} style={{ color: 'var(--accent)' }} />
-          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1 }}>
             Input Data
           </span>
         </div>
@@ -107,8 +107,10 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '4px 10px',
+              padding: '0 10px',
+              height: 28,
               borderRadius: 6,
               background: showTree ? 'var(--accent-soft)' : 'transparent',
               color: showTree ? 'var(--accent)' : 'var(--text-secondary)',
@@ -119,7 +121,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
               opacity: (loaded && !dataEditMode) ? 1 : 0.5
             }}
           >
-            <ListTree size={12} /> Tree
+            <ListTree size={12} /> <span style={{ lineHeight: 1 }}>Tree</span>
           </button>
 
           {!showTree && (
@@ -129,8 +131,10 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '4px 10px',
+                padding: '0 10px',
+                height: 28,
                 borderRadius: 6,
                 background: 'transparent',
                 color: 'var(--text-secondary)',
@@ -141,7 +145,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
                 opacity: loaded ? 1 : 0.5
               }}
             >
-              <Wand2 size={12} /> Format
+              <Wand2 size={12} /> <span style={{ lineHeight: 1 }}>Format</span>
             </button>
           )}
 
@@ -153,8 +157,10 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '4px 12px',
+                padding: '0 12px',
+                height: 28,
                 borderRadius: 6,
                 background: 'var(--accent)',
                 color: 'white',
@@ -164,7 +170,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
                 cursor: 'pointer'
               }}
             >
-              <Check size={12} strokeWidth={3} /> Save
+              <Check size={12} strokeWidth={3} /> <span style={{ lineHeight: 1 }}>Save</span>
             </button>
           ) : (
             <button
@@ -173,8 +179,10 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '4px 10px',
+                padding: '0 10px',
+                height: 28,
                 borderRadius: 6,
                 background: 'transparent',
                 color: 'var(--text-secondary)',
@@ -185,7 +193,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
                 opacity: (loaded && !showTree) ? 1 : 0.5
               }}
             >
-              <Edit3 size={12} /> Edit
+              <Edit3 size={12} /> <span style={{ lineHeight: 1 }}>Edit</span>
             </button>
           )}
         </div>

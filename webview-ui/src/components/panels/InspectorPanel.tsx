@@ -154,28 +154,34 @@ export function InspectorPanel({
               onClick={() => setTab(id)}
               style={{
                 flex: 1,
-                padding: '7px 4px',
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 background: 'transparent',
                 border: 'none',
                 borderBottom: `2px solid ${activeTab === id ? 'var(--accent)' : 'transparent'}`,
                 cursor: 'pointer',
                 fontSize: 11,
-                fontWeight: 600,
+                fontWeight: 800,
                 color: activeTab === id ? 'var(--accent)' : 'var(--text-muted)',
                 transition: 'all var(--transition-fast)',
-                letterSpacing: '0.3px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
               }}
             >
-              {label}
+              <span style={{ lineHeight: 1 }}>{label}</span>
               {id === 'watches' && watches.length > 0 && (
                 <span
                   style={{
-                    marginLeft: 4,
-                    fontSize: 9,
-                    padding: '0 4px',
+                    marginLeft: 6,
+                    fontSize: 10,
+                    padding: '2px 6px',
                     borderRadius: 8,
                     background: 'var(--accent-soft)',
                     color: 'var(--accent)',
+                    lineHeight: 1,
+                    fontWeight: 800
                   }}
                 >
                   {watches.length}
@@ -184,12 +190,14 @@ export function InspectorPanel({
               {id === 'breakpoints' && breakpoints.length > 0 && (
                 <span
                   style={{
-                    marginLeft: 4,
-                    fontSize: 9,
-                    padding: '0 4px',
+                    marginLeft: 6,
+                    fontSize: 10,
+                    padding: '2px 6px',
                     borderRadius: 8,
                     background: 'rgba(239,68,68,0.1)',
                     color: 'var(--red)',
+                    lineHeight: 1,
+                    fontWeight: 800
                   }}
                 >
                   {breakpoints.length}
@@ -198,12 +206,14 @@ export function InspectorPanel({
               {id === 'problems' && validationErrors.length > 0 && (
                 <span
                   style={{
-                    marginLeft: 4,
-                    fontSize: 9,
-                    padding: '0 4px',
+                    marginLeft: 6,
+                    fontSize: 10,
+                    padding: '2px 6px',
                     borderRadius: 8,
                     background: 'rgba(239,68,68,0.1)',
                     color: 'var(--red)',
+                    lineHeight: 1,
+                    fontWeight: 800
                   }}
                 >
                   {validationErrors.length}
@@ -230,10 +240,12 @@ export function InspectorPanel({
               <div
                 style={{
                   display: 'flex',
-                  gap: 4,
-                  padding: '6px 8px',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
                   borderBottom: '1px solid var(--border-primary)',
                   flexShrink: 0,
+                  height: 48
                 }}
               >
                 <input
@@ -244,15 +256,17 @@ export function InspectorPanel({
                   disabled={!loaded}
                   style={{
                     flex: 1,
-                    padding: '3px 8px',
+                    height: 32,
+                    padding: '0 12px',
                     fontSize: 12,
                     fontFamily: 'var(--font-mono)',
                     background: 'var(--bg-hover)',
                     border: '1px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-sm)',
+                    borderRadius: 8,
                     color: 'var(--text-primary)',
                     outline: 'none',
                     opacity: loaded ? 1 : 0.5,
+                    fontWeight: 600
                   }}
                 />
                 <AnimatedButton
@@ -284,15 +298,17 @@ export function InspectorPanel({
                               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
                               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}
                             >
-                              <td style={{ padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <span style={{ color: 'var(--text-muted)' }}>
-                                  {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                                </span>
-                                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontWeight: 600 }}>
+                              <td style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, height: 36 }}>
+                                <div style={{ width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span style={{ color: 'var(--text-muted)', display: 'flex' }}>
+                                    {expanded ? <ChevronDown size={12} strokeWidth={3} /> : <ChevronRight size={12} />}
+                                  </span>
+                                </div>
+                                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontWeight: 800, fontSize: 12, lineHeight: 1 }}>
                                   {w.expression}
                                 </span>
                               </td>
-                              <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>
+                              <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, lineHeight: 1 }}>
                                 {truncate(w.currentValue ?? 'nil', 20)}
                               </td>
                               <td style={{ padding: '5px 8px', width: 24 }}>
@@ -680,10 +696,12 @@ export function InspectorPanel({
               <div
                 style={{
                   display: 'flex',
-                  gap: 4,
-                  padding: '6px 8px',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
                   borderBottom: '1px solid var(--border-primary)',
                   flexShrink: 0,
+                  height: 48
                 }}
               >
                 <input
@@ -694,15 +712,17 @@ export function InspectorPanel({
                   disabled={!loaded}
                   style={{
                     flex: 1,
-                    padding: '3px 8px',
+                    height: 32,
+                    padding: '0 12px',
                     fontSize: 12,
                     fontFamily: 'var(--font-mono)',
                     background: 'var(--bg-hover)',
                     border: '1px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-sm)',
+                    borderRadius: 8,
                     color: 'var(--text-primary)',
                     outline: 'none',
                     opacity: loaded ? 1 : 0.5,
+                    fontWeight: 600
                   }}
                 />
                 <AnimatedButton

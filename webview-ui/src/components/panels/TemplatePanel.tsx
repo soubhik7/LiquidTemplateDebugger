@@ -258,9 +258,9 @@ export function TemplatePanel({
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32 }}>
           <FileCode size={14} style={{ color: 'var(--accent)' }} />
-          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1 }}>
             Template
           </span>
         </div>
@@ -279,7 +279,7 @@ export function TemplatePanel({
           boxShadow: 'var(--shadow-sm)'
         }}>
           {/* Search Sub-group */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: 4 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: 4, height: 28 }}>
             <Search size={12} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
             <input
               value={search}
@@ -287,17 +287,19 @@ export function TemplatePanel({
               placeholder="Find in template..."
               style={{
                 width: 160,
-                padding: '4px 8px 4px 28px',
+                height: '100%',
+                padding: '0 8px 0 28px',
                 fontSize: 11,
                 background: 'transparent',
                 border: 'none',
                 color: 'var(--text-primary)',
                 outline: 'none',
-                fontWeight: 600
+                fontWeight: 600,
+                lineHeight: '28px'
               }}
             />
             {matchCount > 0 && (
-              <span style={{ position: 'absolute', right: 8, fontSize: 10, color: 'var(--accent)', fontWeight: 800 }}>
+              <span style={{ position: 'absolute', right: 8, fontSize: 10, color: 'var(--accent)', fontWeight: 800, lineHeight: 1 }}>
                 {matchCount}
               </span>
             )}
@@ -311,8 +313,10 @@ export function TemplatePanel({
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '4px 12px',
+                padding: '0 12px',
+                height: 28,
                 borderRadius: 6,
                 background: 'var(--accent)',
                 color: 'white',
@@ -322,7 +326,7 @@ export function TemplatePanel({
                 cursor: 'pointer'
               }}
             >
-              <Check size={12} strokeWidth={3} /> Save
+              <Check size={12} strokeWidth={3} /> <span style={{ lineHeight: 1 }}>Save</span>
             </button>
           ) : (
             <button
@@ -331,8 +335,10 @@ export function TemplatePanel({
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '4px 10px',
+                padding: '0 10px',
+                height: 28,
                 borderRadius: 6,
                 background: 'transparent',
                 color: 'var(--text-secondary)',
@@ -343,7 +349,7 @@ export function TemplatePanel({
                 opacity: loaded ? 1 : 0.5
               }}
             >
-              <Edit3 size={12} /> Edit
+              <Edit3 size={12} /> <span style={{ lineHeight: 1 }}>Edit</span>
             </button>
           )}
 
@@ -353,8 +359,10 @@ export function TemplatePanel({
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '4px 10px',
+              padding: '0 10px',
+              height: 28,
               borderRadius: 6,
               background: copied ? 'var(--green-soft)' : 'transparent',
               color: copied ? 'var(--green)' : 'var(--text-secondary)',
@@ -366,7 +374,7 @@ export function TemplatePanel({
             }}
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied' : 'Copy'}
+            <span style={{ lineHeight: 1 }}>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
       </div>

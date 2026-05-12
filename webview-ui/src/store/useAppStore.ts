@@ -55,6 +55,7 @@ interface AppState {
     prompt: string;
     data: string;
     format: string;
+    mappingDetails: string;
     generatedTemplate: string;
     showResult: boolean;
   };
@@ -117,6 +118,7 @@ export const useAppStore = create<AppState>()(
         prompt: '',
         data: '',
         format: 'json',
+        mappingDetails: '',
         generatedTemplate: '',
         showResult: false,
       },

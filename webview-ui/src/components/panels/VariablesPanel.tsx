@@ -49,29 +49,31 @@ export function VariablesPanel() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
+          gap: 10,
+          padding: '8px 16px',
           background: 'var(--bg-panel)',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
+          height: 36
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1 }}>
           Variables
         </span>
         {variables.length > 0 && (
-          <span
-            style={{
-              fontSize: 10,
-              padding: '1px 7px',
-              borderRadius: 20,
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              fontWeight: 600,
-            }}
-          >
-            {variables.length}
-          </span>
+            <span
+              style={{
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 20,
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+                fontWeight: 800,
+                lineHeight: 1
+              }}
+            >
+              {variables.length}
+            </span>
         )}
         <div style={{ flex: 1 }} />
       </div>
@@ -79,26 +81,31 @@ export function VariablesPanel() {
       {/* Filter */}
       <div
         style={{
-          padding: '5px 8px',
+          padding: '8px 12px',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
           position: 'relative',
+          height: 44,
+          display: 'flex',
+          alignItems: 'center'
         }}
       >
-        <Search size={11} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <Search size={12} style={{ position: 'absolute', left: 24, color: 'var(--text-muted)' }} />
         <input
           value={varFilter}
           onChange={(e) => setVarFilter(e.target.value)}
           placeholder="Filter variables…"
           style={{
             width: '100%',
-            padding: '3px 8px 3px 24px',
+            height: 32,
+            padding: '0 12px 0 32px',
             fontSize: 12,
             background: 'var(--bg-hover)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: 8,
             color: 'var(--text-primary)',
             outline: 'none',
+            fontWeight: 600
           }}
         />
       </div>
@@ -154,11 +161,13 @@ export function VariablesPanel() {
                       onMouseEnter={(e) => { if (!expanded) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
                       onMouseLeave={(e) => { if (!expanded) (e.currentTarget as HTMLElement).style.background = ''; }}
                     >
-                      <td style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: expanded ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>
-                          {expanded ? <ChevronDown size={12} strokeWidth={3} /> : <ChevronRight size={12} />}
-                        </span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: expanded ? 'var(--accent)' : 'var(--text-primary)', fontSize: 13 }}>
+                      <td style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, height: 36 }}>
+                        <div style={{ width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ color: expanded ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0, display: 'flex' }}>
+                            {expanded ? <ChevronDown size={12} strokeWidth={3} /> : <ChevronRight size={12} />}
+                          </span>
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: expanded ? 'var(--accent)' : 'var(--text-primary)', fontSize: 12, lineHeight: 1 }}>
                           {v.name}
                         </span>
                       </td>
@@ -189,7 +198,8 @@ export function VariablesPanel() {
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
-                          fontSize: 13
+                          fontSize: 12,
+                          lineHeight: 1
                         }}
                         title={v.currentValue ?? ''}
                       >

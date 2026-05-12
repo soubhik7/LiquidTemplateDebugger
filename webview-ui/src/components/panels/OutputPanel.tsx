@@ -184,9 +184,9 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32 }}>
           <FileText size={14} style={{ color: 'var(--accent)' }} />
-          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1 }}>
             Output
           </span>
         </div>
@@ -229,8 +229,10 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '4px 10px',
+              padding: '0 10px',
+              height: 28,
               borderRadius: 6,
               background: showTree ? 'var(--accent-soft)' : 'transparent',
               color: showTree ? 'var(--accent)' : 'var(--text-secondary)',
@@ -241,7 +243,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               opacity: loaded ? 1 : 0.5
             }}
           >
-            <ListTree size={12} /> Tree
+            <ListTree size={12} /> <span style={{ lineHeight: 1 }}>Tree</span>
           </button>
 
           {!showTree && (
@@ -251,8 +253,10 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '4px 10px',
+                padding: '0 10px',
+                height: 28,
                 borderRadius: 6,
                 background: 'transparent',
                 color: 'var(--text-secondary)',
@@ -263,7 +267,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
                 opacity: (loaded && outputRaw) ? 1 : 0.5
               }}
             >
-              <Wand2 size={12} /> Format
+              <Wand2 size={12} /> <span style={{ lineHeight: 1 }}>Format</span>
             </button>
           )}
 
@@ -274,7 +278,8 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             onChange={(e) => setValidateFmt(e.target.value)}
             style={{
               fontSize: 11,
-              padding: '2px 4px',
+              padding: '0 4px',
+              height: 28,
               background: 'transparent',
               border: 'none',
               color: 'var(--text-primary)',
@@ -293,8 +298,10 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '4px 10px',
+              padding: '0 10px',
+              height: 28,
               borderRadius: 6,
               background: 'transparent',
               color: 'var(--text-secondary)',
@@ -305,12 +312,12 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               opacity: loaded ? 1 : 0.5
             }}
           >
-            <CheckCircle size={12} /> Check
+            <CheckCircle size={12} /> <span style={{ lineHeight: 1 }}>Check</span>
           </button>
 
           <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
 
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 28 }}>
             <Search size={12} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
             <input
               value={search}
@@ -318,13 +325,15 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               placeholder="Find..."
               style={{
                 width: 100,
-                padding: '4px 8px 4px 28px',
+                height: '100%',
+                padding: '0 8px 0 28px',
                 fontSize: 11,
                 background: 'transparent',
                 border: 'none',
                 color: 'var(--text-primary)',
                 outline: 'none',
-                fontWeight: 600
+                fontWeight: 600,
+                lineHeight: '28px'
               }}
             />
           </div>
@@ -335,8 +344,10 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '4px 10px',
+              padding: '0 10px',
+              height: 28,
               borderRadius: 6,
               background: copied ? 'var(--green-soft)' : 'transparent',
               color: copied ? 'var(--green)' : 'var(--text-secondary)',
@@ -348,7 +359,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             }}
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied' : 'Copy'}
+            <span style={{ lineHeight: 1 }}>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
       </div>
