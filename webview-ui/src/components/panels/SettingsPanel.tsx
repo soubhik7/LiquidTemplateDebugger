@@ -4,6 +4,7 @@ import { Palette, Sun, Moon, Info, Github, Sparkles, Check, Monitor, Layout, Ext
 import { ACCENT_COLORS } from '../../utils/constants';
 import type { Theme } from '../../types/app';
 import { useRef } from 'react';
+import { AISettingsSection } from './AISettingsSection';
 
 const THEMES: { id: Theme; label: string; icon: any; colors: string[] }[] = [
   { id: 'dark', label: 'Dark Default', icon: Moon, colors: ['#0a0a12', '#16161f'] },
@@ -254,7 +255,10 @@ export function SettingsPanel() {
             </div>
           </div>
         </section>
-
+  
+        {/* AI Template Generation Settings */}
+        <AISettingsSection />
+  
         {/* Info & Footer */}
         <section style={{ 
           marginTop: 72, 

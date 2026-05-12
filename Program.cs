@@ -75,9 +75,22 @@ for (int i = 0; i < args.Length; i++)
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load AI configuration from appsettings
+var aiConfig = builder.Configuration.GetSection("AI").Get<LiquidTemplateDebugger.Models.AIConfiguration>()
+    ?? new LiquidTemplateDebugger.Models.AIConfiguration();
+
 // Register core services with dependency injection
 builder.Services.AddSingleton<ITemplateParser, TemplateParser>();
 builder.Services.AddSingleton<IInputDataLoader, InputDataLoader>();
+
+// Register AI services
+builder.Services.AddSingleton(aiConfig);
+builder.Services.AddSingleton<IAIService>(sp =>
+{
+    var config = sp.GetRequiredService<LiquidTemplateDebugger.Models.AIConfiguration>();
+    return new GeminiAIService(config);
+});
+builder.Services.AddHttpClient(); // For AI service HTTP calls
 
 // Register DebugSessionManager as singleton
 builder.Services.AddSingleton<DebugSessionManager>();

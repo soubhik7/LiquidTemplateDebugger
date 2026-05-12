@@ -1,5 +1,6 @@
 using LiquidTemplateDebugger.Models;
 using LiquidTemplateDebugger.Engine;
+using LiquidTemplateDebugger.Engine.Interfaces;
 using System.Text;
 using System.Xml.Linq;
 using Newtonsoft.Json;
@@ -316,6 +317,94 @@ public static class DebugApiEndpoints
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        // AI Template Generation Endpoints
+        app.MapPost("/api/ai/generate-template", async (GenerateTemplateRequestDto request, IAIService aiService) =>
+        {
+            try
+            {
+                var generationRequest = new GenerateTemplateRequest
+                {
+                    InputData = request.InputData,
+                    ExpectedOutput = request.ExpectedOutput,
+                    BusinessLogic = request.BusinessLogic,
+                    InputFormat = request.InputFormat,
+                    OutputFormat = request.OutputFormat,
+                    Options = new GenerationOptions
+                    {
+                        Complexity = request.Options.Complexity,
+                        IncludeComments = request.Options.IncludeComments,
+                        SensitiveFieldPatterns = request.Options.SensitiveFieldPatterns,
+                        Model = request.Options.Model,
+                        MaxTokens = request.Options.MaxTokens,
+                        Temperature = request.Options.Temperature
+                    }
+                };
+
+                var response = await aiService.GenerateTemplateAsync(generationRequest);
+
+                return Results.Ok(new GenerateTemplateResponseDto(
+                    Success: response.Success,
+                    GeneratedTemplate: response.GeneratedTemplate,
+                    ErrorMessage: response.ErrorMessage,
+                    Warnings: response.Warnings,
+                    Metadata: new GenerationMetadataDto(
+                        TokensUsed: response.Metadata.TokensUsed,
+                        GenerationTimeMs: response.Metadata.GenerationTimeMs,
+                        ModelUsed: response.Metadata.ModelUsed,
+                        SanitizedFields: response.Metadata.SanitizedFields,
+                        DataWasSanitized: response.Metadata.DataWasSanitized
+                    )
+                ));
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new GenerateTemplateResponseDto(
+                    Success: false,
+                    GeneratedTemplate: null,
+                    ErrorMessage: $"Template generation failed: {ex.Message}",
+                    Warnings: new List<string>(),
+                    Metadata: new GenerationMetadataDto(0, 0, "", new List<string>(), false)
+                ));
+            }
+        });
+
+        app.MapPost("/api/ai/validate-key", async (ValidateApiKeyRequestDto request, IAIService aiService) =>
+        {
+            try
+            {
+                var isValid = await aiService.ValidateApiKeyAsync(request.ApiKey);
+                return Results.Ok(new ValidateApiKeyResponseDto(
+                    IsValid: isValid,
+                    ErrorMessage: isValid ? null : "Invalid API key or connection failed"
+                ));
+            }
+            catch (Exception ex)
+            {
+                return Results.Ok(new ValidateApiKeyResponseDto(
+                    IsValid: false,
+                    ErrorMessage: ex.Message
+                ));
+            }
+        });
+
+        app.MapGet("/api/ai/models", async (IAIService aiService) =>
+        {
+            try
+            {
+                var models = await aiService.GetAvailableModelsAsync();
+                return Results.Ok(new GetModelsResponseDto(Models: models));
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        app.MapGet("/api/ai/status", (IAIService aiService) =>
+        {
+            return Results.Ok(new { configured = aiService.IsConfigured() });
         });
 
         // Beautify/Format content

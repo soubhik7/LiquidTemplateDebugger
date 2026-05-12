@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Theme, AccentColor, InspectorTab, WebUIState } from '../types/app';
 import type { Toast, PanelSizes } from '../types/ui';
+import type { AIConfiguration } from '../types/generation';
 import { nanoid } from '../utils/helpers';
 import { ACCENT_COLORS } from '../utils/constants';
 
@@ -43,6 +44,12 @@ interface AppState {
   setActiveView: (view: 'debugger' | 'settings' | 'guide') => void;
   setValidationErrors: (errors: any[]) => void;
 
+  // AI Configuration
+  aiConfig: AIConfiguration;
+  showGenerateModal: boolean;
+  setAIConfig: (config: Partial<AIConfiguration>) => void;
+  setShowGenerateModal: (show: boolean) => void;
+
   // Actions
   setDebugState: (state: WebUIState | null) => void;
   setLoading: (v: boolean) => void;
@@ -83,8 +90,21 @@ export const useAppStore = create<AppState>()(
       dataEditMode: false,
       activeView: 'debugger',
       validationErrors: [],
+      
+      // AI Configuration
+      aiConfig: {
+        enabled: false,
+        apiKey: undefined,
+        defaultModel: 'gemini-1.5-flash',
+        sensitivePatterns: [],
+        maxRetries: 3,
+        timeoutSeconds: 30,
+      },
+      showGenerateModal: false,
 
       setActiveView: (view) => set({ activeView: view }),
+      setAIConfig: (config) => set((s) => ({ aiConfig: { ...s.aiConfig, ...config } })),
+      setShowGenerateModal: (show) => set({ showGenerateModal: show }),
       setDebugState: (state) => set({ debugState: state }),
       setLoading: (v) => set({ isLoading: v }),
 
