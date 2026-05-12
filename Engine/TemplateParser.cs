@@ -181,7 +181,15 @@ public class TemplateParser : ITemplateParser
     {
         try
         {
-            Parse(templateContent);
+            var elements = Parse(templateContent);
+            
+            // Perform additional validation for root-level content prefixes
+            var validation = TemplateValidator.ValidateRootLevelContent(elements);
+            if (!validation.IsValid)
+            {
+                return validation;
+            }
+
             return Models.ValidationResult.Success();
         }
         catch (Exception ex)

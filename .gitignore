@@ -1,2 +1,34 @@
+# .NET build outputs
 bin/
 obj/
+*.user
+*.suo
+.vs/
+
+# Node / npm
+node_modules/
+
+# VS Code extension build
+vscode-extension/out/
+vscode-extension/*.vsix
+vscode-extension/.vscode-test/
+
+# WebView UI build & dev
+webview-ui/node_modules/
+webview-ui/dist/
+webview-ui/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Editor
+*.swp
+*.swo
+*~

@@ -161,3 +161,52 @@ public record BeautifyRequest(
     string Content,
     string Format // "json", "xml", "csv", "text"
 );
+
+// --- AI Template Generation DTOs ---
+
+public record GenerateTemplateRequestDto(
+    string InputData,
+    string ExpectedOutput,
+    string? BusinessLogic,
+    string InputFormat,  // "json", "xml", "csv", "text"
+    string OutputFormat, // "json", "xml", "csv", "text"
+    GenerationOptionsDto Options
+);
+
+public record GenerationOptionsDto(
+    string Complexity,      // "basic", "intermediate", "advanced"
+    bool IncludeComments,
+    List<string> SensitiveFieldPatterns,
+    string Model,
+    int MaxTokens,
+    double Temperature
+);
+
+public record GenerateTemplateResponseDto(
+    bool Success,
+    string? GeneratedTemplate,
+    string? ErrorMessage,
+    List<string> Warnings,
+    GenerationMetadataDto Metadata
+);
+
+public record GenerationMetadataDto(
+    int TokensUsed,
+    double GenerationTimeMs,
+    string ModelUsed,
+    List<string> SanitizedFields,
+    bool DataWasSanitized
+);
+
+public record ValidateApiKeyRequestDto(
+    string ApiKey
+);
+
+public record ValidateApiKeyResponseDto(
+    bool IsValid,
+    string? ErrorMessage
+);
+
+public record GetModelsResponseDto(
+    List<string> Models
+);

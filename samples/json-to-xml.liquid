@@ -4,7 +4,7 @@
 {% endcomment %}
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-{% for item in rows %}
+{% for item in content.rows %}
   <item>
   {% for prop in item %}
     <{{ prop[0] }}>{{ prop[1] }}</{{ prop[0] }}>
