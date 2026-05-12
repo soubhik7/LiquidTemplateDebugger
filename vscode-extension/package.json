@@ -71,7 +71,30 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "liquid-debugger-sidebar",
+          "title": "Liquid Debugger",
+          "icon": "$(debug-alt)"
+        }
+      ]
+    },
+    "views": {
+      "liquid-debugger-sidebar": [
+        {
+          "id": "liquid-debugger-launcher",
+          "name": "Liquid Debugger Launcher"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "liquid-debugger-launcher",
+        "contents": "Professional Dot Liquid Debugger\n\n[Launch Full Debugger](command:liquid-debugger.start)"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build-all",
