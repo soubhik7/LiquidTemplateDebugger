@@ -319,7 +319,7 @@ function sanitizeData(input: string, patterns: string[]): string {
 
     for (const pattern of safePatterns) {
         try {
-            const regex = new RegExp(pattern, 'gi');
+            const regex = new RegExp(pattern, 'gui');
             result = result.replace(regex, '[REDACTED]');
         } catch (e) {
             // Ignore invalid regex patterns
