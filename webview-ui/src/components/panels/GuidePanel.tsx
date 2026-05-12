@@ -114,15 +114,15 @@ export function GuidePanel() {
                 color: 'white',
                 boxShadow: '0 4px 12px var(--accent-soft)'
               }}>
-                <Book size={20} strokeWidth={2.5} />
+                <Book size={20} strokeWidth={1.5} />
               </div>
-              Liquid Guide
+              <span style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Liquid Guide</span>
             </h2>
           </div>
           
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={14} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)', opacity: 0.8 }} />
+              <Search size={14} strokeWidth={1.5} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)' }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -131,11 +131,14 @@ export function GuidePanel() {
                   width: '100%',
                   padding: '12px 16px 12px 44px',
                   fontSize: 13,
-                  background: 'var(--bg-hover)',
+                  fontWeight: 600,
+                  background: 'var(--bg-panel)',
                   border: '1px solid var(--border-primary)',
-                  borderRadius: 'var(--radius-lg)',
+                  borderRadius: 'var(--radius-xl)',
                   color: 'var(--text-primary)',
                   outline: 'none',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  transition: 'all 0.2s ease'
                 }}
               />
             </div>
@@ -201,56 +204,67 @@ export function GuidePanel() {
                     }}
                   >
                     {/* Section Header */}
-                    <div
+                    <motion.div
+                      whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       onClick={() => setSelectedItem({ type: 'theory', data: section })}
                       style={{
-                        padding: '24px 28px',
+                        padding: '28px 32px',
                         cursor: 'pointer',
-                        background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-hover) 100%)',
+                        background: 'var(--bg-surface)',
                         borderBottom: '1px solid var(--border-primary)',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-active) 100%)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-hover) 100%)';
+                        position: 'relative',
+                        zIndex: 1
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                             <div style={{
-                              padding: '4px 10px',
-                              background: 'var(--accent-soft)',
+                              padding: '5px 12px',
+                              background: 'var(--accent-bg)',
                               color: 'var(--accent)',
                               borderRadius: 'var(--radius-md)',
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: 900,
-                              letterSpacing: '0.5px'
+                              letterSpacing: '1px',
+                              textTransform: 'uppercase'
                             }}>
                               {section.id}
                             </div>
-                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+                            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', fontFamily: 'Inter, system-ui, sans-serif' }}>
                               {section.title}
                             </h3>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-                              <BookOpen size={12} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                              <BookOpen size={12} strokeWidth={1.5} />
                               {section.readTime}
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                              • {section.subsections.length} subsections
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                              • {section.subsections.length} Key Concepts
                             </div>
                           </div>
-                          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, opacity: 0.9 }}>
-                            {section.content.substring(0, 150)}...
+                          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8, fontWeight: 500, fontFamily: 'Inter, system-ui, sans-serif' }}>
+                            {section.content.substring(0, 160)}...
                           </p>
                         </div>
-                        <ChevronRight size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />
+                        <div style={{ 
+                          width: 40, 
+                          height: 40, 
+                          borderRadius: '50%', 
+                          background: 'var(--bg-panel)', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: 'var(--accent)',
+                          border: '1px solid var(--border-primary)',
+                          transition: 'all 0.2s ease'
+                        }}>
+                          <ChevronRight size={20} strokeWidth={1.5} />
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Subsections Preview */}
                     <div style={{ padding: '16px 28px' }}>

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { Sparkles, Key, CheckCircle, XCircle, Loader, Brain, Shield, AlertTriangle } from 'lucide-react';
+import { Sparkles, Key, CheckCircle, XCircle, Loader, Brain, Shield, AlertTriangle, Monitor } from 'lucide-react';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { useDebugger } from '../../hooks/useDebugger';
 
@@ -140,302 +140,303 @@ export function AISettingsSection() {
       <div
         style={{
           padding: '16px 20px',
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))',
           border: '1px solid var(--accent-soft)',
-          borderRadius: 'var(--radius-lg)',
-          marginBottom: 24,
+          borderRadius: 'var(--radius-xl)',
+          marginBottom: 32,
           display: 'flex',
           gap: 16,
-          alignItems: 'flex-start',
+          alignItems: 'center',
         }}
       >
-        <Brain size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }} />
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
+          <Brain size={22} strokeWidth={2.5} />
+        </div>
         <div>
-          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>
-            Generate Liquid templates using Google Gemini AI
+          <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
+            Powered by Gemini AI
           </p>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-            Provide sample input data and expected output, and AI will generate a Liquid template for you.
-            Your data is sanitized before being sent to protect sensitive information.
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, fontWeight: 500 }}>
+            Automate Liquid template generation with high-fidelity reasoning.
           </p>
         </div>
       </div>
 
-      {/* Enable/Disable Toggle */}
-      <div
-        style={{
-          padding: '20px',
-          background: 'var(--bg-hover)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 'var(--radius-lg)',
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: aiConfig.enabled ? 'var(--accent)' : 'var(--bg-surface)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: aiConfig.enabled ? 'white' : 'var(--text-muted)',
-                transition: 'all 0.3s',
-              }}
-            >
-              <Sparkles size={20} strokeWidth={2.5} />
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
-                AI Features {aiConfig.enabled ? 'Enabled' : 'Disabled'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                {aiConfig.enabled ? 'Template generation is active' : 'Configure API key to enable'}
-              </div>
-            </div>
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleToggleAI}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+        {/* Enable/Disable & API Key in a split view or single stack */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div
             style={{
-              width: 56,
-              height: 32,
-              borderRadius: 16,
-              background: aiConfig.enabled ? 'var(--accent)' : 'var(--bg-surface)',
-              border: '2px solid',
-              borderColor: aiConfig.enabled ? 'var(--accent)' : 'var(--border-primary)',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'all 0.3s',
-            }}
-          >
-            <motion.div
-              animate={{ x: aiConfig.enabled ? 24 : 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                background: 'white',
-                position: 'absolute',
-                top: 2,
-                left: 2,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              }}
-            />
-          </motion.button>
-        </div>
-      </div>
-
-      {/* API Key Configuration */}
-      <div
-        style={{
-          padding: '24px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 'var(--radius-lg)',
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <Key size={18} style={{ color: 'var(--accent)' }} />
-          <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-            Gemini API Key
-          </h3>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ position: 'relative' }}>
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your Gemini API key..."
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: '120px',
-                background: 'var(--bg-hover)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                fontSize: 13,
-                fontFamily: 'monospace',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
-              onBlur={(e) => (e.target.style.borderColor = 'var(--border-primary)')}
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              style={{
-                position: 'absolute',
-                right: 8,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                padding: '6px 12px',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 6,
-                color: 'var(--text-secondary)',
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--bg-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--bg-surface)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-            >
-              {showKey ? 'Hide' : 'Show'}
-            </button>
-          </div>
-
-          {validationStatus !== 'idle' && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                marginTop: 12,
-                padding: '10px 14px',
-                background: validationStatus === 'valid' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid',
-                borderColor: validationStatus === 'valid' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              {validationStatus === 'valid' ? (
-                <CheckCircle size={16} style={{ color: '#22c55e' }} />
-              ) : (
-                <XCircle size={16} style={{ color: '#ef4444' }} />
-              )}
-              <span style={{ fontSize: 13, fontWeight: 600, color: validationStatus === 'valid' ? '#22c55e' : '#ef4444' }}>
-                {validationStatus === 'valid' ? 'API key is valid and ready to use' : 'API key validation failed'}
-              </span>
-            </motion.div>
-          )}
-        </div>
-
-        <AnimatedButton
-          variant="primary"
-          size="md"
-          icon={isValidating ? <Loader size={16} className="spin" /> : <CheckCircle size={16} />}
-          onClick={handleValidateKey}
-          disabled={isValidating || !apiKey.trim()}
-          style={{ width: '100%', fontWeight: 800 }}
-        >
-          {isValidating ? 'Validating...' : 'Validate API Key'}
-        </AnimatedButton>
-
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12, lineHeight: 1.6 }}>
-          Get your free API key from{' '}
-          <a
-            href="https://makersuite.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}
-          >
-            Google AI Studio
-          </a>
-        </p>
-      </div>
-
-      {/* Model Selection */}
-      <div
-        style={{
-          padding: '24px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 'var(--radius-lg)',
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <Brain size={18} style={{ color: 'var(--accent)' }} />
-          <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-            AI Model
-          </h3>
-        </div>
-
-        <div style={{ position: 'relative' }}>
-          <select
-            value={aiConfig.defaultModel}
-            onChange={(e) => setAIConfig({ defaultModel: e.target.value })}
-            disabled={isLoadingModels || availableModels.length === 0}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              background: 'var(--bg-hover)',
+              padding: '24px',
+              background: 'var(--bg-surface)',
               border: '1px solid var(--border-primary)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: (isLoadingModels || availableModels.length === 0) ? 'not-allowed' : 'pointer',
-              outline: 'none',
-              opacity: (isLoadingModels || availableModels.length === 0) ? 0.6 : 1,
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
-            {isLoadingModels ? (
-              <option>Loading available models...</option>
-            ) : availableModels.length === 0 ? (
-              <option>Validate API key to see models</option>
-            ) : (
-              availableModels.map((model) => (
-                <option key={model} value={model}>
-                  {formatModelName(model)}
-                </option>
-              ))
-            )}
-          </select>
-          {isLoadingModels && (
-            <div style={{ position: 'absolute', right: 35, top: '50%', transform: 'translateY(-50%)' }}>
-               <Loader size={14} className="spin" style={{ color: 'var(--accent)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: aiConfig.enabled ? 'var(--accent)' : 'var(--bg-panel)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: aiConfig.enabled ? 'white' : 'var(--text-muted)',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  <Sparkles size={18} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                    AI Assistance
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {aiConfig.enabled ? 'Active and ready' : 'Currently inactive'}
+                  </div>
+                </div>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleAI}
+                style={{
+                  width: 48,
+                  height: 26,
+                  borderRadius: 13,
+                  background: aiConfig.enabled ? 'var(--accent)' : 'var(--bg-panel)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  padding: 0,
+                  boxShadow: aiConfig.enabled ? '0 0 12px var(--accent-glow)' : 'none',
+                  transition: 'background 0.3s'
+                }}
+              >
+                {aiConfig.enabled && (
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    style={{
+                      position: 'absolute',
+                      inset: -4,
+                      borderRadius: 16,
+                      background: 'var(--accent)',
+                      zIndex: -1,
+                      filter: 'blur(8px)'
+                    }}
+                  />
+                )}
+                <motion.div
+                  animate={{ x: aiConfig.enabled ? 24 : 2 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: 'white',
+                    position: 'absolute',
+                    top: 2,
+                    left: 0,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  }}
+                />
+              </motion.button>
             </div>
-          )}
-        </div>
-        
-        {availableModels.length > 0 && !isLoadingModels && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <CheckCircle size={12} style={{ color: 'var(--green)' }} />
-                Successfully retrieved {availableModels.length} compatible models
-            </p>
-        )}
-      </div>
 
-      {/* Privacy & Security */}
-      <div
-        style={{
-          padding: '20px',
-          background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(249, 115, 22, 0.1))',
-          border: '1px solid rgba(234, 179, 8, 0.3)',
-          borderRadius: 'var(--radius-lg)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-          <Shield size={20} style={{ color: '#eab308', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>
-              Privacy & Security
-            </p>
-            <ul style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
-              <li>Your API key is stored locally in your browser</li>
-              <li>Sensitive data is automatically detected and redacted before sending to AI</li>
-              <li>You can review what data will be sent before generation</li>
-              <li>No data is stored on external servers beyond the AI request</li>
-            </ul>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <Key size={14} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-secondary)' }}>API Configuration</span>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter Gemini API key..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    paddingRight: '60px',
+                    background: 'var(--bg-panel)',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: 10,
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    fontFamily: 'var(--font-mono)',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-primary)')}
+                />
+                <button
+                  onClick={() => setShowKey(!showKey)}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    padding: '4px 8px'
+                  }}
+                >
+                  {showKey ? 'HIDE' : 'SHOW'}
+                </button>
+              </div>
+              <AnimatedButton
+                variant="primary"
+                size="sm"
+                onClick={handleValidateKey}
+                disabled={isValidating || !apiKey.trim()}
+                style={{ height: 42, padding: '0 20px', fontSize: 13, fontWeight: 800 }}
+              >
+                {isValidating ? <Loader size={16} className="spin" /> : 'Validate'}
+              </AnimatedButton>
+            </div>
+
+            {validationStatus !== 'idle' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  marginTop: 16,
+                  padding: '10px 14px',
+                  background: validationStatus === 'valid' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+                  border: '1px solid',
+                  borderColor: validationStatus === 'valid' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                {validationStatus === 'valid' ? (
+                  <CheckCircle size={14} style={{ color: '#22c55e' }} />
+                ) : (
+                  <XCircle size={14} style={{ color: '#ef4444' }} />
+                )}
+                <span style={{ fontSize: 12, fontWeight: 700, color: validationStatus === 'valid' ? '#22c55e' : '#ef4444' }}>
+                  {validationStatus === 'valid' ? 'Key verified successfully' : 'Verification failed'}
+                </span>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Model Selection */}
+          <div
+            style={{
+              padding: '24px',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Brain size={16} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                Active Logic Model
+              </h3>
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <select
+                value={aiConfig.defaultModel}
+                onChange={(e) => setAIConfig({ defaultModel: e.target.value })}
+                disabled={isLoadingModels || availableModels.length === 0}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'var(--bg-panel)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 12,
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: (isLoadingModels || availableModels.length === 0) ? 'not-allowed' : 'pointer',
+                  appearance: 'none',
+                  outline: 'none',
+                }}
+              >
+                {isLoadingModels ? (
+                  <option>Retrieving models...</option>
+                ) : availableModels.length === 0 ? (
+                  <option>No models available</option>
+                ) : (
+                  availableModels.map((model) => (
+                    <option key={model} value={model}>
+                      {formatModelName(model)}
+                    </option>
+                  ))
+                )}
+              </select>
+              <div style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }}>
+                {isLoadingModels ? <Loader size={14} className="spin" /> : <Monitor size={14} />}
+              </div>
+            </div>
+            
+            {availableModels.length > 0 && !isLoadingModels && (
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                    <CheckCircle size={12} style={{ color: '#22c55e' }} />
+                    {availableModels.length} compatible engines found
+                </p>
+            )}
+          </div>
+        </div>
+
+        {/* Privacy & Tips */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+          <div
+            style={{
+              padding: '20px',
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(59, 130, 246, 0.05))',
+              border: '1px solid rgba(34, 197, 94, 0.15)',
+              borderRadius: 'var(--radius-xl)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <Shield size={18} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                  Enterprise Privacy
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6, fontWeight: 500 }}>
+                  Keys are stored locally. Data is sanitized before transmission to ensure no sensitive leakage.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '20px',
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.05), rgba(249, 115, 24, 0.05))',
+              border: '1px solid rgba(234, 179, 8, 0.15)',
+              borderRadius: 'var(--radius-xl)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <AlertTriangle size={18} style={{ color: '#eab308', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                  Pro Tip
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6, fontWeight: 500 }}>
+                  Use "Gemini 1.5 Flash" for the fastest generation speeds with high accuracy.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

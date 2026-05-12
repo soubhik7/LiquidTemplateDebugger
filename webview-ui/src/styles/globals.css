@@ -10,7 +10,9 @@
 [data-theme="dark"] {
   --bg-primary: #0a0a12;
   --bg-surface: #111118;
+  --bg-surface-rgb: 17, 17, 24;
   --bg-panel: #16161f;
+  --bg-panel-rgb: 22, 22, 31;
   --bg-hover: #1c1c28;
   --bg-active: #232338;
 
@@ -39,23 +41,25 @@
   --orange: #fb923c;
   --magenta: #e879f9;
 
-  --input-rgb: 16, 185, 129;
-  --global-rgb: 16, 185, 129;
-  --assign-rgb: 245, 158, 11;
-  --local-rgb: 245, 158, 11;
-  --for-rgb: 96, 165, 250;
-  --capture-rgb: 167, 139, 250;
-  --increment-rgb: 34, 211, 238;
-  --decrement-rgb: 34, 211, 238;
+  --input-rgb: 158, 206, 106;
+  --global-rgb: 158, 206, 106;
+  --assign-rgb: 224, 175, 104;
+  --local-rgb: 224, 175, 104;
+  --for-rgb: 122, 162, 247;
+  --capture-rgb: 187, 154, 247;
+  --increment-rgb: 42, 195, 222;
+  --decrement-rgb: 42, 195, 222;
 
-  --tok-output: #60a5fa;
-  --tok-tag: #a78bfa;
-  --tok-comment: #475569;
+  --tok-output: #2ac3de;
+  --tok-tag: #7aa2f7;
+  --tok-comment: #565f89;
+  --tok-string: #9ece6a;
+  --tok-keyword: #bb9af7;
 
-  --bp-color: #ef4444;
-  --bp-glow: rgba(239, 68, 68, 0.3);
-  --current-line-bg: rgba(245, 158, 11, 0.07);
-  --current-line-border: #f59e0b;
+  --bp-color: #f7768e;
+  --bp-glow: rgba(247, 118, 142, 0.3);
+  --current-line-bg: rgba(122, 162, 247, 0.08);
+  --current-line-border: #7aa2f7;
 
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
@@ -79,7 +83,9 @@
 [data-theme="light"] {
   --bg-primary: #f0f2f5;
   --bg-surface: #ffffff;
+  --bg-surface-rgb: 255, 255, 255;
   --bg-panel: #f8fafc;
+  --bg-panel-rgb: 248, 250, 252;
   --bg-hover: #f1f5f9;
   --bg-active: #e2e8f0;
 
@@ -257,7 +263,9 @@
 [data-theme="midnight"] {
   --bg-primary: #02040a;
   --bg-surface: #0d1117;
+  --bg-surface-rgb: 13, 17, 23;
   --bg-panel: #161b22;
+  --bg-panel-rgb: 22, 27, 34;
   --bg-hover: #21262d;
   --bg-active: #30363d;
 
@@ -440,6 +448,15 @@ select {
 .tok-comment {
   color: var(--tok-comment);
   font-style: italic;
+}
+
+.tok-string {
+  color: var(--tok-string);
+}
+
+.tok-keyword {
+  color: var(--tok-keyword);
+  font-weight: 700;
 }
 
 /* ─── Premium Entrance ────────────────────────────────────────── */

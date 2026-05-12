@@ -2,23 +2,24 @@ import { motion } from 'framer-motion';
 import {
   FolderOpen, Play, Circle, CornerDownRight, ArrowDown,
   ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake, Search,
-  Terminal, Shield, Zap, Sparkles, Layout as LayoutTerminal
+  Terminal, Shield, Zap, Sparkles, Settings, BookOpen, Bug
 } from 'lucide-react';
+const STROKE_WIDTH = 1.5;
 import { useAppStore } from '../../store/useAppStore';
 import { StatusIndicator } from '../shared/StatusIndicator';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import type { Theme } from '../../types/app';
 
 const THEME_ICONS: Record<Theme, React.ReactNode> = {
-  dark: <Moon size={14} />,
-  light: <Sun size={14} />,
-  'dark-warm': <Flame size={14} />,
-  'light-warm': <Flame size={14} />,
-  'dark-cool': <Waves size={14} />,
-  'light-cool': <Wind size={14} />,
-  'midnight': <Moon size={14} />,
-  'glass-dark': <Moon size={14} />,
-  'glass-light': <Sun size={14} />,
+  dark: <Moon size={14} strokeWidth={STROKE_WIDTH} />,
+  light: <Sun size={14} strokeWidth={STROKE_WIDTH} />,
+  'dark-warm': <Flame size={14} strokeWidth={STROKE_WIDTH} />,
+  'light-warm': <Flame size={14} strokeWidth={STROKE_WIDTH} />,
+  'dark-cool': <Waves size={14} strokeWidth={STROKE_WIDTH} />,
+  'light-cool': <Wind size={14} strokeWidth={STROKE_WIDTH} />,
+  'midnight': <Moon size={14} strokeWidth={STROKE_WIDTH} />,
+  'glass-dark': <Moon size={14} strokeWidth={STROKE_WIDTH} />,
+  'glass-light': <Sun size={14} strokeWidth={STROKE_WIDTH} />,
 };
 
 const THEME_CYCLE: Theme[] = ['dark', 'light', 'dark-warm', 'light-warm', 'dark-cool', 'light-cool', 'midnight', 'glass-dark', 'glass-light'];
@@ -49,11 +50,11 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
   };
 
   const debugActions = [
-    { id: 'continue', key: 'F5', label: 'Continue', icon: <Play size={14} />, color: 'var(--green)', action: () => onStep('continue') },
-    { id: 'bp', key: 'F9', label: 'Breakpoint', icon: <Circle size={14} />, color: 'var(--rose)', action: onToggleBPAtCurrentLine },
-    { id: 'over', key: 'F10', label: 'Step Over', icon: <CornerDownRight size={14} />, color: 'var(--blue)', action: () => onStep('over') },
-    { id: 'into', key: 'F11', label: 'Step Into', icon: <ArrowDown size={14} />, color: 'var(--accent)', action: () => onStep('into') },
-    { id: 'out', key: '⇧F11', label: 'Step Out', icon: <ArrowUp size={14} />, color: 'var(--purple)', action: () => onStep('out') },
+    { id: 'continue', key: 'F5', label: 'Continue', icon: <Play size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--green)', action: () => onStep('continue') },
+    { id: 'bp', key: 'F9', label: 'Breakpoint', icon: <Circle size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--rose)', action: onToggleBPAtCurrentLine },
+    { id: 'over', key: 'F10', label: 'Step Over', icon: <CornerDownRight size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--blue)', action: () => onStep('over') },
+    { id: 'into', key: 'F11', label: 'Step Into', icon: <ArrowDown size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--accent)', action: () => onStep('into') },
+    { id: 'out', key: '⇧F11', label: 'Step Out', icon: <ArrowUp size={14} strokeWidth={STROKE_WIDTH} />, color: 'var(--purple)', action: () => onStep('out') },
   ];
 
   return (
@@ -64,11 +65,13 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '0 20px',
-        background: 'var(--bg-surface)',
+        padding: '0 24px',
+        background: 'rgba(var(--bg-surface-rgb), 0.75)',
+        backdropFilter: 'blur(16px) saturate(180%)',
         borderBottom: '1px solid var(--border-primary)',
-        zIndex: 30,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+        zIndex: 100,
+        position: 'relative',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
       }}
     >
       {/* Brand & Load */}
@@ -97,9 +100,9 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       <AnimatedButton
         variant="ghost"
         size="sm"
-        icon={<FolderOpen size={14} />}
+        icon={<FolderOpen size={14} strokeWidth={STROKE_WIDTH} />}
         onClick={onLoad}
-        style={{ fontWeight: 800, padding: '6px 12px', background: 'var(--bg-hover)' }}
+        style={{ fontWeight: 800, padding: '8px 16px', background: 'var(--bg-panel)', borderRadius: 10 }}
       >
         Load Template
       </AnimatedButton>
@@ -153,10 +156,10 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       <AnimatedButton
         variant="ghost"
         size="sm"
-        icon={<RotateCcw size={14} />}
+        icon={<RotateCcw size={14} strokeWidth={STROKE_WIDTH} />}
         onClick={onReset}
         disabled={!loaded || isLoading}
-        style={{ fontWeight: 800 }}
+        style={{ fontWeight: 800, color: 'var(--text-muted)' }}
       >
         Reset
       </AnimatedButton>
@@ -166,52 +169,62 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       {/* View Switcher */}
       <div style={{
         display: 'flex',
-        background: 'var(--bg-panel)',
-        padding: 3,
-        borderRadius: 10,
+        background: 'rgba(var(--bg-panel-rgb), 0.5)',
+        padding: 4,
+        borderRadius: 12,
         border: '1px solid var(--border-primary)',
-        gap: 2
+        gap: 4,
+        position: 'relative'
       }}>
-        <button
-          onClick={() => setActiveView('debugger')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 12px',
-            borderRadius: 8,
-            border: 'none',
-            background: activeView === 'debugger' ? 'var(--accent)' : 'transparent',
-            color: activeView === 'debugger' ? 'white' : 'var(--text-muted)',
-            cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 800,
-            transition: 'all 0.2s'
-          }}
-        >
-          <LayoutTerminal size={14} />
-          Debugger
-        </button>
-        <button
-          onClick={() => setActiveView('generator')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 12px',
-            borderRadius: 8,
-            border: 'none',
-            background: activeView === 'generator' ? 'var(--accent)' : 'transparent',
-            color: activeView === 'generator' ? 'white' : 'var(--text-muted)',
-            cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 800,
-            transition: 'all 0.2s'
-          }}
-        >
-          <Sparkles size={14} />
-          AI Template Mapper
-        </button>
+        {[
+          { id: 'debugger', label: 'Debugger', icon: Bug },
+          { id: 'generator', label: 'AI Mapper', icon: Sparkles },
+          { id: 'guide', label: 'Guide', icon: BookOpen },
+          { id: 'settings', label: 'Settings', icon: Settings }
+        ].map((v) => {
+          const isActive = activeView === v.id;
+          return (
+            <button
+              key={v.id}
+              onClick={() => setActiveView(v.id as any)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                borderRadius: 9,
+                border: isActive ? '1px solid var(--accent-glow)' : '1px solid transparent',
+                background: isActive ? 'var(--accent)' : 'transparent',
+                color: isActive ? 'white' : 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 800,
+                transition: 'all 0.2s ease',
+                boxShadow: isActive ? '0 0 15px var(--accent-glow)' : 'none',
+                position: 'relative',
+                zIndex: 10,
+                pointerEvents: 'auto'
+              }}
+            >
+              <v.icon size={14} strokeWidth={STROKE_WIDTH} />
+              <span style={{ position: 'relative', zIndex: 11 }}>{v.label}</span>
+              {isActive && (
+                <motion.div 
+                  layoutId="header-active-pill"
+                  transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                  style={{ 
+                    position: 'absolute', 
+                    inset: 0, 
+                    background: 'var(--accent)', 
+                    borderRadius: 8, 
+                    zIndex: -1, 
+                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)' 
+                  }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ flex: 1 }} />

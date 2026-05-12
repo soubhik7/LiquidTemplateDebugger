@@ -2,7 +2,6 @@ import { useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { HeaderBar } from './HeaderBar';
-import { Sidebar } from './Sidebar';
 import { ResizablePanel } from './ResizablePanel';
 import { TemplatePanel } from '../panels/TemplatePanel';
 import { DataPanel } from '../panels/DataPanel';
@@ -184,9 +183,9 @@ export function WorkspaceLayout() {
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar />
+
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {activeView === 'debugger' ? (
               <motion.div
                 key="debugger"

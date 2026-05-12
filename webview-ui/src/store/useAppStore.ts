@@ -28,7 +28,7 @@ interface AppState {
   accentColor: AccentColor;
 
   // Layout
-  sidebarCollapsed: boolean;
+
   panelSizes: PanelSizes;
 
   // Load modal
@@ -72,7 +72,7 @@ interface AppState {
   removeToast: (id: string) => void;
   setTheme: (t: Theme) => void;
   setAccentColor: (c: AccentColor) => void;
-  toggleSidebar: () => void;
+
   setPanelSizes: (s: Partial<PanelSizes>) => void;
   setShowLoadModal: (v: boolean) => void;
   setTemplateEditMode: (v: boolean) => void;
@@ -93,7 +93,7 @@ export const useAppStore = create<AppState>()(
       toasts: [],
       theme: 'dark',
       accentColor: 'indigo',
-      sidebarCollapsed: true,
+
       panelSizes: { col1: 33.33, col2: 33.33, col3: 33.34, inputRatio: 50, varsRatio: 60 },
       showLoadModal: false,
       templateEditMode: false,
@@ -166,7 +166,7 @@ export const useAppStore = create<AppState>()(
 
       setTheme: (t) => set({ theme: t }),
       setAccentColor: (c) => set({ accentColor: c }),
-      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
       setPanelSizes: (s) => set((prev) => ({ panelSizes: { ...prev.panelSizes, ...s } })),
       setShowLoadModal: (v) => set({ showLoadModal: v }),
       setTemplateEditMode: (v) => set({ templateEditMode: v }),
@@ -178,7 +178,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         theme: s.theme,
         accentColor: s.accentColor,
-        sidebarCollapsed: s.sidebarCollapsed,
+
         panelSizes: s.panelSizes,
         activeInspectorTab: s.activeInspectorTab,
       }),

@@ -11,7 +11,6 @@ export function highlightSyntax(escapedLine: string): string {
   let result = escapedLine;
 
   // 1. Handle "key": "{{ expr }}" or "key": {{ expr }} -> Hover on key (virtual)
-  // This must run before general {{ expr }} handling to capture the key
   result = result.replace(
     /((?:&quot;|&#039;|["'])?([a-zA-Z0-9_]+)(?:&quot;|&#039;|["'])?)(\s*:\s*(?:&quot;|&#039;|["'])?\s*)(\{\{-?\s*.*?\s*-?\}\})/g,
     (match, keyPart, keyName, colonPart, exprPart) => {
@@ -22,23 +21,36 @@ export function highlightSyntax(escapedLine: string): string {
   // 2. Handle {{ expr }} -> Full hover
   result = result.replace(
     /(\{\{-?\s*)(.*?)(\s*-?\}\})/g,
-    '<span class="tok-output" data-expr="$2" data-type="output">$1$2$3</span>'
-  );
-
-  // 2. Handle {% assign var = expr %} -> Hover on var and expr separately
-  result = result.replace(
-    /(\{%-?\s*assign\s+)([a-zA-Z0-9_]+)(\s*=\s*)(.*?)(\s*-?%\})/g,
-    (match, p1, p2, p3, p4, p5) => {
-      return `${p1}<span class="tok-output" data-expr="${p2}" data-type="var">${p2}</span>${p3}<span class="tok-output" data-expr="${p4}" data-type="expr">${p4}</span>${p5}`;
+    (match, p1, p2, p3) => {
+      // Internal highlighting for expressions
+      let expr = p2;
+      // Highlight strings within expressions
+      expr = expr.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>');
+      return `<span class="tok-output" data-expr="${p2}" data-type="output">${p1}${expr}${p3}</span>`;
     }
   );
 
-  // 3. Handle other tags
+  // 3. Handle {% assign var = expr %} -> Hover on var and expr separately
+  result = result.replace(
+    /(\{%-?\s*assign\s+)([a-zA-Z0-9_]+)(\s*=\s*)(.*?)(\s*-?%\})/g,
+    (match, p1, p2, p3, p4, p5) => {
+      let val = p4;
+      val = val.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>');
+      return `${p1}<span class="tok-output" data-expr="${p2}" data-type="var">${p2}</span>${p3}<span class="tok-output" data-expr="${p4}" data-type="expr">${val}</span>${p5}`;
+    }
+  );
+
+  // 4. Handle other tags with keyword highlighting
   result = result.replace(
     /(\{%-?\s*)(.*?)(\s*-?%\})/g,
     (match, p1, p2, p3) => {
       if (match.includes('<span')) return match; // Already processed
-      return `<span class="tok-tag">${p1}${p2}${p3}</span>`;
+      let inner = p2;
+      // Highlight keywords
+      inner = inner.replace(/\b(if|else|elsif|endif|unless|endunless|case|when|endcase|for|endfor|capture|endcapture|increment|decrement|in|with|reversed|limit|offset)\b/g, '<span class="tok-keyword">$1</span>');
+      // Highlight strings
+      inner = inner.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>');
+      return `<span class="tok-tag">${p1}${inner}${p3}</span>`;
     }
   );
 
