@@ -23,9 +23,41 @@
 
 ---
 
-## Why Liquid Professionals Choose This?
+## 🚀 Mastering the Workflow
 
-Modern Liquid templates are often deceptively complex. Whether you are building Azure Logic Apps, Shopify themes, or Jekyll sites, our debugger provides the visibility you need to build with confidence.
+### **Step 1: Launch the Debugger**
+Access the extension via the custom Activity Bar icon on the left. This dedicated entry point keeps your workspace clean while providing instant access to all debugging tools.
+
+<img src="./images/v2/step1_activity_bar.png" width="800" alt="Step 1: Activity Bar Entry"/>
+
+### **Step 2: Setup & API Configuration**
+Load your Liquid template and sample data. If you want to use the AI Template Mapper, provide your **Gemini API Key**. 
+> [!NOTE]
+> For security, your API key is stored in VS Code's native `SecretStorage` and never exposed in plaintext.
+
+<img src="./images/v2/step2_setup.png" width="800" alt="Step 2: Setup & Configuration"/>
+
+### **Step 3: AI-Powered Template Generation**
+Struggling with complex mapping logic? Use the **AI Template Mapper**. Describe your requirements in plain English or use one of the pre-configured samples to generate production-ready Liquid code instantly.
+
+<img src="./images/v2/step3_ai_mapper.png" width="800" alt="Step 3: AI Template Generator"/>
+
+### **Step 4: Real-Time Debugging Environment**
+Once your template is loaded, use the line-by-line debugger to inspect variable transformations.
+*   **Variables Panel**: Track all assigned variables and their original vs. transformed values.
+*   **Hover Diagnostics**: Simply hover over any Liquid tag to see its evaluated value in the current context.
+*   **Live Output**: Watch your JSON/XML/CSV output build dynamically as you step through the code.
+
+<img src="./images/v2/step4_debugger.png" width="800" alt="Step 4: Debugging Environment"/>
+
+### **Step 5: Interactive Learning Guide**
+New to Liquid? Our built-in **Interactive Guide** provides a comprehensive reference for syntax, filters, and best practices, complete with interactive examples you can run directly.
+
+<img src="./images/v2/step5_guide.png" width="800" alt="Step 5: Interactive Guide"/>
+
+---
+
+## 💎 Why Professionals Choose V2
 
 | **Insight** | **Capability** |
 | :--- | :--- |
@@ -36,47 +68,20 @@ Modern Liquid templates are often deceptively complex. Whether you are building 
 
 ---
 
-## High-Impact Features
+## 🔒 Enterprise-Grade Security
 
-### 1. Interactive Step-by-Step Execution
-Set breakpoints, step into loops, and watch the output panel build in real-time. The interface features a premium glassmorphism design optimized for high-density information.
+We take developer privacy and enterprise security seriously. The extension has undergone a **5-round security audit** to ensure the highest standards:
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger-v2.png" width="800" alt="Premium Debugger View V2"/>
-
-> [!TIP]
-> **Precision Breakpoint Management**: Use the dedicated breakpoint panel to manage complex execution paths and track hit counts across cycles.
-
-### 2. NEW: AI Template Mapper (Gemini 1.5 Powered)
-Struggling with a complex transformation? Describe your requirements in plain English, and our AI will generate a complete, valid Liquid template for you.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-ai-mapper.png" width="800" alt="AI Template Mapper"/>
-
-*   **Requirement Import**: Import logic from documentation to populate prompts.
-*   **Secure Sanitization**: Automatically redacts sensitive patterns (PII, tokens) before AI processing.
-*   **One-Click Load**: Instantly load generated templates into the debugger for immediate testing.
-
-### 3. Flexible Input Ecosystem
-Getting your data into the debugger is seamless. We support modern workflows without requiring complex configuration:
-
-*   **⚡ Drag & Drop**: Drag `.liquid`, `.json`, or `.xml` files directly into the setup modal.
-*   **📋 Direct Paste**: Paste Liquid snippets and payloads instantly for rapid prototyping.
-*   **📂 Local File Sync**: Sync with your workspace files for a persistent workflow.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-setup-modal.png" width="800" alt="Premium Setup Modal"/>
+*   **Zero Egress**: Your code and data never leave your local machine (AI requests are opt-in and sanitized).
+*   **Secure Secret Storage**: API keys are stored in VS Code's native `SecretStorage`.
+*   **Sanitized AI Pipeline**: Multi-pass regex sanitization redacts PII/tokens before transmission.
+*   **DoS Protection**: Strict size limits and expression complexity guards prevent resource exhaustion.
 
 ---
 
-## Quick Start (60 Seconds)
+## 🛠️ Configuration
 
-1.  **Launch**: Press `F5` in a Liquid file or open the Command Palette (`Cmd+Shift+P`) and type `Liquid: Start Debugging`.
-2.  **Configure**: Use the **Load Sample** button to see a pre-configured scenario or drag your own files into the modal.
-3.  **Debug**: Step through the logic using the debug toolbar or keyboard shortcuts.
-
----
-
-## Professional Configuration
-
-For advanced teams, use a `.vscode/launch.json` for persistence:
+For advanced teams, use a `.vscode/launch.json` to persist your debugging environments:
 
 ```json
 {
@@ -91,20 +96,8 @@ For advanced teams, use a `.vscode/launch.json` for persistence:
       "format": "json"
     }
   ]
-)
+}
 ```
-
----
-
-## 🔒 Enterprise-Grade Security
-
-We take developer privacy and enterprise security seriously. The extension has undergone a **5-round security audit** to ensure the highest standards.
-
-*   **Zero Egress**: Your code and data never leave your local machine (AI requests are opt-in and sanitized).
-*   **Secure Secret Storage**: API keys are stored in VS Code's native `SecretStorage`, never in plaintext or `localStorage`.
-*   **Sanitized AI Pipeline**: Multi-pass regex sanitization redacts PII/tokens before they ever hit the wire.
-*   **Strict CSP**: Content Security Policy blocks all unauthorized scripts, images, and external connections.
-*   **DoS Protection**: Strict 512KB/1MB size limits and expression length constraints prevent resource exhaustion.
 
 ---
 
@@ -116,4 +109,5 @@ We take developer privacy and enterprise security seriously. The extension has u
 <p align="center">
   <i>Developed with ❤️ for the Liquid Community by Soubhik and Bob.</i>
 </p>
+
 
