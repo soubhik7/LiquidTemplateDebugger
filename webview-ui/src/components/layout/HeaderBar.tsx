@@ -254,19 +254,26 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
         style={{ 
           height: 36,
           fontWeight: 900, 
-          color: textColor,
+          color: (!loaded || isLoading) ? 'var(--text-muted)' : (isDark ? '#ff9b9b' : '#c53030'),
           background: btnBg,
-          border: `1px solid ${btnBorder}`,
+          border: `1px solid ${(!loaded || isLoading) ? btnBorder : (isDark ? 'rgba(255,100,100,0.2)' : 'rgba(197,48,48,0.2)')}`,
           borderRadius: 12,
           padding: '0 20px',
           boxShadow: 'var(--shadow-sm)',
           fontSize: 10,
           textTransform: 'uppercase',
           letterSpacing: '1px',
-          opacity: disabled ? 0.5 : 1,
+          opacity: (!loaded || isLoading) ? 0.4 : 1,
           display: 'flex',
           alignItems: 'center',
-          gap: 8
+          gap: 8,
+          transition: 'all 0.3s ease'
+        }}
+        whileHover={(!loaded || isLoading) ? {} : { 
+          scale: 1.05, 
+          background: isDark ? 'rgba(255,100,100,0.1)' : 'rgba(197,48,48,0.05)',
+          borderColor: isDark ? '#ff4d4d' : '#c53030',
+          boxShadow: '0 0 15px rgba(239,68,68,0.2)'
         }}
       >
         Reset

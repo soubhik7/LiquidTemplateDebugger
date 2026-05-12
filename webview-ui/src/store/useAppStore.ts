@@ -183,6 +183,7 @@ export const useAppStore = create<AppState>()(
 
         panelSizes: s.panelSizes,
         activeInspectorTab: s.activeInspectorTab,
+        aiConfig: s.aiConfig,
       }),
       merge: (persisted, current) => ({
         ...current,

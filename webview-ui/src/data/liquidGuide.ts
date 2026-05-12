@@ -436,6 +436,34 @@ export const LIQUID_GUIDE: LiquidGuide = {
           ]
         }
       ]
+    },
+    {
+      id: '7.0',
+      title: 'AI Template Generator Guide',
+      readTime: '5 min read',
+      content: 'The AI Template Generator is an enterprise-grade tool that uses Gemini 1.5 Flash to help you build complex mapping logic for Azure Logic Apps. It transforms natural language requirements into optimized Liquid templates.',
+      subsections: [
+        {
+          id: '7.1',
+          title: 'Configuration & API Keys',
+          content: 'To use the AI Generator, you must provide a Google Gemini API Key. Go to Settings > AI Engine to paste your key. You can generate a free key at aistudio.google.com/app/apikey. Once configured, ensure the "AI Assistance" toggle is turned ON.'
+        },
+        {
+          id: '7.2',
+          title: 'Writing Effective Requirements',
+          content: 'Be specific in your natural language requirements. Instead of saying "format names", say "capitalize the first letter of each name and remove any special characters". Mention specific fields from your source data to help the AI map them correctly.'
+        },
+        {
+          id: '7.3',
+          title: 'Using Business Mapping Docs',
+          content: 'You can attach Excel or Word content by pasting it into the "Business Mapping" field or using the "Attach Doc" button. This provides the AI with strict transformation rules (e.g., SourceFieldA -> TargetPropertyB), ensuring the generated template follows your enterprise logic exactly.'
+        },
+        {
+          id: '7.4',
+          title: 'Context Data & Formats',
+          content: 'Always provide a sample of your source data (JSON or XML) in the "Context Data" section. This allows the AI to "see" the structure it needs to transform. You can toggle between JSON, XML, and Text formats to match your data source.'
+        }
+      ]
     }
   ],
   filters: [

@@ -1,9 +1,9 @@
-import { motion } from 'framer-motion';
-import type { ReactNode, ButtonHTMLAttributes } from 'react';
+import { motion, HTMLMotionProps } from 'framer-motion';
+import type { ReactNode } from 'react';
 
 type Variant = 'primary' | 'ghost' | 'danger' | 'surface';
 
-interface AnimatedButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface AnimatedButtonProps extends HTMLMotionProps<'button'> {
   variant?: Variant;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   icon?: ReactNode;
@@ -47,12 +47,14 @@ export function AnimatedButton({
   children,
   disabled,
   style,
+  whileHover,
+  whileTap,
   ...rest
 }: AnimatedButtonProps) {
   return (
     <motion.button
-      whileHover={disabled ? {} : { scale: 1.02, filter: 'brightness(1.1)' }}
-      whileTap={disabled ? {} : { scale: 0.96 }}
+      whileHover={whileHover || (disabled ? {} : { scale: 1.02, filter: 'brightness(1.1)' })}
+      whileTap={whileTap || (disabled ? {} : { scale: 0.96 })}
       transition={{ duration: 0.12 }}
       style={{
         display: 'inline-flex',
@@ -70,7 +72,7 @@ export function AnimatedButton({
         ...style,
       }}
       disabled={disabled}
-      {...(rest as React.ComponentProps<typeof motion.button>)}
+      {...rest}
     >
       {icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>}
       {children}

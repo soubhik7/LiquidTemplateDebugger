@@ -7,9 +7,22 @@ let _reqId = 0;
 const _pending: Record<number, (result: unknown) => void> = {};
 
 function apiCall(method: string, path: string, body?: unknown): Promise<unknown> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const id = ++_reqId;
-    _pending[id] = resolve;
+    
+    // Set a timeout for the API call (e.g., 60 seconds for AI generation)
+    const timeout = setTimeout(() => {
+      if (_pending[id]) {
+        delete _pending[id];
+        reject(new Error(`API request timed out: ${method} ${path}`));
+      }
+    }, 60000);
+
+    _pending[id] = (result: unknown) => {
+      clearTimeout(timeout);
+      resolve(result);
+    };
+    
     vscodePostMessage({ type: 'api', id, method, path, body: body ?? null });
   });
 }

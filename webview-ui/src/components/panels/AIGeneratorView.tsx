@@ -26,8 +26,29 @@ export function AIGeneratorView() {
 
   const handleGenerate = async () => {
     const { prompt, data, format, mappingDetails } = generatorState;
-    if (!prompt.trim() || !aiConfig.apiKey) return;
     
+    if (!prompt.trim()) {
+      addToast({
+        title: 'Requirements Missing',
+        message: 'Please enter what you want the AI to generate.',
+        type: 'info',
+        duration: 3000
+      });
+      return;
+    }
+
+    if (!aiConfig.apiKey) {
+      addToast({
+        title: 'AI Not Configured',
+        message: 'Please go to Settings and validate your Gemini API key.',
+        type: 'error',
+        duration: 5000
+      });
+      return;
+    }
+    
+    // Clear previous result and show loading immediately
+    setGeneratorState({ generatedTemplate: '', showResult: false });
     setIsGenerating(true);
     try {
       let dataContext = {};
@@ -46,28 +67,32 @@ export function AIGeneratorView() {
         dataContext,
         format,
         mappingDetails
-      );
+      ) as { template?: string; error?: string };
 
-      if (res.template) {
+      if (!res) {
+        throw new Error('The AI engine did not return a response. Please check your network and API key.');
+      }
+
+      if (res.error) {
+        throw new Error(res.error);
+      }
+
+      if (res.template && res.template.trim()) {
         setGeneratorState({ generatedTemplate: res.template, showResult: true });
         addToast({
-          title: 'Success',
-          message: 'Liquid template generated successfully!',
+          title: 'Template Generated',
+          message: 'Liquid template draft is ready for review.',
           type: 'success',
           duration: 3000,
         });
-      } else if (res.error) {
-        addToast({
-          title: 'Generation Failed',
-          message: res.error,
-          type: 'error',
-          duration: 5000,
-        });
+      } else {
+        throw new Error('The AI returned an empty template. Try providing more specific requirements.');
       }
     } catch (err: any) {
+      console.error('[AIGenerator] Generation error:', err);
       addToast({
-        title: 'Error',
-        message: err.message || 'An unexpected error occurred during generation.',
+        title: 'Generation Failed',
+        message: err.message || 'An unexpected error occurred. Please try again.',
         type: 'error',
         duration: 5000,
       });
@@ -109,13 +134,32 @@ export function AIGeneratorView() {
     setGeneratorState({
         prompt: s.prompt,
         data: s.data,
-        format: s.format
+        format: s.format,
+        generatedTemplate: '',
+        showResult: false
     });
     addToast({
         title: 'Sample Loaded',
         message: `Prompt for "${s.name}" applied.`,
         type: 'info',
         duration: 2000
+    });
+  };
+
+  const handleResetAll = () => {
+    setGeneratorState({
+      prompt: '',
+      data: '',
+      format: 'json',
+      mappingDetails: '',
+      generatedTemplate: '',
+      showResult: false
+    });
+    addToast({
+      title: 'Reset Complete',
+      message: 'All inputs and results have been cleared.',
+      type: 'info',
+      duration: 2000
     });
   };
 
@@ -161,35 +205,119 @@ export function AIGeneratorView() {
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center', 
-        justifyContent: 'center',
-        padding: 40,
-        textAlign: 'center'
+        padding: '60px 40px',
+        overflowY: 'auto',
+        background: 'var(--bg-primary)'
       }}>
+        {/* Hero Section */}
         <div style={{ 
             width: 80, 
             height: 80, 
-            borderRadius: '50%', 
-            background: 'var(--bg-panel)', 
+            borderRadius: 24, 
+            background: 'var(--accent-soft)', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
             marginBottom: 24,
-            color: 'var(--text-muted)',
-            opacity: 0.5
+            color: 'var(--accent)',
+            boxShadow: '0 8px 16px var(--accent-glow)'
         }}>
-            <Brain size={40} />
+            <Brain size={40} strokeWidth={2.5} />
         </div>
-        <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>AI Generator Disabled</h2>
-        <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 500, lineHeight: 1.6, marginBottom: 32 }}>
-          Configure your Gemini API key in the settings to unlock the power of AI-assisted Liquid template generation.
+        
+        <h2 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 12, letterSpacing: '-0.5px' }}>
+          AI-Powered Liquid Generation
+        </h2>
+        
+        <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 600, lineHeight: 1.6, marginBottom: 40, textAlign: 'center' }}>
+          Unlock the full potential of Liquid template engineering. Build complex mapping logic for Azure Logic Apps using natural language and enterprise-grade AI models.
         </p>
+
+        {/* Setup Guide */}
+        <div style={{ 
+          width: '100%', 
+          maxWidth: 900, 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr', 
+          gap: 24, 
+          marginBottom: 48,
+          textAlign: 'left'
+        }}>
+          {/* Step 1: API Key */}
+          <div style={{ 
+            padding: 24, 
+            background: 'var(--bg-surface)', 
+            borderRadius: 20, 
+            border: '1px solid var(--border-primary)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>1</div>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Get Gemini API Key</h3>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+              Visit the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Google AI Studio</a> to generate a free API key for Gemini. This key enables the generator to analyze your requirements.
+            </p>
+          </div>
+
+          {/* Step 2: Configure */}
+          <div style={{ 
+            padding: 24, 
+            background: 'var(--bg-surface)', 
+            borderRadius: 20, 
+            border: '1px solid var(--border-primary)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>2</div>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Configure Settings</h3>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+              Click the button below to navigate to <strong>Settings</strong>. Paste your API key and ensure <strong>AI Features</strong> are toggled ON.
+            </p>
+          </div>
+        </div>
+
+        {/* How it Works Header */}
+        <h3 style={{ fontSize: 14, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 24 }}>
+          How to use the generator
+        </h3>
+
+        {/* Feature Grid */}
+        <div style={{ 
+          width: '100%', 
+          maxWidth: 900, 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: 20, 
+          marginBottom: 56,
+          textAlign: 'left'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: 'var(--accent)', display: 'flex', marginBottom: 4 }}><Wand2 size={20} /></div>
+            <h4 style={{ fontSize: 13, fontWeight: 800, margin: 0 }}>Requirements</h4>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Describe your goal in plain English (e.g., "Flatten this JSON and format dates").</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: 'var(--purple)', display: 'flex', marginBottom: 4 }}><FileSpreadsheet size={20} /></div>
+            <h4 style={{ fontSize: 13, fontWeight: 800, margin: 0 }}>Business Mapping</h4>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Import logic from Excel or Word to provide strict mapping rules for the AI.</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: 'var(--green)', display: 'flex', marginBottom: 4 }}><FileJson size={20} /></div>
+            <h4 style={{ fontSize: 13, fontWeight: 800, margin: 0 }}>Context Data</h4>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Provide a sample JSON or XML payload so the AI understands your data structure.</p>
+          </div>
+        </div>
+
         <AnimatedButton 
           variant="primary" 
           size="lg" 
           onClick={() => setActiveView('settings')}
-          icon={<ArrowLeft size={18} />}
+          style={{ padding: '0 40px', height: 56, fontSize: 16, fontWeight: 800 }}
+          icon={<Sparkles size={20} />}
         >
-          Go to Settings
+          Finish Setup in Settings
         </AnimatedButton>
       </div>
     );
@@ -230,9 +358,14 @@ export function AIGeneratorView() {
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>Build complex mapping logic with natural language</p>
           </div>
         </div>
-        <AnimatedButton variant="ghost" size="md" onClick={() => setActiveView('debugger')} icon={<ArrowLeft size={16} />}>
-          Back to Debugger
-        </AnimatedButton>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <AnimatedButton variant="ghost" size="md" onClick={handleResetAll} icon={<RefreshCw size={16} />}>
+            Reset All
+          </AnimatedButton>
+          <AnimatedButton variant="ghost" size="md" onClick={() => setActiveView('debugger')} icon={<ArrowLeft size={16} />}>
+            Back to Debugger
+          </AnimatedButton>
+        </div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -446,7 +579,7 @@ export function AIGeneratorView() {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {isGenerating ? (
               <motion.div
                 key="loading"
@@ -590,7 +723,7 @@ export function AIGeneratorView() {
                     <AnimatedButton variant="ghost" size="sm" onClick={handleCopy} icon={isCopied ? <Check size={14} /> : <Copy size={14} />}>
                       {isCopied ? 'Copied' : 'Copy'}
                     </AnimatedButton>
-                    <AnimatedButton variant="ghost" size="sm" onClick={() => setGeneratorState({ showResult: false })} icon={<RefreshCw size={14} />}>
+                    <AnimatedButton variant="ghost" size="sm" onClick={() => setGeneratorState({ showResult: false, generatedTemplate: '' })} icon={<RefreshCw size={14} />}>
                       New
                     </AnimatedButton>
                   </div>
