@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Book, Code, ExternalLink, Hash, Info, Lightbulb, 
   PlayCircle, Star, Copy, Check, ChevronRight, X,
-  Type, Calculator, Calendar, List, Zap, HelpCircle, Eye
+  Type, Calculator, Calendar, List, Zap, HelpCircle, Eye,
+  BookOpen, FileText, Layers, ChevronDown, Terminal
 } from 'lucide-react';
-import { LIQUID_GUIDE, type LiquidFilter } from '../../data/liquidGuide';
+import { LIQUID_GUIDE, type LiquidFilter, type LiquidTheorySection } from '../../data/liquidGuide';
 
 const CATEGORY_ICONS: Record<string, any> = {
   'String': Type,
@@ -18,9 +19,22 @@ const CATEGORY_ICONS: Record<string, any> = {
 
 export function GuidePanel() {
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'filters' | 'tags' | 'references'>('filters');
-  const [selectedItem, setSelectedItem] = useState<{ type: 'filter' | 'tag', data: any } | null>(null);
+  const [activeTab, setActiveTab] = useState<'theory' | 'filters' | 'tags' | 'references'>('theory');
+  const [selectedItem, setSelectedItem] = useState<{ type: 'filter' | 'tag' | 'theory', data: any } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const filteredTheory = useMemo(() => {
+    const s = search.toLowerCase();
+    return LIQUID_GUIDE.theory.filter(section => 
+      section.title.toLowerCase().includes(s) || 
+      section.content.toLowerCase().includes(s) ||
+      section.subsections.some(sub => 
+        sub.title.toLowerCase().includes(s) || 
+        sub.content.toLowerCase().includes(s)
+      )
+    );
+  }, [search]);
 
   const filteredFilters = useMemo(() => {
     const s = search.toLowerCase();
@@ -49,6 +63,18 @@ export function GuidePanel() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -121,9 +147,9 @@ export function GuidePanel() {
               padding: 4, 
               borderRadius: 'var(--radius-xl)', 
               border: '1px solid var(--border-primary)',
-              minWidth: 320
+              minWidth: 400
             }}>
-              {(['filters', 'tags', 'references'] as const).map((tab) => (
+              {(['theory', 'filters', 'tags', 'references'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -153,6 +179,123 @@ export function GuidePanel() {
         {/* List Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
           <AnimatePresence mode="wait">
+            {activeTab === 'theory' && (
+              <motion.div
+                key="theory"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+              >
+                {filteredTheory.map((section) => (
+                  <motion.div
+                    key={section.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 'var(--radius-xl)',
+                      overflow: 'hidden',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    {/* Section Header */}
+                    <div
+                      onClick={() => setSelectedItem({ type: 'theory', data: section })}
+                      style={{
+                        padding: '24px 28px',
+                        cursor: 'pointer',
+                        background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-hover) 100%)',
+                        borderBottom: '1px solid var(--border-primary)',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-active) 100%)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-hover) 100%)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                            <div style={{
+                              padding: '4px 10px',
+                              background: 'var(--accent-soft)',
+                              color: 'var(--accent)',
+                              borderRadius: 'var(--radius-md)',
+                              fontSize: 11,
+                              fontWeight: 900,
+                              letterSpacing: '0.5px'
+                            }}>
+                              {section.id}
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+                              {section.title}
+                            </h3>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                              <BookOpen size={12} />
+                              {section.readTime}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              • {section.subsections.length} subsections
+                            </div>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, opacity: 0.9 }}>
+                            {section.content.substring(0, 150)}...
+                          </p>
+                        </div>
+                        <ChevronRight size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />
+                      </div>
+                    </div>
+
+                    {/* Subsections Preview */}
+                    <div style={{ padding: '16px 28px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                        {section.subsections.slice(0, 4).map((sub) => (
+                          <div
+                            key={sub.id}
+                            onClick={() => setSelectedItem({ type: 'theory', data: section })}
+                            style={{
+                              padding: '12px',
+                              background: 'var(--bg-hover)',
+                              border: '1px solid var(--border-primary)',
+                              borderRadius: 'var(--radius-lg)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--accent)';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border-primary)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                          >
+                            <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--accent)', marginBottom: 4, letterSpacing: '0.5px' }}>
+                              {sub.id}
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                              {sub.title}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {section.subsections.length > 4 && (
+                        <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                          +{section.subsections.length - 4} more subsections
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
             {activeTab === 'filters' && (
               <motion.div
                 key="filters"
@@ -279,7 +422,7 @@ export function GuidePanel() {
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             style={{
-              width: 450,
+              width: selectedItem.type === 'theory' ? 600 : 450,
               height: '100%',
               background: 'var(--bg-surface)',
               borderLeft: '1px solid var(--border-primary)',
@@ -292,9 +435,17 @@ export function GuidePanel() {
             <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 4 }}>
-                  {selectedItem.type === 'filter' ? selectedItem.data.category : 'Logic Tag'}
+                  {selectedItem.type === 'filter' ? selectedItem.data.category : selectedItem.type === 'theory' ? selectedItem.data.id : 'Logic Tag'}
                 </div>
-                <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px' }}>{selectedItem.data.name}</h3>
+                <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px' }}>
+                  {selectedItem.data.name || selectedItem.data.title}
+                </h3>
+                {selectedItem.type === 'theory' && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <BookOpen size={12} />
+                    {selectedItem.data.readTime}
+                  </div>
+                )}
               </div>
               <button 
                 onClick={() => setSelectedItem(null)}
@@ -305,70 +456,199 @@ export function GuidePanel() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 32 }}>
-                {selectedItem.data.description}
-              </p>
+              {selectedItem.type === 'theory' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                    {selectedItem.data.content}
+                  </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                <section>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      <Code size={14} /> Usage Syntax
-                    </div>
-                    <button 
-                      onClick={() => handleCopy(selectedItem.data.syntax, 'detail')}
-                      style={{ fontSize: 10, fontWeight: 700, color: copiedId === 'detail' ? 'var(--green)' : 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      {copiedId === 'detail' ? <Check size={12} /> : <Copy size={12} />}
-                      {copiedId === 'detail' ? 'Copied!' : 'Copy Snippet'}
-                    </button>
+                  {/* Subsections */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {selectedItem.data.subsections.map((sub: any) => (
+                      <div key={sub.id} style={{
+                        background: 'var(--bg-panel)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: 'var(--radius-xl)',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          padding: '16px 20px',
+                          background: 'var(--bg-hover)',
+                          borderBottom: '1px solid var(--border-primary)'
+                        }}>
+                          <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--accent)', marginBottom: 4, letterSpacing: '0.5px' }}>
+                            {sub.id}
+                          </div>
+                          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
+                            {sub.title}
+                          </h4>
+                        </div>
+                        <div style={{ padding: '20px' }}>
+                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, marginBottom: sub.examples ? 20 : 0 }}>
+                            {sub.content}
+                          </p>
+
+                          {/* Examples */}
+                          {sub.examples && sub.examples.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                              {sub.examples.map((example: any, idx: number) => (
+                                <div key={idx} style={{
+                                  background: 'var(--bg-surface)',
+                                  border: '1px solid var(--border-primary)',
+                                  borderRadius: 'var(--radius-lg)',
+                                  overflow: 'hidden'
+                                }}>
+                                  {example.description && (
+                                    <div style={{
+                                      padding: '10px 14px',
+                                      background: 'var(--accent-soft)',
+                                      borderBottom: '1px solid var(--border-primary)',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      color: 'var(--accent)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6
+                                    }}>
+                                      <Terminal size={12} />
+                                      {example.description}
+                                    </div>
+                                  )}
+                                  <div style={{ padding: '14px' }}>
+                                    <div style={{ marginBottom: 12 }}>
+                                      <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
+                                        Data
+                                      </div>
+                                      <code style={{
+                                        display: 'block',
+                                        padding: '10px',
+                                        background: 'var(--bg-panel)',
+                                        border: '1px solid var(--border-primary)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 11,
+                                        fontFamily: 'var(--font-mono)',
+                                        color: 'var(--green)',
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-all'
+                                      }}>
+                                        {example.data}
+                                      </code>
+                                    </div>
+                                    <div style={{ marginBottom: 12 }}>
+                                      <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
+                                        Template
+                                      </div>
+                                      <code style={{
+                                        display: 'block',
+                                        padding: '10px',
+                                        background: 'var(--bg-panel)',
+                                        border: '1px solid var(--border-primary)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 11,
+                                        fontFamily: 'var(--font-mono)',
+                                        color: 'var(--accent)',
+                                        whiteSpace: 'pre-wrap'
+                                      }}>
+                                        {example.template}
+                                      </code>
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
+                                        Output
+                                      </div>
+                                      <code style={{
+                                        display: 'block',
+                                        padding: '10px',
+                                        background: 'rgba(16,185,129,0.05)',
+                                        border: '1px solid var(--green)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 11,
+                                        fontFamily: 'var(--font-mono)',
+                                        color: 'var(--green)',
+                                        fontWeight: 600,
+                                        whiteSpace: 'pre-wrap'
+                                      }}>
+                                        {example.output}
+                                      </code>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <code style={{ 
-                    display: 'block', padding: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-lg)', color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: 14,
-                    fontWeight: 600, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
-                  }}>
-                    {selectedItem.data.syntax}
-                  </code>
-                </section>
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 32 }}>
+                    {selectedItem.data.description}
+                  </p>
 
-                {selectedItem.type === 'filter' ? (
-                  <>
-                    <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Input</div>
-                        <div style={{ padding: '12px', background: 'var(--bg-hover)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                          {selectedItem.data.input}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <section>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                          <Code size={14} /> Usage Syntax
                         </div>
+                        <button 
+                          onClick={() => handleCopy(selectedItem.data.syntax, 'detail')}
+                          style={{ fontSize: 10, fontWeight: 700, color: copiedId === 'detail' ? 'var(--green)' : 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          {copiedId === 'detail' ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedId === 'detail' ? 'Copied!' : 'Copy Snippet'}
+                        </button>
                       </div>
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Output</div>
-                        <div style={{ padding: '12px', background: 'rgba(16,185,129,0.05)', color: 'var(--green)', borderRadius: 'var(--radius-md)', border: '1px solid var(--green-soft)', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 800 }}>
-                          {selectedItem.data.output}
-                        </div>
-                      </div>
+                      <code style={{ 
+                        display: 'block', padding: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border-primary)',
+                        borderRadius: 'var(--radius-lg)', color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: 14,
+                        fontWeight: 600, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                      }}>
+                        {selectedItem.data.syntax}
+                      </code>
                     </section>
 
-                    <section style={{ background: 'var(--accent-soft)', padding: '20px', borderRadius: 'var(--radius-xl)', borderLeft: '4px solid var(--accent)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent)', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', marginBottom: 8 }}>
-                        <Lightbulb size={14} /> Pro Tip
-                      </div>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>{selectedItem.data.advantages}</p>
-                    </section>
-                  </>
-                ) : (
-                  <section>
-                    <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Real-world Example</div>
-                    <code style={{ 
-                      display: 'block', padding: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border-primary)',
-                      borderRadius: 'var(--radius-lg)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 12,
-                      whiteSpace: 'pre-wrap', lineHeight: 1.6
-                    }}>
-                      {selectedItem.data.example}
-                    </code>
-                  </section>
-                )}
-              </div>
+                    {selectedItem.type === 'filter' ? (
+                      <>
+                        <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Input</div>
+                            <div style={{ padding: '12px', background: 'var(--bg-hover)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                              {selectedItem.data.input}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Output</div>
+                            <div style={{ padding: '12px', background: 'rgba(16,185,129,0.05)', color: 'var(--green)', borderRadius: 'var(--radius-md)', border: '1px solid var(--green)', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 800 }}>
+                              {selectedItem.data.output}
+                            </div>
+                          </div>
+                        </section>
+
+                        <section style={{ background: 'var(--accent-soft)', padding: '20px', borderRadius: 'var(--radius-xl)', borderLeft: '4px solid var(--accent)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent)', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', marginBottom: 8 }}>
+                            <Lightbulb size={14} /> Pro Tip
+                          </div>
+                          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>{selectedItem.data.advantages}</p>
+                        </section>
+                      </>
+                    ) : (
+                      <section>
+                        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Real-world Example</div>
+                        <code style={{ 
+                          display: 'block', padding: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border-primary)',
+                          borderRadius: 'var(--radius-lg)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 12,
+                          whiteSpace: 'pre-wrap', lineHeight: 1.6
+                        }}>
+                          {selectedItem.data.example}
+                        </code>
+                      </section>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -376,3 +656,5 @@ export function GuidePanel() {
     </div>
   );
 }
+
+// Made with Bob
