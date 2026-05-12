@@ -191,7 +191,9 @@ export class LiquidDebugSession extends LoggingDebugSession {
             const condition = src.condition ?? undefined;
             if (condition && condition.length > MAX_EXPR_LENGTH) {
                 // Return invalid breakpoint if condition is too long
-                breakpoints.push(new Breakpoint(false, src.line, 0, undefined, `Condition exceeds ${MAX_EXPR_LENGTH} chars`));
+                const bp = new Breakpoint(false, src.line);
+                (bp as any).message = `Condition exceeds ${MAX_EXPR_LENGTH} chars`;
+                breakpoints.push(bp);
                 continue;
             }
             const bp = this.engine.setBreakpoint(src.line, condition);
