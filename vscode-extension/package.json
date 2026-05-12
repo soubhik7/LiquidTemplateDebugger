@@ -1,7 +1,7 @@
 {
-  "name": "dot-liquid-template-debugger",
-  "displayName": "Dot Liquid Template Debugger",
-  "description": "Professional dot Liquid template debugger with line-by-line execution, variable transformation history, and multi-format support (JSON, XML, CSV).",
+  "name": "dot-liquid-template-debugger-v2",
+  "displayName": "Dot Liquid Template Debugger V2",
+  "description": "Professional Dot Liquid Template Debugger V2 with line-by-line execution, variable transformation history, and multi-format support (JSON, XML, CSV).",
   "icon": "images/ltdlogo2.png",
   "version": "1.1.8",
   "publisher": "SoubhikDevTools",

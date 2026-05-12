@@ -134,11 +134,8 @@ export function InspectorPanel({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        flex: 1,
-        minHeight: 0,
         background: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-primary)',
-        overflow: 'hidden',
       }}
     >
       {/* Tabs */}
@@ -218,7 +215,7 @@ export function InspectorPanel({
       )}
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <AnimatePresence mode="wait">
           {/* Watches */}
           {activeTab === 'watches' && (
@@ -228,7 +225,7 @@ export function InspectorPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.15 }}
-              style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+              style={{ display: 'flex', flexDirection: 'column' }}
             >
               <div
                 style={{
@@ -268,7 +265,7 @@ export function InspectorPanel({
                   Add
                 </AnimatedButton>
               </div>
-              <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div>
                 {watches.length === 0 ? (
                   <EmptyState icon={<Eye size={24} />} message="No watches" sub="Add an expression above" />
                 ) : (
@@ -367,29 +364,37 @@ export function InspectorPanel({
                                                 Transformations
                                               </span>
                                               {w.transformations.map((t, idx) => (
-                                                <div
-                                                  key={idx}
-                                                  style={{
-                                                    marginTop: 6,
-                                                    padding: '8px 12px',
-                                                    background: 'var(--bg-panel)',
-                                                    border: '1px solid var(--border-primary)',
-                                                    borderRadius: 8,
-                                                    fontFamily: 'var(--font-mono)',
-                                                    boxShadow: 'var(--shadow-sm)',
-                                                  }}
-                                                >
-                                                  <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
-                                                    {w.expression} = {idx === 0 ? (t.baseExpr || 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
+                                                <div key={idx} style={{ marginBottom: 12 }}>
+                                                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', color: 'var(--accent)' }}>
+                                                      {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? <Hash size={13} /> : 
+                                                       ['round', 'floor', 'ceil', 'abs'].includes(t.operator || '') ? <Target size={13} /> : <FlaskConical size={13} />}
+                                                    </span>
+                                                    {t.name || (t.operator ? t.operator.toUpperCase() : 'STEP')}
                                                   </div>
-                                                  <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                                                    <span style={{ color: 'var(--red)' }}>
-                                                      {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
-                                                    </span>
-                                                    <span style={{ color: 'var(--text-muted)' }}>→</span>
-                                                    <span style={{ color: 'var(--green)', fontWeight: 800 }}>
-                                                      {String(t.after ?? 'nil')}
-                                                    </span>
+
+                                                  <div
+                                                    style={{
+                                                      padding: '8px 12px',
+                                                      background: 'var(--bg-panel)',
+                                                      border: '1px solid var(--border-primary)',
+                                                      borderRadius: 8,
+                                                      fontFamily: 'var(--font-mono)',
+                                                      boxShadow: 'var(--shadow-sm)',
+                                                    }}
+                                                  >
+                                                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                                      {w.expression} = {idx === 0 ? (t.baseExpr || 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
+                                                    </div>
+                                                    <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                                                      <span style={{ color: 'var(--red)' }}>
+                                                        {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                                      </span>
+                                                      <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                                      <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                                        {String(t.after ?? 'nil')}
+                                                      </span>
+                                                    </div>
                                                   </div>
                                                 </div>
                                               ))}
@@ -418,7 +423,7 @@ export function InspectorPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.15 }}
-              style={{ flex: 1, overflowY: 'auto' }}
+              style={{ display: 'flex', flexDirection: 'column' }}
             >
               {breakpoints.length === 0 ? (
                 <EmptyState
@@ -581,27 +586,37 @@ export function InspectorPanel({
                                                   {res.transformations && res.transformations.length > 0 && (
                                                     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                                       {res.transformations.map((t: any, idx: number) => (
-                                                        <div
-                                                          key={idx}
-                                                          style={{
-                                                            padding: '6px 10px',
-                                                            background: 'var(--bg-panel)',
-                                                            border: '1px solid var(--border-primary)',
-                                                            borderRadius: 8,
-                                                            fontFamily: 'var(--font-mono)',
-                                                          }}
-                                                        >
-                                                          <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
-                                                            {expr} = {idx === 0 ? (t.baseExpr ?? 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
+                                                        <div key={idx} style={{ marginBottom: 10 }}>
+                                                          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', color: 'var(--accent)' }}>
+                                                              {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? <Hash size={12} /> : 
+                                                               ['round', 'floor', 'ceil', 'abs'].includes(t.operator || '') ? <Target size={12} /> : <FlaskConical size={12} />}
+                                                            </span>
+                                                            {t.name || (t.operator ? t.operator.toUpperCase() : 'STEP')}
                                                           </div>
-                                                          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                                            <span style={{ color: 'var(--red)' }}>
-                                                              {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
-                                                            </span>
-                                                            <span style={{ color: 'var(--text-muted)' }}>→</span>
-                                                            <span style={{ color: 'var(--green)', fontWeight: 800 }}>
-                                                              {String(t.after ?? 'nil')}
-                                                            </span>
+
+                                                          <div
+                                                            style={{
+                                                              padding: '6px 10px',
+                                                              background: 'var(--bg-panel)',
+                                                              border: '1px solid var(--border-primary)',
+                                                              borderRadius: 8,
+                                                              fontFamily: 'var(--font-mono)',
+                                                              boxShadow: 'var(--shadow-sm)',
+                                                            }}
+                                                          >
+                                                            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                                              {expr} = {idx === 0 ? (t.baseExpr ?? 'val') : 'result'} {t.operator || ''} {t.rightVar || (t.name || '')}
+                                                            </div>
+                                                            <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                                              <span style={{ color: 'var(--red)' }}>
+                                                                {String(t.before ?? 'nil')} {t.operator || ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                                              </span>
+                                                              <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                                              <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                                                {String(t.after ?? 'nil')}
+                                                              </span>
+                                                            </div>
                                                           </div>
                                                         </div>
                                                       ))}
@@ -660,7 +675,7 @@ export function InspectorPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.15 }}
-              style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+              style={{ display: 'flex', flexDirection: 'column' }}
             >
               <div
                 style={{
@@ -701,7 +716,7 @@ export function InspectorPanel({
                 </AnimatedButton>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div>
                 {evalResult && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -889,12 +904,12 @@ export function InspectorPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.15 }}
-              style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+              style={{ display: 'flex', flexDirection: 'column' }}
             >
               {validationErrors.length === 0 ? (
                 <EmptyState icon={<CheckCircle size={24} />} message="No syntax issues found" sub="Everything looks good for DotLiquid" />
               ) : (
-                <div style={{ flex: 1, overflowY: 'auto' }}>
+                <div>
                   {validationErrors.map((err, idx) => (
                     <div
                       key={idx}

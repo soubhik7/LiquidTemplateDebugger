@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/ltdlogo2.png" width="180" alt="Dot Liquid Template Debugger Logo"/>
+  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/ltdlogo2.png" width="180" alt="Dot Liquid Template Debugger V2 Logo"/>
 </p>
 
-<h1 align="center">Dot Liquid Template Debugger</h1>
+<h1 align="center">Dot Liquid Template Debugger V2</h1>
 
 <p align="center">
   <b>The industry-standard debugging environment for complex Liquid templates.</b><br>

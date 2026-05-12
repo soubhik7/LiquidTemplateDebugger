@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the **Dot Liquid Template Debugger** extension will be documented in this file.
+All notable changes to the **Dot Liquid Template Debugger V2** extension will be documented in this file.
 
 ## [1.1.8] - 2026-04-14
 
@@ -18,4 +18,4 @@ All notable changes to the **Dot Liquid Template Debugger** extension will be do
 ---
 
 ## [1.0.0] - 2026-04-08
-- Initial release of Dot Liquid Template Debugger.
+- Initial release of Dot Liquid Template Debugger V2.

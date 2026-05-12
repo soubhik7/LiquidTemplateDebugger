@@ -1,6 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
+import { 
+  Search, 
+  ChevronDown, 
+  ChevronRight, 
+  BarChart3, 
+  Hash, 
+  Target, 
+  FlaskConical 
+} from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { EmptyState } from '../shared/EmptyState';
 import { expandDown } from '../../utils/animation';
@@ -33,10 +41,7 @@ export function VariablesPanel() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        flex: 1,
-        minHeight: 0,
         background: 'var(--bg-surface)',
-        overflow: 'hidden',
       }}
     >
       {/* Header */}
@@ -99,7 +104,7 @@ export function VariablesPanel() {
       </div>
 
       {/* Table */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div>
         {!loaded || variables.length === 0 ? (
           <EmptyState icon={<BarChart3 size={24} />} message={loaded ? 'No variables in scope' : 'Variables will appear here'} />
         ) : filtered.length === 0 ? (
@@ -245,31 +250,37 @@ export function VariablesPanel() {
                                         Transformations
                                       </span>
                                       {v.transformations.map((t, idx) => (
-                                        <div
-                                          key={idx}
-                                          style={{
-                                            marginTop: 6,
-                                            padding: '8px 12px',
-                                            background: 'var(--bg-panel)',
-                                            border: '1px solid var(--border-primary)',
-                                            borderRadius: 8,
-                                            fontFamily: 'var(--font-mono)',
-                                            boxShadow: 'var(--shadow-sm)',
-                                          }}
-                                        >
-                                          {/* Expression Line */}
-                                          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
-                                            {v.name} = {idx === 0 ? (t.baseExpr ?? 'val') : 'result'} {t.operator ? t.operator : ''} {t.rightVar ? t.rightVar : (t.name || '')}
+                                        <div key={idx} style={{ marginBottom: 12 }}>
+                                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', color: 'var(--accent)' }}>
+                                              {t.operator && ['+', '-', '*', '/', '%'].includes(t.operator) ? <Hash size={13} /> : 
+                                               ['round', 'floor', 'ceil', 'abs'].includes(t.operator || '') ? <Target size={13} /> : <FlaskConical size={13} />}
+                                            </span>
+                                            {t.name || (t.operator ? t.operator.toUpperCase() : 'STEP')}
                                           </div>
-                                          {/* Calculation Line */}
-                                          <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                                            <span style={{ color: 'var(--red)' }}>
-                                              {String(t.before ?? 'nil')} {t.operator ? t.operator : ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
-                                            </span>
-                                            <span style={{ color: 'var(--text-muted)' }}>→</span>
-                                            <span style={{ color: 'var(--green)', fontWeight: 800 }}>
-                                              {String(t.after ?? 'nil')}
-                                            </span>
+
+                                          <div
+                                            style={{
+                                              padding: '8px 12px',
+                                              background: 'var(--bg-panel)',
+                                              border: '1px solid var(--border-primary)',
+                                              borderRadius: 8,
+                                              fontFamily: 'var(--font-mono)',
+                                              boxShadow: 'var(--shadow-sm)',
+                                            }}
+                                          >
+                                            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', marginBottom: 2 }}>
+                                              {v.name} = {idx === 0 ? (t.baseExpr ?? 'val') : 'result'} {t.operator ? t.operator : ''} {t.rightVar ? t.rightVar : (t.name || '')}
+                                            </div>
+                                            <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                                              <span style={{ color: 'var(--red)' }}>
+                                                {String(t.before ?? 'nil')} {t.operator ? t.operator : ''} {t.rightValue !== undefined ? String(t.rightValue) : ''}
+                                              </span>
+                                              <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                              <span style={{ color: 'var(--green)', fontWeight: 800 }}>
+                                                {String(t.after ?? 'nil')}
+                                              </span>
+                                            </div>
                                           </div>
                                         </div>
                                       ))}

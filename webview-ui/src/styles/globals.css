@@ -372,25 +372,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbars (Invisible by default) ─────────────────────── */
+/* ─── Scrollbars (Premium & Minimal) ────────────────────────── */
 * {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  width: 6px;
+  height: 6px;
 }
 
-/* Optional: Show scrollbar on hover for specific containers if needed */
-.show-scrollbar-on-hover:hover {
-  scrollbar-width: thin;
-  -ms-overflow-style: auto;
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
 }
-.show-scrollbar-on-hover:hover::-webkit-scrollbar {
-  display: block;
-  width: 4px;
-  height: 4px;
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 10px;
+  border: 2px solid var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  opacity: 0.8;
 }
 
 /* ─── Selection ──────────────────────────────────────────────── */

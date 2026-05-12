@@ -175,9 +175,7 @@ export function RightSidePanel(props: any) {
         isOpen={openSections.has('watches')}
         onToggle={() => toggleSection('watches')}
       >
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <InspectorPanel {...props} forceTab="watches" />
-        </div>
+        <InspectorPanel {...props} forceTab="watches" />
       </AccordionSection>
 
       <AccordionSection
@@ -189,9 +187,7 @@ export function RightSidePanel(props: any) {
         onToggle={() => toggleSection('breakpoints')}
         color="var(--red)"
       >
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <InspectorPanel {...props} forceTab="breakpoints" />
-        </div>
+        <InspectorPanel {...props} forceTab="breakpoints" />
       </AccordionSection>
 
       <AccordionSection
@@ -203,12 +199,10 @@ export function RightSidePanel(props: any) {
         onToggle={() => toggleSection('problems')}
         color="var(--red)"
       >
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <InspectorPanel {...props} forceTab="problems" />
-        </div>
+        <InspectorPanel {...props} forceTab="problems" />
       </AccordionSection>
 
-      <div style={{ flex: 1, minHeight: 100, background: 'var(--bg-panel)', opacity: 0.1 }} />
+      <div style={{ minHeight: 100, background: 'var(--bg-panel)', opacity: 0.1 }} />
     </div>
   );
 }
