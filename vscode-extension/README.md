@@ -30,26 +30,30 @@ Modern Liquid templates are often deceptively complex. Whether you are building 
 | **Insight** | **Capability** |
 | :--- | :--- |
 | **Deterministic Tracking** | See exactly how variables are modified by filters in a step-by-step history. |
+| **AI-Powered Mapping** | Generate complex transformations instantly with our built-in Gemini-powered mapper. |
 | **Multi-Format Native** | First-class support for **JSON**, **XML**, and **CSV** payloads with syntax-aware rendering. |
-| **Enterprise Ready** | Handles massive payloads with local-first performance and zero data leakage. |
+| **Enterprise Ready** | Hardened with a rigorous security audit; local-first performance with zero data leakage. |
 
 ---
 
 ## High-Impact Features
 
 ### 1. Interactive Step-by-Step Execution
-Set breakpoints, step into loops, and watch the output panel build in real-time. Use standard debugging shortcuts (`F5`, `F10`, `F11`) for a familiar workflow.
+Set breakpoints, step into loops, and watch the output panel build in real-time. The interface features a premium glassmorphism design optimized for high-density information.
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger.png" width="800" alt="Full Debugger View"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-full-debugger-v2.png" width="800" alt="Premium Debugger View V2"/>
 
 > [!TIP]
 > **Precision Breakpoint Management**: Use the dedicated breakpoint panel to manage complex execution paths and track hit counts across cycles.
-> <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-breakpoint.png" width="800" alt="Breakpoint Management"/>
 
-### 2. Live Evaluation & State Monitoring
-Evaluate complex Liquid expressions on the fly and keep track of critical variables in the persistent Watch panel.
+### 2. NEW: AI Template Mapper (Gemini 1.5 Powered)
+Struggling with a complex transformation? Describe your requirements in plain English, and our AI will generate a complete, valid Liquid template for you.
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-evaluation.png" width="800" alt="Evaluation and Watches"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-ai-mapper.png" width="800" alt="AI Template Mapper"/>
+
+*   **Requirement Import**: Import logic from documentation to populate prompts.
+*   **Secure Sanitization**: Automatically redacts sensitive patterns (PII, tokens) before AI processing.
+*   **One-Click Load**: Instantly load generated templates into the debugger for immediate testing.
 
 ### 3. Flexible Input Ecosystem
 Getting your data into the debugger is seamless. We support modern workflows without requiring complex configuration:
@@ -58,15 +62,7 @@ Getting your data into the debugger is seamless. We support modern workflows wit
 *   **📋 Direct Paste**: Paste Liquid snippets and payloads instantly for rapid prototyping.
 *   **📂 Local File Sync**: Sync with your workspace files for a persistent workflow.
 
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-drag-drop-modal.png" width="800" alt="Drag and Drop / Paste Modal"/>
-
-### 4. Integrated Developer Toolset
-The integrated toolset provides quick access to beautification, validation, and cloning operations, ensuring your output is production-ready.
-
-<div align="center">
-  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-menu-bar.png" width="45%" style="margin-right: 2%;"/>
-  <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-template-menu.png" width="45%"/>
-</div>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-setup-modal.png" width="800" alt="Premium Setup Modal"/>
 
 ---
 
@@ -75,8 +71,6 @@ The integrated toolset provides quick access to beautification, validation, and 
 1.  **Launch**: Press `F5` in a Liquid file or open the Command Palette (`Cmd+Shift+P`) and type `Liquid: Start Debugging`.
 2.  **Configure**: Use the **Load Sample** button to see a pre-configured scenario or drag your own files into the modal.
 3.  **Debug**: Step through the logic using the debug toolbar or keyboard shortcuts.
-
-<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-command-palette.png" width="700" alt="Command Palette"/>
 
 ---
 
@@ -97,17 +91,20 @@ For advanced teams, use a `.vscode/launch.json` for persistence:
       "format": "json"
     }
   ]
-}
+)
 ```
 
 ---
 
-## 🔒 Security & Privacy
+## 🔒 Enterprise-Grade Security
 
-We take developer privacy seriously.
-*   **Zero Egress**: Your code and data never leave your local machine.
-*   **Secure Sandbox**: All rendering is contained within a restricted Content Security Policy (CSP).
-*   **No Telemetry**: We do not track your templates or input data.
+We take developer privacy and enterprise security seriously. The extension has undergone a **5-round security audit** to ensure the highest standards.
+
+*   **Zero Egress**: Your code and data never leave your local machine (AI requests are opt-in and sanitized).
+*   **Secure Secret Storage**: API keys are stored in VS Code's native `SecretStorage`, never in plaintext or `localStorage`.
+*   **Sanitized AI Pipeline**: Multi-pass regex sanitization redacts PII/tokens before they ever hit the wire.
+*   **Strict CSP**: Content Security Policy blocks all unauthorized scripts, images, and external connections.
+*   **DoS Protection**: Strict 512KB/1MB size limits and expression length constraints prevent resource exhaustion.
 
 ---
 
