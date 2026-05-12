@@ -6,7 +6,7 @@ import type { WebUIState } from '../types/app';
 let _reqId = 0;
 const _pending: Record<number, (result: unknown) => void> = {};
 
-function apiCall(method: string, path: string, body?: unknown): Promise<unknown> {
+export function apiCall(method: string, path: string, body?: unknown): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const id = ++_reqId;
     
@@ -33,6 +33,7 @@ export function useDebugger() {
   const setShowLoadModal = useAppStore((s) => s.setShowLoadModal);
   const clearExpanded = useAppStore((s) => s.clearExpandedState);
   const addToast = useAppStore((s) => s.addToast);
+  const aiConfig = useAppStore((s) => s.aiConfig);
 
   const tplPrefillRef = useRef<((tpl: string) => void) | null>(null);
 
@@ -247,14 +248,24 @@ export function useDebugger() {
     validateOutput,
     copyToClipboard,
     refreshState,
+    saveAIKey: async (apiKey: string) => {
+      return apiCall('POST', '/api/ai/save-key', { apiKey }) as Promise<{ ok: boolean }>;
+    },
     validateAIKey: async (apiKey: string) => {
       return apiCall('POST', '/api/ai/validate-key', { apiKey }) as Promise<{ isValid: boolean; errorMessage?: string }>;
     },
-    generateAITemplate: async (prompt: string, apiKey: string, model: string, dataContext: any, outputFormat: string, mappingDetails?: string) => {
-      return apiCall('POST', '/api/ai/generate', { prompt, apiKey, model, dataContext, outputFormat, mappingDetails }) as Promise<{ template: string; error?: string }>;
+    generateAITemplate: async (prompt: string, model: string, dataContext: any, outputFormat: string, mappingDetails?: string) => {
+      return apiCall('POST', '/api/ai/generate', { 
+        prompt, 
+        model, 
+        dataContext, 
+        outputFormat, 
+        mappingDetails,
+        sensitivePatterns: aiConfig.sensitivePatterns 
+      }) as Promise<{ template: string; error?: string }>;
     },
-    listAIModels: async (apiKey: string) => {
-      return apiCall('POST', '/api/ai/list-models', { apiKey }) as Promise<{ models: string[] }>;
+    listAIModels: async () => {
+      return apiCall('POST', '/api/ai/list-models', {}) as Promise<{ models: string[] }>;
     },
     tplPrefillRef,
   };

@@ -169,14 +169,17 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
 
     // DELETE /api/breakpoint/:id
     if (DEL && urlPath.startsWith('/api/breakpoint/') && !urlPath.endsWith('/toggle')) {
-        const id = Number(urlPath.split('/').pop());
+        const id = parseInt(urlPath.split('/').pop() ?? '', 10);
+        if (!Number.isFinite(id) || id <= 0) return { error: 'Invalid ID' };
         engine.removeBreakpoint(id);
         return { ok: true };
     }
 
     // POST /api/breakpoint/:id/toggle
     if (POST && urlPath.includes('/api/breakpoint/') && urlPath.endsWith('/toggle')) {
-        const id = Number(urlPath.split('/')[3]);
+        const parts = urlPath.split('/');
+        const id = parseInt(parts[3] || '', 10);
+        if (!Number.isFinite(id) || id <= 0) return { error: 'Invalid ID' };
         engine.toggleBreakpoint(id);
         return { ok: true };
     }
@@ -189,7 +192,8 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
 
     // DELETE /api/watch/:id
     if (DEL && urlPath.startsWith('/api/watch/')) {
-        const id = Number(urlPath.split('/').pop());
+        const id = parseInt(urlPath.split('/').pop() ?? '', 10);
+        if (!Number.isFinite(id) || id <= 0) return { error: 'Invalid ID' };
         engine.removeWatch(id);
         return { ok: true };
     }
@@ -246,6 +250,11 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
         const sanitizedMapping = sanitizeData(mappingDetails || '', sensitivePatterns || []);
         const sanitizedDataContext = JSON.parse(sanitizeData(JSON.stringify(dataContext), sensitivePatterns || []));
 
+        // Security: Whitelist outputFormat
+        const safeOutputFormat = ['json', 'xml', 'text', 'csv'].includes((outputFormat || '').toLowerCase())
+            ? outputFormat
+            : 'json';
+
         let fullPrompt = `Generate a Liquid template based on this requirement: "${sanitizedPrompt}".`;
         
         if (sanitizedMapping && sanitizedMapping.trim()) {
@@ -253,7 +262,7 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
         }
 
         fullPrompt += `\n\nInput data context: ${JSON.stringify(sanitizedDataContext)}
-Expected output format: ${outputFormat}
+Expected output format: ${safeOutputFormat}
 
 IMPORTANT RULES for Azure Logic Apps compatibility:
 1. All root-level input variables MUST be prefixed with "content." (e.g., use {{ content.item }} instead of {{ item }}).
@@ -272,10 +281,20 @@ Return ONLY the Liquid template code. No explanations. No markdown code blocks.`
 /**
  * Sanitizes sensitive data using provided regex patterns
  */
+const MAX_PATTERNS = 20;
+const MAX_PATTERN_LENGTH = 200;
+
 function sanitizeData(input: string, patterns: string[]): string {
-    if (!input || !patterns.length) return input;
+    if (!input) return input;
     let result = input;
-    for (const pattern of patterns) {
+    
+    // Security: Filter patterns to prevent ReDoS
+    const safePatterns = (patterns || [])
+        .slice(0, MAX_PATTERNS)
+        .filter(p => typeof p === 'string' && p.length <= MAX_PATTERN_LENGTH)
+        .filter(p => !/(\+|\*|\{).*(\+|\*|\{)/.test(p)); // block nested quantifiers
+
+    for (const pattern of safePatterns) {
         try {
             const regex = new RegExp(pattern, 'gi');
             result = result.replace(regex, '[REDACTED]');

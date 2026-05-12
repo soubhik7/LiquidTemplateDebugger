@@ -62,7 +62,6 @@ export function AIGeneratorView() {
 
       const res = await generateAITemplate(
         prompt,
-        aiConfig.apiKey,
         aiConfig.defaultModel || 'gemini-1.5-flash',
         dataContext,
         format,
@@ -101,11 +100,14 @@ export function AIGeneratorView() {
     }
   };
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(generatorState.generatedTemplate);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  }, [generatorState.generatedTemplate]);
+  const { copyToClipboard } = useDebugger();
+  const handleCopy = useCallback(async () => {
+    const ok = await copyToClipboard(generatorState.generatedTemplate);
+    if (ok) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    }
+  }, [generatorState.generatedTemplate, copyToClipboard]);
 
   const handleStartDebugging = async () => {
     const { generatedTemplate, data, format } = generatorState;

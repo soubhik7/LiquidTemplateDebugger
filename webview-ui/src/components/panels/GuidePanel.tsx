@@ -7,6 +7,7 @@ import {
   BookOpen, FileText, Layers, ChevronDown, Terminal
 } from 'lucide-react';
 import { LIQUID_GUIDE, type LiquidFilter, type LiquidTheorySection } from '../../data/liquidGuide';
+import { useDebugger } from '../../hooks/useDebugger';
 
 const CATEGORY_ICONS: Record<string, any> = {
   'String': Type,
@@ -23,6 +24,8 @@ export function GuidePanel() {
   const [selectedItem, setSelectedItem] = useState<{ type: 'filter' | 'tag' | 'theory', data: any, subId?: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const { copyToClipboard } = useDebugger();
 
   const filteredTheory = useMemo(() => {
     const s = search.toLowerCase();
@@ -59,10 +62,12 @@ export function GuidePanel() {
     t.description.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopy = async (text: string, id: string) => {
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   const toggleSection = (sectionId: string) => {

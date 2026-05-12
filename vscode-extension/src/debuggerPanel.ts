@@ -73,15 +73,15 @@ export class DebuggerPanel {
         const nonce = getNonce();
         
         // Tightened CSP:
-        // 1. style-src: Allowed CSP source and inline styles (Vite requirement).
+        // 1. style-src: Allowed CSP source (fonts/local CSS).
         // 2. script-src: Allowed CSP source and nonce-protected scripts.
-        // 3. font-src: Allowed CSP source and data: for icons.
-        // 4. img-src: Allowed local resources and data: URIs.
+        // 3. font-src: Allowed CSP source (local fonts).
+        // 4. img-src: Allowed local resources and data: URIs (kept for flexibility).
         const csp = [
             `default-src 'none'`,
-            `style-src ${webview.cspSource} 'unsafe-inline'`,
+            `style-src ${webview.cspSource}`,
             `script-src ${webview.cspSource} 'nonce-${nonce}'`,
-            `font-src ${webview.cspSource} data:`,
+            `font-src ${webview.cspSource}`,
             `img-src ${webview.cspSource} data:`,
         ].join('; ');
 

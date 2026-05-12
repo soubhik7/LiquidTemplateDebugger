@@ -200,43 +200,6 @@ export const useAppStore = create<AppState>()(
   )
 );
 
-// Helper to sync API key to extension host (SecretStorage)
-export const useSyncAIKey = () => {
-  const aiConfig = useAppStore((state) => state.aiConfig);
-  const setAIConfig = useAppStore((state) => state.setAIConfig);
-
-  // On mount, check if we have a key in SecretStorage
-  useEffect(() => {
-    const checkKey = async () => {
-      try {
-        const response = await (window as any).vsCodeApi.postMessageWithResponse({
-          type: 'api',
-          method: 'GET',
-          path: '/api/ai/get-key-status'
-        });
-        if (response?.hasKey && !aiConfig.apiKey) {
-          setAIConfig({ apiKey: '********' }); // Placeholder
-        }
-      } catch (e) {
-        console.error('Failed to sync AI key status');
-      }
-    };
-    checkKey();
-  }, []);
-
-  // When apiKey changes (and it's not the placeholder), save it
-  useEffect(() => {
-    if (aiConfig.apiKey && aiConfig.apiKey !== '********') {
-      (window as any).vsCodeApi.postMessage({
-        type: 'api',
-        method: 'POST',
-        path: '/api/ai/save-key',
-        body: { apiKey: aiConfig.apiKey }
-      });
-    }
-  }, [aiConfig.apiKey]);
-};
-
 // Derived selector for accent hex
 export function getAccentHex(color: string): string {
   if (color.startsWith('#')) return color;

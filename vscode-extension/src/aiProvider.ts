@@ -33,8 +33,13 @@ export class AIProvider {
     }
   }
 
+  private static readonly MODEL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/;
+
   public async generateTemplate(prompt: string, apiKey: string, model: string = 'gemini-3.1-flash-lite'): Promise<string> {
-    const url = `${AIProvider.GEMINI_BASE_URL}/${model}:generateContent`;
+    if (!AIProvider.MODEL_PATTERN.test(model)) {
+      throw new Error('Invalid model identifier');
+    }
+    const url = `${AIProvider.GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent`;
     
     const requestBody = {
       contents: [{
