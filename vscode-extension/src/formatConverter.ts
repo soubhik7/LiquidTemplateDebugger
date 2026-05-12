@@ -26,16 +26,26 @@ export class FormatConverter {
 
     /** Wrap raw data under { content: ... } so templates can use {{ content.foo }} */
     wrapForTemplate(data: any): any {
+        const root = Object.create(null);
         // If the data already has a top-level "content" key, use as-is
         if (data && typeof data === 'object' && 'content' in data) {
-            return data;
+            root.content = data.content;
+            // Also copy other keys to the null-prototype object
+            for (const key in data) {
+                if (key !== 'content') {
+                    root[key] = data[key];
+                }
+            }
+            return root;
         }
-        return { content: data };
+        root.content = data;
+        return root;
     }
 
     private parseJson(content: string): any {
         try {
-            return JSON.parse(content);
+            const parsed = JSON.parse(content);
+            return this.sanitize(parsed);
         } catch (e: any) {
             throw new Error(`Invalid JSON: ${e.message}`);
         }
@@ -43,7 +53,8 @@ export class FormatConverter {
 
     private parseXml(content: string): any {
         try {
-            return this.xmlParser.parse(content);
+            const parsed = this.xmlParser.parse(content);
+            return this.sanitize(parsed);
         } catch (e: any) {
             throw new Error(`Invalid XML: ${e.message}`);
         }
@@ -57,14 +68,16 @@ export class FormatConverter {
                 trim: true,
                 cast: true
             });
-            return { rows: records };
+            const result = Object.create(null);
+            result.rows = records.map((r: any) => this.sanitize(r));
+            return result;
         } catch (e: any) {
             throw new Error(`Invalid CSV: ${e.message}`);
         }
     }
 
     private parseText(content: string): any {
-        const data: any = {};
+        const data: any = Object.create(null);
         for (const line of content.split('\n')) {
             const trimmed = line.trim();
             if (!trimmed || trimmed.startsWith('#')) { continue; }
@@ -79,6 +92,19 @@ export class FormatConverter {
             }
         }
         return data;
+    }
+
+    private sanitize(obj: any): any {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(v => this.sanitize(v));
+
+        const clean = Object.create(null);
+        for (const key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                clean[key] = this.sanitize(obj[key]);
+            }
+        }
+        return clean;
     }
 
     private coerce(value: string): any {

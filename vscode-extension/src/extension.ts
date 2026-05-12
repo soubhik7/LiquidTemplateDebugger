@@ -4,6 +4,10 @@ import { DebuggerPanel } from './debuggerPanel';
 import { DebugEngine } from './debugEngine';
 import { AIProvider } from './aiProvider';
 
+// Constants for security limits
+const MAX_TEMPLATE_SIZE = 512 * 1024;  // 512KB
+const MAX_DATA_SIZE = 1024 * 1024;     // 1MB
+
 // One engine per workspace — persists across panel open/close
 const engine = new DebugEngine();
 const aiProvider = new AIProvider();
@@ -67,13 +71,13 @@ export function deactivate() {
 
 // ── Wire panel message handler ────────────────────────────────────────────────
 
-function wirePanel(panel: DebuggerPanel, _context: vscode.ExtensionContext): void {
+function wirePanel(panel: DebuggerPanel, context: vscode.ExtensionContext): void {
     panel.setMessageHandler(async (msg: any) => {
         if (msg.type !== 'api') { return undefined; }
         const { method, path: urlPath, body } = msg;
 
         try {
-            const result = await handleApiCall(method, urlPath, body);
+            const result = await handleApiCall(method, urlPath, body, context);
             return result;
         } catch (err: any) {
             return { error: err.message ?? String(err) };
@@ -83,7 +87,7 @@ function wirePanel(panel: DebuggerPanel, _context: vscode.ExtensionContext): voi
 
 // ── API router (mirrors the ASP.NET backend's endpoints) ─────────────────────
 
-async function handleApiCall(method: string, urlPath: string, body: any): Promise<any> {
+async function handleApiCall(method: string, urlPath: string, body: any, context: vscode.ExtensionContext): Promise<any> {
     const GET  = method === 'GET';
     const POST = method === 'POST';
     const DEL  = method === 'DELETE';
@@ -97,6 +101,15 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
     // POST /api/load
     if (POST && urlPath === '/api/load') {
         const { templateContent, dataContent, format } = body;
+        
+        // Security: Input size limits
+        if (templateContent?.length > MAX_TEMPLATE_SIZE) {
+            throw new Error(`Template exceeds size limit of ${MAX_TEMPLATE_SIZE / 1024}KB`);
+        }
+        if (dataContent?.length > MAX_DATA_SIZE) {
+            throw new Error(`Data exceeds size limit of ${MAX_DATA_SIZE / 1024}KB`);
+        }
+
         await engine.initializeFromContent(templateContent, dataContent, format);
         return engine.getWebUIState();
     }
@@ -187,29 +200,59 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
         return { ok: true };
     }
 
+    // ── AI Endpoints with SecretStorage ──────────────────────────────────────
+
+    // POST /api/ai/save-key
+    if (POST && urlPath === '/api/ai/save-key') {
+        const { apiKey } = body;
+        if (apiKey) {
+            await context.secrets.store('gemini-api-key', apiKey);
+            return { ok: true };
+        }
+        return { ok: false, error: 'API key is required' };
+    }
+
+    // GET /api/ai/get-key-status
+    if (GET && urlPath === '/api/ai/get-key-status') {
+        const key = await context.secrets.get('gemini-api-key');
+        return { hasKey: !!key };
+    }
+
     // POST /api/ai/validate-key
     if (POST && urlPath === '/api/ai/validate-key') {
         const { apiKey } = body;
-        return await aiProvider.validateKey(apiKey);
+        const keyToValidate = apiKey || await context.secrets.get('gemini-api-key');
+        if (!keyToValidate) return { isValid: false, errorMessage: 'No API key provided' };
+        return await aiProvider.validateKey(keyToValidate);
     }
 
     // POST /api/ai/list-models
     if (POST && urlPath === '/api/ai/list-models') {
         const { apiKey } = body;
-        const models = await aiProvider.listModels(apiKey);
+        const keyToUse = apiKey || await context.secrets.get('gemini-api-key');
+        if (!keyToUse) return { models: [] };
+        const models = await aiProvider.listModels(keyToUse);
         return { models };
     }
 
     // POST /api/ai/generate
     if (POST && urlPath === '/api/ai/generate') {
-        const { prompt, apiKey, model, dataContext, outputFormat, mappingDetails } = body;
-        let fullPrompt = `Generate a Liquid template based on this requirement: "${prompt}".`;
+        const { prompt, apiKey, model, dataContext, outputFormat, mappingDetails, sensitivePatterns } = body;
+        const keyToUse = apiKey || await context.secrets.get('gemini-api-key');
+        if (!keyToUse) throw new Error('AI API Key not configured');
+
+        // Security: Data Sanitization
+        const sanitizedPrompt = sanitizeData(prompt, sensitivePatterns || []);
+        const sanitizedMapping = sanitizeData(mappingDetails || '', sensitivePatterns || []);
+        const sanitizedDataContext = JSON.parse(sanitizeData(JSON.stringify(dataContext), sensitivePatterns || []));
+
+        let fullPrompt = `Generate a Liquid template based on this requirement: "${sanitizedPrompt}".`;
         
-        if (mappingDetails && mappingDetails.trim()) {
-            fullPrompt += `\n\nReference Business Mapping Details:\n${mappingDetails}`;
+        if (sanitizedMapping && sanitizedMapping.trim()) {
+            fullPrompt += `\n\nReference Business Mapping Details:\n${sanitizedMapping}`;
         }
 
-        fullPrompt += `\n\nInput data context: ${JSON.stringify(dataContext)}
+        fullPrompt += `\n\nInput data context: ${JSON.stringify(sanitizedDataContext)}
 Expected output format: ${outputFormat}
 
 IMPORTANT RULES for Azure Logic Apps compatibility:
@@ -219,9 +262,30 @@ IMPORTANT RULES for Azure Logic Apps compatibility:
 
 Return ONLY the Liquid template code. No explanations. No markdown code blocks.`;
 
-        const template = await aiProvider.generateTemplate(fullPrompt, apiKey, model);
+        const template = await aiProvider.generateTemplate(fullPrompt, keyToUse, model);
         return { template };
     }
 
     return { error: `Unknown endpoint: ${method} ${urlPath}` };
+}
+
+/**
+ * Sanitizes sensitive data using provided regex patterns
+ */
+function sanitizeData(input: string, patterns: string[]): string {
+    if (!input || !patterns.length) return input;
+    let result = input;
+    for (const pattern of patterns) {
+        try {
+            const regex = new RegExp(pattern, 'gi');
+            result = result.replace(regex, '[REDACTED]');
+        } catch (e) {
+            // Ignore invalid regex patterns
+        }
+    }
+    // Default sanitization for common patterns if not provided
+    result = result.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]');
+    result = result.replace(/\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/g, '[CREDIT_CARD]');
+    
+    return result;
 }

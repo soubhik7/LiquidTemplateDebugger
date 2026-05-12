@@ -175,6 +175,8 @@ export function useDebugger() {
     [refreshState]
   );
 
+  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const evaluate = useCallback(async (expression: string) => {
     let finalExpr = expression.trim();
     let isVirtual = false;
@@ -184,8 +186,10 @@ export function useDebugger() {
     const variables = ds?.state?.variables ?? [];
     if (ds?.isLoaded && !variables.find(v => v.name === finalExpr)) {
       const template = ds.templateSource ?? '';
+      // Security: Escape finalExpr to prevent ReDoS when used in the regex below
+      const escapedKey = escapeRegex(finalExpr);
       // Look for "key": "{{ expr }}" or "key": {{ expr }}
-      const virtualMatch = template.match(new RegExp(`["']?${finalExpr}["']?\\s*:\\s*(?:&quot;|&#039;|["'])?\\s*\\{\\{\\s*(.*?)\\s*\\}\\}`, 'i'));
+      const virtualMatch = template.match(new RegExp(`["']?${escapedKey}["']?\\s*:\\s*(?:&quot;|&#039;|["'])?\\s*\\{\\{\\s*(.*?)\\s*\\}\\}`, 'i'));
       if (virtualMatch && virtualMatch[1]) {
         finalExpr = virtualMatch[1].trim();
         isVirtual = true;
