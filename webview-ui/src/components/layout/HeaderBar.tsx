@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import {
   FolderOpen, Play, Circle, CornerDownRight, ArrowDown,
   ArrowUp, RotateCcw, Moon, Sun, Flame, Wind, Waves, Snowflake, Search,
-  Terminal, Shield, Zap
+  Terminal, Shield, Zap, Sparkles, Layout as LayoutTerminal
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusIndicator } from '../shared/StatusIndicator';
@@ -39,6 +39,9 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
   const loaded = !!debugState?.isLoaded;
   const complete = loaded && !!debugState?.state?.isComplete;
   const disabled = !loaded || complete || isLoading;
+
+  const activeView = useAppStore((s) => s.activeView);
+  const setActiveView = useAppStore((s) => s.setActiveView);
 
   const cycleTheme = () => {
     const idx = THEME_CYCLE.indexOf(theme);
@@ -157,6 +160,59 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       >
         Reset
       </AnimatedButton>
+
+      <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 8px' }} />
+
+      {/* View Switcher */}
+      <div style={{
+        display: 'flex',
+        background: 'var(--bg-panel)',
+        padding: 3,
+        borderRadius: 10,
+        border: '1px solid var(--border-primary)',
+        gap: 2
+      }}>
+        <button
+          onClick={() => setActiveView('debugger')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 12px',
+            borderRadius: 8,
+            border: 'none',
+            background: activeView === 'debugger' ? 'var(--accent)' : 'transparent',
+            color: activeView === 'debugger' ? 'white' : 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: 11,
+            fontWeight: 800,
+            transition: 'all 0.2s'
+          }}
+        >
+          <LayoutTerminal size={14} />
+          Debugger
+        </button>
+        <button
+          onClick={() => setActiveView('generator')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 12px',
+            borderRadius: 8,
+            border: 'none',
+            background: activeView === 'generator' ? 'var(--accent)' : 'transparent',
+            color: activeView === 'generator' ? 'white' : 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: 11,
+            fontWeight: 800,
+            transition: 'all 0.2s'
+          }}
+        >
+          <Sparkles size={14} />
+          AI Template Mapper
+        </button>
+      </div>
 
       <div style={{ flex: 1 }} />
 

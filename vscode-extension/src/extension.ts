@@ -2,9 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { DebuggerPanel } from './debuggerPanel';
 import { DebugEngine } from './debugEngine';
+import { AIProvider } from './aiProvider';
 
 // One engine per workspace — persists across panel open/close
 const engine = new DebugEngine();
+const aiProvider = new AIProvider();
 
 const SAMPLE_TEMPLATE = `{% assign baseTotal = content.numbers.price | Times: content.numbers.quantity %}
 {% assign discountedTotal = baseTotal | Plus: content.numbers.discount %}
@@ -183,6 +185,37 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
         const text = body?.text ?? '';
         await vscode.env.clipboard.writeText(text);
         return { ok: true };
+    }
+
+    // POST /api/ai/validate-key
+    if (POST && urlPath === '/api/ai/validate-key') {
+        const { apiKey } = body;
+        return await aiProvider.validateKey(apiKey);
+    }
+
+    // POST /api/ai/list-models
+    if (POST && urlPath === '/api/ai/list-models') {
+        const { apiKey } = body;
+        const models = await aiProvider.listModels(apiKey);
+        return { models };
+    }
+
+    // POST /api/ai/generate
+    if (POST && urlPath === '/api/ai/generate') {
+        const { prompt, apiKey, model, dataContext, outputFormat } = body;
+        const fullPrompt = `Generate a Liquid template based on this requirement: "${prompt}".
+Input data context: ${JSON.stringify(dataContext)}
+Expected output format: ${outputFormat}
+
+IMPORTANT RULES for Azure Logic Apps compatibility:
+1. All root-level input variables MUST be prefixed with "content." (e.g., use {{ content.item }} instead of {{ item }}).
+2. For JSON input, if accessing a root property "products", use "content.products".
+3. For XML input, the root element should be accessed via "content.RootElement".
+
+Return ONLY the Liquid template code. No explanations. No markdown code blocks.`;
+
+        const template = await aiProvider.generateTemplate(fullPrompt, apiKey, model);
+        return { template };
     }
 
     return { error: `Unknown endpoint: ${method} ${urlPath}` };

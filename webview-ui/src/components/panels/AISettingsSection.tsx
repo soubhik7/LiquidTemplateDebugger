@@ -3,26 +3,53 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Sparkles, Key, CheckCircle, XCircle, Loader, Brain, Shield, AlertTriangle } from 'lucide-react';
 import { AnimatedButton } from '../shared/AnimatedButton';
-
-const GEMINI_MODELS = [
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Fast & Efficient)' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Most Capable)' },
-  { value: 'gemini-pro', label: 'Gemini Pro (Balanced)' },
-];
+import { useDebugger } from '../../hooks/useDebugger';
 
 export function AISettingsSection() {
   const aiConfig = useAppStore((s) => s.aiConfig);
   const setAIConfig = useAppStore((s) => s.setAIConfig);
   const addToast = useAppStore((s) => s.addToast);
+  const { validateAIKey, listAIModels } = useDebugger();
 
   const [apiKey, setApiKey] = useState(aiConfig.apiKey || '');
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
   const [showKey, setShowKey] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   useEffect(() => {
     setApiKey(aiConfig.apiKey || '');
   }, [aiConfig.apiKey]);
+
+  const fetchModels = async (key: string) => {
+    setIsLoadingModels(true);
+    try {
+      const { models } = await listAIModels(key);
+      if (models && models.length > 0) {
+        setAvailableModels(models);
+        
+        // Prioritize 'flash' models for the best default experience
+        const flashModel = models.find(m => m.toLowerCase().includes('flash') && m.includes('3'));
+        const anyFlashModel = models.find(m => m.toLowerCase().includes('flash'));
+        const preferredModel = flashModel || anyFlashModel || models[0];
+
+        if (!models.includes(aiConfig.defaultModel || '')) {
+            setAIConfig({ defaultModel: preferredModel });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch models:', err);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  useEffect(() => {
+    if (aiConfig.apiKey) {
+      fetchModels(aiConfig.apiKey);
+    }
+  }, []);
 
   const handleValidateKey = async () => {
     if (!apiKey.trim()) {
@@ -39,13 +66,7 @@ export function AISettingsSection() {
     setValidationStatus('idle');
 
     try {
-      const response = await fetch('/api/ai/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
-      });
-
-      const data = await response.json();
+      const data = await validateAIKey(apiKey.trim());
 
       if (data.isValid) {
         setValidationStatus('valid');
@@ -56,6 +77,7 @@ export function AISettingsSection() {
           type: 'success',
           duration: 3000,
         });
+        await fetchModels(apiKey.trim());
       } else {
         setValidationStatus('invalid');
         addToast({
@@ -91,8 +113,20 @@ export function AISettingsSection() {
     setAIConfig({ enabled: !aiConfig.enabled });
   };
 
+  const formatModelName = (name: string) => {
+    return name
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
-    <section style={{ marginBottom: 64 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      style={{ marginBottom: 64 }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
         <div style={{ color: 'var(--accent)' }}>
           <Sparkles size={20} strokeWidth={2.5} />
@@ -335,28 +369,50 @@ export function AISettingsSection() {
           </h3>
         </div>
 
-        <select
-          value={aiConfig.defaultModel}
-          onChange={(e) => setAIConfig({ defaultModel: e.target.value })}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            background: 'var(--bg-hover)',
-            border: '1px solid var(--border-primary)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--text-primary)',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          {GEMINI_MODELS.map((model) => (
-            <option key={model.value} value={model.value}>
-              {model.label}
-            </option>
-          ))}
-        </select>
+        <div style={{ position: 'relative' }}>
+          <select
+            value={aiConfig.defaultModel}
+            onChange={(e) => setAIConfig({ defaultModel: e.target.value })}
+            disabled={isLoadingModels || availableModels.length === 0}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'var(--bg-hover)',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: (isLoadingModels || availableModels.length === 0) ? 'not-allowed' : 'pointer',
+              outline: 'none',
+              opacity: (isLoadingModels || availableModels.length === 0) ? 0.6 : 1,
+            }}
+          >
+            {isLoadingModels ? (
+              <option>Loading available models...</option>
+            ) : availableModels.length === 0 ? (
+              <option>Validate API key to see models</option>
+            ) : (
+              availableModels.map((model) => (
+                <option key={model} value={model}>
+                  {formatModelName(model)}
+                </option>
+              ))
+            )}
+          </select>
+          {isLoadingModels && (
+            <div style={{ position: 'absolute', right: 35, top: '50%', transform: 'translateY(-50%)' }}>
+               <Loader size={14} className="spin" style={{ color: 'var(--accent)' }} />
+            </div>
+          )}
+        </div>
+        
+        {availableModels.length > 0 && !isLoadingModels && (
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <CheckCircle size={12} style={{ color: 'var(--green)' }} />
+                Successfully retrieved {availableModels.length} compatible models
+            </p>
+        )}
       </div>
 
       {/* Privacy & Security */}

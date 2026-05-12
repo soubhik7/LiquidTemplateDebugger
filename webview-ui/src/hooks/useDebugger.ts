@@ -230,6 +230,15 @@ export function useDebugger() {
     validateOutput,
     copyToClipboard,
     refreshState,
+    validateAIKey: async (apiKey: string) => {
+      return apiCall('POST', '/api/ai/validate-key', { apiKey }) as Promise<{ isValid: boolean; errorMessage?: string }>;
+    },
+    generateAITemplate: async (prompt: string, apiKey: string, model: string, dataContext: any, outputFormat: string) => {
+      return apiCall('POST', '/api/ai/generate', { prompt, apiKey, model, dataContext, outputFormat }) as Promise<{ template: string; error?: string }>;
+    },
+    listAIModels: async (apiKey: string) => {
+      return apiCall('POST', '/api/ai/list-models', { apiKey }) as Promise<{ models: string[] }>;
+    },
     tplPrefillRef,
   };
 }

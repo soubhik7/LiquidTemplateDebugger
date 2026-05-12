@@ -39,9 +39,9 @@ interface AppState {
   dataEditMode: boolean;
 
   // Navigation
-  activeView: 'debugger' | 'settings' | 'guide';
+  activeView: 'debugger' | 'settings' | 'guide' | 'generator';
   validationErrors: any[];
-  setActiveView: (view: 'debugger' | 'settings' | 'guide') => void;
+  setActiveView: (view: 'debugger' | 'settings' | 'guide' | 'generator') => void;
   setValidationErrors: (errors: any[]) => void;
 
   // AI Configuration
@@ -49,6 +49,16 @@ interface AppState {
   showGenerateModal: boolean;
   setAIConfig: (config: Partial<AIConfiguration>) => void;
   setShowGenerateModal: (show: boolean) => void;
+  
+  // Generator State
+  generatorState: {
+    prompt: string;
+    data: string;
+    format: string;
+    generatedTemplate: string;
+    showResult: boolean;
+  };
+  setGeneratorState: (state: Partial<AppState['generatorState']>) => void;
 
   // Actions
   setDebugState: (state: WebUIState | null) => void;
@@ -95,16 +105,26 @@ export const useAppStore = create<AppState>()(
       aiConfig: {
         enabled: false,
         apiKey: undefined,
-        defaultModel: 'gemini-1.5-flash',
+        defaultModel: 'gemini-3.1-flash-lite',
         sensitivePatterns: [],
         maxRetries: 3,
         timeoutSeconds: 30,
       },
       showGenerateModal: false,
 
+      // Generator State
+      generatorState: {
+        prompt: '',
+        data: '',
+        format: 'json',
+        generatedTemplate: '',
+        showResult: false,
+      },
+
       setActiveView: (view) => set({ activeView: view }),
       setAIConfig: (config) => set((s) => ({ aiConfig: { ...s.aiConfig, ...config } })),
       setShowGenerateModal: (show) => set({ showGenerateModal: show }),
+      setGeneratorState: (state) => set((s) => ({ generatorState: { ...s.generatorState, ...state } })),
       setDebugState: (state) => set({ debugState: state }),
       setLoading: (v) => set({ isLoading: v }),
 

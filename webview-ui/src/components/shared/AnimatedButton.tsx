@@ -5,7 +5,7 @@ type Variant = 'primary' | 'ghost' | 'danger' | 'surface';
 
 interface AnimatedButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
-  size?: 'xs' | 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   icon?: ReactNode;
   children?: ReactNode;
 }
@@ -37,6 +37,7 @@ const sizeStyles: Record<string, React.CSSProperties> = {
   xs: { padding: '2px 8px', fontSize: '11px', borderRadius: 'var(--radius-sm)' },
   sm: { padding: '4px 10px', fontSize: '12px', borderRadius: 'var(--radius-sm)' },
   md: { padding: '6px 14px', fontSize: '13px', borderRadius: 'var(--radius-md)' },
+  lg: { padding: '10px 20px', fontSize: '14px', borderRadius: 'var(--radius-lg)' },
 };
 
 export function AnimatedButton({

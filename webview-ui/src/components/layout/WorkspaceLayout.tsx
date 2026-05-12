@@ -11,6 +11,7 @@ import { RightSidePanel } from './RightSidePanel';
 import { SettingsPanel } from '../panels/SettingsPanel';
 import { GuidePanel } from '../panels/GuidePanel';
 import { LoadModal } from '../overlays/LoadModal';
+import { AIGeneratorView } from '../panels/AIGeneratorView';
 import { ToastContainer } from '../shared/Toast';
 import { useDebugger } from '../../hooks/useDebugger';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -241,7 +242,7 @@ export function WorkspaceLayout() {
               >
                 <SettingsPanel />
               </motion.div>
-            ) : (
+            ) : activeView === 'guide' ? (
               <motion.div
                 key="guide"
                 initial={{ opacity: 0, x: 10 }}
@@ -251,6 +252,17 @@ export function WorkspaceLayout() {
                 style={{ height: '100%', width: '100%', position: 'absolute', inset: 0 }}
               >
                 <GuidePanel />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="generator"
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+                style={{ height: '100%', width: '100%', position: 'absolute', inset: 0 }}
+              >
+                <AIGeneratorView />
               </motion.div>
             )}
           </AnimatePresence>
