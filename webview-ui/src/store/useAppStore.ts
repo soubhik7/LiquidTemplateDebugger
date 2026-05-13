@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Theme, AccentColor, InspectorTab, WebUIState } from '../types/app';
@@ -180,10 +181,12 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         theme: s.theme,
         accentColor: s.accentColor,
-
         panelSizes: s.panelSizes,
         activeInspectorTab: s.activeInspectorTab,
-        aiConfig: s.aiConfig,
+        aiConfig: {
+          ...s.aiConfig,
+          apiKey: undefined, // Security: Never persist the API key to localStorage
+        },
       }),
       merge: (persisted, current) => ({
         ...current,

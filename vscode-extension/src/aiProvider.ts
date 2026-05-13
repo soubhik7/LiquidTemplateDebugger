@@ -6,7 +6,7 @@ export interface AIValidationResult {
 }
 
 export class AIProvider {
-  private static readonly GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models?key=';
+  private static readonly GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
   public async validateKey(apiKey: string): Promise<AIValidationResult> {
     if (!apiKey) {
@@ -15,22 +15,31 @@ export class AIProvider {
 
     try {
       // Use built-in fetch (available in Node 18+)
-      const response = await fetch(`${AIProvider.GEMINI_API_URL}${apiKey}`);
+      const response = await fetch(AIProvider.GEMINI_BASE_URL, {
+        headers: { 'x-goog-api-key': apiKey }
+      });
       
       if (response.ok) {
         return { isValid: true };
       } else {
         const errorData = await response.json() as any;
-        const message = errorData?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+        // Sanitize error message (don't leak internal details)
+        const rawMessage = errorData?.error?.message || '';
+        const message = this.sanitizeErrorMessage(rawMessage) || `HTTP ${response.status}`;
         return { isValid: false, errorMessage: message };
       }
     } catch (err: any) {
-      return { isValid: false, errorMessage: err.message || String(err) };
+      return { isValid: false, errorMessage: 'Connection failed' };
     }
   }
 
+  private static readonly MODEL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/;
+
   public async generateTemplate(prompt: string, apiKey: string, model: string = 'gemini-3.1-flash-lite'): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    if (!AIProvider.MODEL_PATTERN.test(model)) {
+      throw new Error('Invalid model identifier');
+    }
+    const url = `${AIProvider.GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent`;
     
     const requestBody = {
       contents: [{
@@ -49,13 +58,17 @@ export class AIProvider {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
         body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         const errorData = await response.json() as any;
-        throw new Error(errorData?.error?.message || `AI Generation failed (HTTP ${response.status})`);
+        const rawMessage = errorData?.error?.message || '';
+        throw new Error(this.sanitizeErrorMessage(rawMessage) || `HTTP ${response.status}`);
       }
 
       const result = await response.json() as any;
@@ -68,7 +81,7 @@ export class AIProvider {
       // Clean up the response (remove markdown code blocks if present)
       return text.replace(/```liquid\n?|```\n?/g, '').trim();
     } catch (err: any) {
-      throw new Error(`AI Template Generation failed: ${err.message}`);
+      throw new Error(`AI Generation failed: ${err.message}`);
     }
   }
 
@@ -76,7 +89,9 @@ export class AIProvider {
     if (!apiKey) return [];
 
     try {
-      const response = await fetch(`${AIProvider.GEMINI_API_URL}${apiKey}`);
+      const response = await fetch(AIProvider.GEMINI_BASE_URL, {
+        headers: { 'x-goog-api-key': apiKey }
+      });
       if (!response.ok) return [];
 
       const data = await response.json() as any;
@@ -87,8 +102,18 @@ export class AIProvider {
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name.replace('models/', ''));
     } catch (err) {
-      console.error('Failed to list models:', err);
+      // Structured logging without leaking sensitive data
+      console.error('AI listModels failed');
       return [];
     }
+  }
+
+  private sanitizeErrorMessage(message: string): string {
+    if (!message) return '';
+    // Remove specific technical details like model names, account IDs, etc. if they appear in common patterns
+    return message
+      .replace(/models\/[a-zA-Z0-9-._]+/g, 'model')
+      .replace(/[a-f0-9]{24,}/gi, 'ID')
+      .trim();
   }
 }

@@ -4,6 +4,13 @@ import { DebuggerPanel } from './debuggerPanel';
 import { DebugEngine } from './debugEngine';
 import { AIProvider } from './aiProvider';
 
+// Constants for security limits
+const MAX_TEMPLATE_SIZE = 512 * 1024;  // 512KB
+const MAX_DATA_SIZE = 1024 * 1024;     // 1MB
+const MAX_EXPR_LENGTH = 2000;          // 2000 characters
+const VALID_FORMATS = ['json', 'xml', 'csv', 'text'] as const;
+const VALID_ACTIONS = ['continue', 'out', 'over', 'next', 'into'] as const;
+
 // One engine per workspace — persists across panel open/close
 const engine = new DebugEngine();
 const aiProvider = new AIProvider();
@@ -67,13 +74,13 @@ export function deactivate() {
 
 // ── Wire panel message handler ────────────────────────────────────────────────
 
-function wirePanel(panel: DebuggerPanel, _context: vscode.ExtensionContext): void {
+function wirePanel(panel: DebuggerPanel, context: vscode.ExtensionContext): void {
     panel.setMessageHandler(async (msg: any) => {
         if (msg.type !== 'api') { return undefined; }
         const { method, path: urlPath, body } = msg;
 
         try {
-            const result = await handleApiCall(method, urlPath, body);
+            const result = await handleApiCall(method, urlPath, body, context);
             return result;
         } catch (err: any) {
             return { error: err.message ?? String(err) };
@@ -83,7 +90,7 @@ function wirePanel(panel: DebuggerPanel, _context: vscode.ExtensionContext): voi
 
 // ── API router (mirrors the ASP.NET backend's endpoints) ─────────────────────
 
-async function handleApiCall(method: string, urlPath: string, body: any): Promise<any> {
+async function handleApiCall(method: string, urlPath: string, body: any, context: vscode.ExtensionContext): Promise<any> {
     const GET  = method === 'GET';
     const POST = method === 'POST';
     const DEL  = method === 'DELETE';
@@ -97,6 +104,20 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
     // POST /api/load
     if (POST && urlPath === '/api/load') {
         const { templateContent, dataContent, format } = body;
+        
+        // Security: Input size limits
+        if (templateContent?.length > MAX_TEMPLATE_SIZE) {
+            throw new Error(`Template exceeds size limit of ${MAX_TEMPLATE_SIZE / 1024}KB`);
+        }
+        if (dataContent?.length > MAX_DATA_SIZE) {
+            throw new Error(`Data exceeds size limit of ${MAX_DATA_SIZE / 1024}KB`);
+        }
+
+        // Security: Whitelist format
+        if (!VALID_FORMATS.includes(format?.toLowerCase())) {
+            throw new Error('Invalid format. Supported: json, xml, csv, text');
+        }
+
         await engine.initializeFromContent(templateContent, dataContent, format);
         return engine.getWebUIState();
     }
@@ -109,7 +130,7 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
 
     // POST /api/step  { action: 'next' | 'into' | 'over' | 'out' | 'continue' }
     if (POST && urlPath === '/api/step') {
-        const action: string = body?.action ?? 'next';
+        const action: any = VALID_ACTIONS.includes(body?.action) ? body.action : 'next';
         if (action === 'continue') {
             await engine.continue();
         } else if (action === 'out') {
@@ -131,6 +152,9 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
     // POST /api/evaluate  { expression }
     if (POST && urlPath === '/api/evaluate') {
         const expr: string = body?.expression ?? '';
+        if (expr.length > MAX_EXPR_LENGTH) {
+            throw new Error(`Expression exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+        }
         const value = await engine.evaluateExpression(expr);
         const transformations = await engine.extractTransformationsFromExpression(expr, engine.buildContext());
         const fmtValue = value === null || value === undefined ? 'nil' : String(value);
@@ -145,38 +169,54 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
 
     // POST /api/validate  { format }
     if (POST && urlPath === '/api/validate') {
-        return engine.validateOutput(body?.format ?? 'json');
+        const format = (body?.format || 'json').toLowerCase();
+        if (!VALID_FORMATS.includes(format as any)) {
+            throw new Error('Invalid format. Supported: json, xml, csv, text');
+        }
+        return engine.validateOutput(format);
     }
 
     // POST /api/breakpoint  { line, condition }
     if (POST && urlPath === '/api/breakpoint') {
-        const bp = engine.setBreakpoint(body.line, body.condition ?? undefined);
+        const condition = body.condition ?? undefined;
+        if (condition && condition.length > MAX_EXPR_LENGTH) {
+            throw new Error(`Condition exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+        }
+        const bp = engine.setBreakpoint(body.line, condition);
         return { id: bp.id, line: bp.line };
     }
 
     // DELETE /api/breakpoint/:id
     if (DEL && urlPath.startsWith('/api/breakpoint/') && !urlPath.endsWith('/toggle')) {
-        const id = Number(urlPath.split('/').pop());
+        const id = parseInt(urlPath.split('/').pop() ?? '', 10);
+        if (!Number.isFinite(id) || id <= 0) return { error: 'Invalid ID' };
         engine.removeBreakpoint(id);
         return { ok: true };
     }
 
     // POST /api/breakpoint/:id/toggle
     if (POST && urlPath.includes('/api/breakpoint/') && urlPath.endsWith('/toggle')) {
-        const id = Number(urlPath.split('/')[3]);
+        const parts = urlPath.split('/');
+        const id = parseInt(parts[3] || '', 10);
+        if (!Number.isFinite(id) || id <= 0) return { error: 'Invalid ID' };
         engine.toggleBreakpoint(id);
         return { ok: true };
     }
 
     // POST /api/watch  { expression }
     if (POST && urlPath === '/api/watch') {
-        const w = await engine.addWatch(body.expression);
+        const expr = body.expression ?? '';
+        if (expr.length > MAX_EXPR_LENGTH) {
+            throw new Error(`Expression exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+        }
+        const w = await engine.addWatch(expr);
         return { id: w.id };
     }
 
     // DELETE /api/watch/:id
     if (DEL && urlPath.startsWith('/api/watch/')) {
-        const id = Number(urlPath.split('/').pop());
+        const id = parseInt(urlPath.split('/').pop() ?? '', 10);
+        if (!Number.isFinite(id) || id <= 0) return { error: 'Invalid ID' };
         engine.removeWatch(id);
         return { ok: true };
     }
@@ -187,30 +227,65 @@ async function handleApiCall(method: string, urlPath: string, body: any): Promis
         return { ok: true };
     }
 
+    // ── AI Endpoints with SecretStorage ──────────────────────────────────────
+
+    // POST /api/ai/save-key
+    if (POST && urlPath === '/api/ai/save-key') {
+        const { apiKey } = body;
+        if (apiKey) {
+            await context.secrets.store('gemini-api-key', apiKey);
+            return { ok: true };
+        }
+        return { ok: false, error: 'API key is required' };
+    }
+
+    // GET /api/ai/get-key-status
+    if (GET && urlPath === '/api/ai/get-key-status') {
+        const key = await context.secrets.get('gemini-api-key');
+        return { hasKey: !!key };
+    }
+
     // POST /api/ai/validate-key
     if (POST && urlPath === '/api/ai/validate-key') {
         const { apiKey } = body;
-        return await aiProvider.validateKey(apiKey);
+        const keyToValidate = apiKey || await context.secrets.get('gemini-api-key');
+        if (!keyToValidate) return { isValid: false, errorMessage: 'No API key provided' };
+        return await aiProvider.validateKey(keyToValidate);
     }
 
     // POST /api/ai/list-models
     if (POST && urlPath === '/api/ai/list-models') {
         const { apiKey } = body;
-        const models = await aiProvider.listModels(apiKey);
+        const keyToUse = apiKey || await context.secrets.get('gemini-api-key');
+        if (!keyToUse) return { models: [] };
+        const models = await aiProvider.listModels(keyToUse);
         return { models };
     }
 
     // POST /api/ai/generate
     if (POST && urlPath === '/api/ai/generate') {
-        const { prompt, apiKey, model, dataContext, outputFormat, mappingDetails } = body;
-        let fullPrompt = `Generate a Liquid template based on this requirement: "${prompt}".`;
+        const { prompt, apiKey, model, dataContext, outputFormat, mappingDetails, sensitivePatterns } = body;
+        const keyToUse = apiKey || await context.secrets.get('gemini-api-key');
+        if (!keyToUse) throw new Error('AI API Key not configured');
+
+        // Security: Data Sanitization
+        const sanitizedPrompt = sanitizeData(prompt, sensitivePatterns || []);
+        const sanitizedMapping = sanitizeData(mappingDetails || '', sensitivePatterns || []);
+        const sanitizedDataContext = JSON.parse(sanitizeData(JSON.stringify(dataContext), sensitivePatterns || []));
+
+        // Security: Whitelist outputFormat
+        const safeOutputFormat = ['json', 'xml', 'text', 'csv'].includes((outputFormat || '').toLowerCase())
+            ? outputFormat
+            : 'json';
+
+        let fullPrompt = `Generate a Liquid template based on this requirement: "${sanitizedPrompt}".`;
         
-        if (mappingDetails && mappingDetails.trim()) {
-            fullPrompt += `\n\nReference Business Mapping Details:\n${mappingDetails}`;
+        if (sanitizedMapping && sanitizedMapping.trim()) {
+            fullPrompt += `\n\nReference Business Mapping Details:\n${sanitizedMapping}`;
         }
 
-        fullPrompt += `\n\nInput data context: ${JSON.stringify(dataContext)}
-Expected output format: ${outputFormat}
+        fullPrompt += `\n\nInput data context: ${JSON.stringify(sanitizedDataContext)}
+Expected output format: ${safeOutputFormat}
 
 IMPORTANT RULES for Azure Logic Apps compatibility:
 1. All root-level input variables MUST be prefixed with "content." (e.g., use {{ content.item }} instead of {{ item }}).
@@ -219,9 +294,40 @@ IMPORTANT RULES for Azure Logic Apps compatibility:
 
 Return ONLY the Liquid template code. No explanations. No markdown code blocks.`;
 
-        const template = await aiProvider.generateTemplate(fullPrompt, apiKey, model);
+        const template = await aiProvider.generateTemplate(fullPrompt, keyToUse, model);
         return { template };
     }
 
     return { error: `Unknown endpoint: ${method} ${urlPath}` };
+}
+
+/**
+ * Sanitizes sensitive data using provided regex patterns
+ */
+const MAX_PATTERNS = 20;
+const MAX_PATTERN_LENGTH = 200;
+
+function sanitizeData(input: string, patterns: string[]): string {
+    if (!input) return input;
+    let result = input;
+    
+    // Security: Filter patterns to prevent ReDoS
+    const safePatterns = (patterns || [])
+        .slice(0, MAX_PATTERNS)
+        .filter(p => typeof p === 'string' && p.length <= MAX_PATTERN_LENGTH)
+        .filter(p => !/(\+|\*|\{).*(\+|\*|\{)/.test(p)); // block nested quantifiers
+
+    for (const pattern of safePatterns) {
+        try {
+            const regex = new RegExp(pattern, 'gui');
+            result = result.replace(regex, '[REDACTED]');
+        } catch (e) {
+            // Ignore invalid regex patterns
+        }
+    }
+    // Default sanitization for common patterns if not provided
+    result = result.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]');
+    result = result.replace(/\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/g, '[CREDIT_CARD]');
+    
+    return result;
 }

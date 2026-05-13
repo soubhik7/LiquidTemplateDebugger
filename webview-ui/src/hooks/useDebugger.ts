@@ -6,7 +6,7 @@ import type { WebUIState } from '../types/app';
 let _reqId = 0;
 const _pending: Record<number, (result: unknown) => void> = {};
 
-function apiCall(method: string, path: string, body?: unknown): Promise<unknown> {
+export function apiCall(method: string, path: string, body?: unknown): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const id = ++_reqId;
     
@@ -33,6 +33,7 @@ export function useDebugger() {
   const setShowLoadModal = useAppStore((s) => s.setShowLoadModal);
   const clearExpanded = useAppStore((s) => s.clearExpandedState);
   const addToast = useAppStore((s) => s.addToast);
+  const aiConfig = useAppStore((s) => s.aiConfig);
 
   const tplPrefillRef = useRef<((tpl: string) => void) | null>(null);
 
@@ -175,6 +176,8 @@ export function useDebugger() {
     [refreshState]
   );
 
+  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const evaluate = useCallback(async (expression: string) => {
     let finalExpr = expression.trim();
     let isVirtual = false;
@@ -184,8 +187,10 @@ export function useDebugger() {
     const variables = ds?.state?.variables ?? [];
     if (ds?.isLoaded && !variables.find(v => v.name === finalExpr)) {
       const template = ds.templateSource ?? '';
+      // Security: Escape finalExpr to prevent ReDoS when used in the regex below
+      const escapedKey = escapeRegex(finalExpr);
       // Look for "key": "{{ expr }}" or "key": {{ expr }}
-      const virtualMatch = template.match(new RegExp(`["']?${finalExpr}["']?\\s*:\\s*(?:&quot;|&#039;|["'])?\\s*\\{\\{\\s*(.*?)\\s*\\}\\}`, 'i'));
+      const virtualMatch = template.match(new RegExp(`["']?${escapedKey}["']?\\s*:\\s*(?:&quot;|&#039;|["'])?\\s*\\{\\{\\s*(.*?)\\s*\\}\\}`, 'i'));
       if (virtualMatch && virtualMatch[1]) {
         finalExpr = virtualMatch[1].trim();
         isVirtual = true;
@@ -225,6 +230,15 @@ export function useDebugger() {
     if (!s || !s.isLoaded) {
       setShowLoadModal(true);
     }
+    // Restore AI enabled state from SecretStorage
+    try {
+      const { hasKey } = (await apiCall('GET', '/api/ai/get-key-status')) as { hasKey: boolean };
+      if (hasKey) {
+        useAppStore.getState().setAIConfig({ apiKey: '••••••••', enabled: true });
+      }
+    } catch (err) {
+      console.error('Failed to check AI key status:', err);
+    }
   }, [refreshState, setShowLoadModal]);
 
   return {
@@ -243,14 +257,24 @@ export function useDebugger() {
     validateOutput,
     copyToClipboard,
     refreshState,
+    saveAIKey: async (apiKey: string) => {
+      return apiCall('POST', '/api/ai/save-key', { apiKey }) as Promise<{ ok: boolean }>;
+    },
     validateAIKey: async (apiKey: string) => {
       return apiCall('POST', '/api/ai/validate-key', { apiKey }) as Promise<{ isValid: boolean; errorMessage?: string }>;
     },
-    generateAITemplate: async (prompt: string, apiKey: string, model: string, dataContext: any, outputFormat: string, mappingDetails?: string) => {
-      return apiCall('POST', '/api/ai/generate', { prompt, apiKey, model, dataContext, outputFormat, mappingDetails }) as Promise<{ template: string; error?: string }>;
+    generateAITemplate: async (prompt: string, model: string, dataContext: any, outputFormat: string, mappingDetails?: string) => {
+      return apiCall('POST', '/api/ai/generate', { 
+        prompt, 
+        model, 
+        dataContext, 
+        outputFormat, 
+        mappingDetails,
+        sensitivePatterns: aiConfig.sensitivePatterns 
+      }) as Promise<{ template: string; error?: string }>;
     },
-    listAIModels: async (apiKey: string) => {
-      return apiCall('POST', '/api/ai/list-models', { apiKey }) as Promise<{ models: string[] }>;
+    listAIModels: async () => {
+      return apiCall('POST', '/api/ai/list-models', {}) as Promise<{ models: string[] }>;
     },
     tplPrefillRef,
   };

@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* ─── Local Fonts (Zero Egress) ─────────────────────────────── */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/UcCm3FwrK3iLTcvnUwQT9g.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/tDbV2o-flEEny0FZhsfKu5WU4xD7OwE.woff2') format('woff2');
+}
+
 @theme {
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;

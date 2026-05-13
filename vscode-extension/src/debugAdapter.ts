@@ -15,6 +15,8 @@ import { DebugProtocol } from '@vscode/debugprotocol';
 import { DebugEngine } from './debugEngine';
 import * as path from 'path';
 
+const MAX_EXPR_LENGTH = 2000;
+
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     template: string;
     data: string;
@@ -186,7 +188,15 @@ export class LiquidDebugSession extends LoggingDebugSession {
         this.engine.clearBreakpoints();
         const breakpoints: DebugProtocol.Breakpoint[] = [];
         for (const src of (args.breakpoints || [])) {
-            const bp = this.engine.setBreakpoint(src.line, src.condition);
+            const condition = src.condition ?? undefined;
+            if (condition && condition.length > MAX_EXPR_LENGTH) {
+                // Return invalid breakpoint if condition is too long
+                const bp = new Breakpoint(false, src.line);
+                (bp as any).message = `Condition exceeds ${MAX_EXPR_LENGTH} chars`;
+                breakpoints.push(bp);
+                continue;
+            }
+            const bp = this.engine.setBreakpoint(src.line, condition);
             breakpoints.push(new Breakpoint(true, bp.line));
         }
         response.body = { breakpoints };
@@ -247,6 +257,9 @@ export class LiquidDebugSession extends LoggingDebugSession {
         args: DebugProtocol.EvaluateArguments
     ): Promise<void> {
         try {
+            if (args.expression && args.expression.length > MAX_EXPR_LENGTH) {
+                throw new Error(`Expression exceeds maximum length of ${MAX_EXPR_LENGTH} characters`);
+            }
             const value = await this.engine.evaluateExpression(args.expression);
             response.body = { result: this.fmt(value), variablesReference: 0 };
             this.sendResponse(response);
@@ -262,7 +275,12 @@ export class LiquidDebugSession extends LoggingDebugSession {
     ): void {
         switch (command) {
             case 'liquid.addWatch': {
-                const watch = this.engine.addWatch(args.expression);
+                const expr = args.expression ?? '';
+                if (expr.length > MAX_EXPR_LENGTH) {
+                    this.sendErrorResponse(response, { id: 2004, format: `Watch expression exceeds ${MAX_EXPR_LENGTH} chars`, showUser: true });
+                    return;
+                }
+                const watch = this.engine.addWatch(expr);
                 response.body = { watch };
                 break;
             }

@@ -10,6 +10,7 @@ node_modules/
 
 # VS Code extension build
 vscode-extension/out/
+vscode-extension/webview-ui/
 vscode-extension/*.vsix
 vscode-extension/.vscode-test/
 

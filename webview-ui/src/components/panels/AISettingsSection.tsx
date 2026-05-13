@@ -9,7 +9,7 @@ export function AISettingsSection() {
   const aiConfig = useAppStore((s) => s.aiConfig);
   const setAIConfig = useAppStore((s) => s.setAIConfig);
   const addToast = useAppStore((s) => s.addToast);
-  const { validateAIKey, listAIModels } = useDebugger();
+  const { validateAIKey, listAIModels, saveAIKey } = useDebugger();
 
   const [apiKey, setApiKey] = useState(aiConfig.apiKey || '');
   const [isValidating, setIsValidating] = useState(false);
@@ -22,10 +22,10 @@ export function AISettingsSection() {
     setApiKey(aiConfig.apiKey || '');
   }, [aiConfig.apiKey]);
 
-  const fetchModels = async (key: string) => {
+  const fetchModels = async () => {
     setIsLoadingModels(true);
     try {
-      const { models } = await listAIModels(key);
+      const { models } = await listAIModels();
       if (models && models.length > 0) {
         setAvailableModels(models);
         
@@ -47,7 +47,7 @@ export function AISettingsSection() {
 
   useEffect(() => {
     if (aiConfig.apiKey) {
-      fetchModels(aiConfig.apiKey);
+      fetchModels();
     }
   }, []);
 
@@ -71,13 +71,17 @@ export function AISettingsSection() {
       if (data.isValid) {
         setValidationStatus('valid');
         setAIConfig({ apiKey: apiKey.trim(), enabled: true });
+        
+        // Save to SecretStorage via extension host
+        await saveAIKey(apiKey.trim());
+
         addToast({
           title: 'Success',
           message: 'API key validated successfully!',
           type: 'success',
           duration: 3000,
         });
-        await fetchModels(apiKey.trim());
+        await fetchModels();
       } else {
         setValidationStatus('invalid');
         addToast({
