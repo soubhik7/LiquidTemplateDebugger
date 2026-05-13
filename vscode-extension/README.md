@@ -43,7 +43,7 @@ Experience a seamless transition from writing code to perfecting logic with our 
 ### **1. Rapid Launch**
 Access the debugger instantly via the **Activity Bar** icon. Our dedicated entry point ensures your workspace remains organized while keeping powerful tools just one click away.
 
-<img src="./images/step1_launch_shortcut.png" width="900" alt="Step 1: Launch Shortcut"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step1_launch_shortcut.png" width="900" alt="Step 1: Launch Shortcut"/>
 
 ---
 
@@ -53,11 +53,11 @@ Inputting sample data has never been easier. Use the interactive popup to paste 
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <img src="./images/step2_data_insert_popup.png" alt="Data Insertion Popup"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step2_data_insert_popup.png" alt="Data Insertion Popup"/><br>
       <i>Data Insertion Popup</i>
     </td>
     <td align="center" width="50%">
-      <img src="./images/step3_sample_data_selection.png" alt="Sample Data Selection"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step3_sample_data_selection.png" alt="Sample Data Selection"/><br>
       <i>Sample Data Selection</i>
     </td>
   </tr>
@@ -71,11 +71,11 @@ Take full control of your template execution. Start debugging with a single clic
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <img src="./images/step4_start_debugging.png" alt="Start Debugging"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step4_start_debugging.png" alt="Start Debugging"/><br>
       <i>Start Debugging</i>
     </td>
     <td align="center" width="50%">
-      <img src="./images/step6_breakpoint_and_its_window.png" alt="Breakpoint Management"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step6_breakpoint_and_its_window.png" alt="Breakpoint Management"/><br>
       <i>Breakpoint Management</i>
     </td>
   </tr>
@@ -86,7 +86,7 @@ Take full control of your template execution. Start debugging with a single clic
 ### **4. State-of-the-Art Debugger UI**
 Visualize your template's lifecycle in real-time. The main window provides a comprehensive view of variables, transformations, and live output rendering.
 
-<img src="./images/step5_debug_main_window.png" width="900" alt="Main Debugger Window"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step5_debug_main_window.png" width="900" alt="Main Debugger Window"/>
 
 ---
 
@@ -100,11 +100,11 @@ Configure your AI experience by providing your Gemini API key and selecting the 
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <img src="./images/step7_ai_settings.png" alt="AI Settings"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step7_ai_settings.png" alt="AI Settings"/><br>
       <i>AI Settings</i>
     </td>
     <td align="center" width="50%">
-      <img src="./images/step8_ai_model_selection.png" alt="Model Selection"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step8_ai_model_selection.png" alt="Model Selection"/><br>
       <i>Model Selection</i>
     </td>
   </tr>
@@ -116,15 +116,15 @@ Transform requirements into code instantly. Use **AI Mode** to describe your map
 <table width="100%">
   <tr>
     <td align="center" width="33%">
-      <img src="./images/step9_ai_mode.png" alt="AI Mode Entry"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step9_ai_mode.png" alt="AI Mode Entry"/><br>
       <i>AI Mode Entry</i>
     </td>
     <td align="center" width="33%">
-      <img src="./images/step10_ai_generated_template_main_window.png" alt="Main Window"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step10_ai_generated_template_main_window.png" alt="Main Window"/><br>
       <i>Main Window</i>
     </td>
     <td align="center" width="33%">
-      <img src="./images/step10_ai_genearted_template_window.png" alt="Alt View"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step10_ai_genearted_template_window.png" alt="Alt View"/><br>
       <i>Alternative View</i>
     </td>
   </tr>
@@ -137,7 +137,7 @@ Transform requirements into code instantly. Use **AI Mode** to describe your map
 ### **Themed Environments**
 Choose a look that matches your style. Our **Theme Selector** allows you to switch between premium visual presets, optimizing contrast and readability for your specific workflow.
 
-<img src="./images/theme_select_window.png" width="900" alt="Theme Selection Window"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/theme_select_window.png" width="900" alt="Theme Selection Window"/>
 
 ---
 
@@ -146,7 +146,7 @@ Choose a look that matches your style. Our **Theme Selector** allows you to swit
 ### **The Interactive Guide**
 Never leave your IDE to look up documentation again. The integrated **Guide** provides a searchable, categorized reference for all Liquid tags, filters, and operators with live examples.
 
-<img src="./images/step_11_guide_main_window.png" width="900" alt="Interactive Guide Window"/>
+<img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/step_11_guide_main_window.png" width="900" alt="Interactive Guide Window"/>
 
 ---
 
@@ -158,11 +158,11 @@ Experience the power of our rendering engine as it handles multi-pass transforma
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <img src="./images/screenshot-transformations1.png" alt="Variable Transformations"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-transformations1.png" alt="Variable Transformations"/><br>
       <i>Variable State Tracking</i>
     </td>
     <td align="center" width="50%">
-      <img src="./images/screenshot-transformations2.png" alt="Watch Expressions"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-transformations2.png" alt="Watch Expressions"/><br>
       <i>Real-Time Watch Expressions</i>
     </td>
   </tr>
@@ -184,11 +184,11 @@ Effortlessly switch between different template versions and sample data sets usi
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <img src="./images/screenshot-template-menu.png" alt="Template Menu"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-template-menu.png" alt="Template Menu"/><br>
       <i>Interactive Template Menu</i>
     </td>
     <td align="center" width="50%">
-      <img src="./images/screenshot-command-palette.png" alt="Command Palette"/><br>
+      <img src="https://raw.githubusercontent.com/soubhik7/LiquidTemplateDebugger/main/vscode-extension/images/screenshot-command-palette.png" alt="Command Palette"/><br>
       <i>Command Palette Access</i>
     </td>
   </tr>
