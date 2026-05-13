@@ -733,7 +733,7 @@ Set environment variables:
 
 ## Summary
 
-The Liquid Template Debugger provides a comprehensive debugging experience for DotLiquid templates through:
+The Liquid Template Debuggervides a comprehensive debugging experience for DotLiquid templates through:
 
 1. **Step-by-step execution** with full state visibility
 2. **Variable tracking** with origin and transformation history
