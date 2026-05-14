@@ -160,12 +160,18 @@ export function OnboardingTour() {
   // loadCompleted: template is loaded AND modal is closed (at the load step)
   const loadCompleted = !!step.waitForLoad && isLoaded && !showLoadModal;
 
-  // hideOverlay: dark overlay + card fade out while LoadModal is open OR right after load
-  // For non-waitForLoad steps we still hide so LoadModal has full attention.
-  const hideOverlay = showLoadModal || loadCompleted;
+  // inModalPhase: LoadModal is open during the waitForLoad step
+  // → keep tour visible but re-anchor spotlight to the modal itself
+  const inModalPhase = !!step.waitForLoad && showLoadModal;
+
+  // hideOverlay: only suppress overlay when modal opens at NON-waitForLoad steps
+  const hideOverlay = showLoadModal && !step.waitForLoad;
 
   // isWaiting: at load step, modal is closed, but template not yet loaded
   const isWaiting = !!step.waitForLoad && !isLoaded && !showLoadModal;
+
+  // When modal is open at step 2, spotlight the whole modal dialog instead of btn-load
+  const effectiveTargetId = inModalPhase ? 'load-modal-content' : step.targetId;
 
   // ── Reset to step 0 each time the tour is (re)opened ────────────────────
   useEffect(() => {
@@ -201,15 +207,16 @@ export function OnboardingTour() {
 
   // ── Auto-advance: waitForLoad ─────────────────────────────────────────────
   // Fires when template is loaded AND modal closed. No source-comparison needed.
+  // Guard: showOnboarding prevents firing after user exits tour mid-way.
   useEffect(() => {
-    if (!loadCompleted) return;
+    if (!showOnboarding || !loadCompleted) return;
     const t = setTimeout(handleNext, 420);
     return () => clearTimeout(t);
-  }, [loadCompleted, handleNext]);
+  }, [showOnboarding, loadCompleted, handleNext]);
 
   // ── Auto-advance: clickToAdvance ─────────────────────────────────────────
   useEffect(() => {
-    if (!step.clickToAdvance) return;
+    if (!showOnboarding || !step.clickToAdvance) return;
     let done = false;
     if (step.targetId === 'nav-generator') done = activeView === 'generator';
     else if (step.targetId === 'nav-guide')    done = activeView === 'guide';
@@ -217,7 +224,7 @@ export function OnboardingTour() {
     if (!done) return;
     const t = setTimeout(handleNext, 580);
     return () => clearTimeout(t);
-  }, [step.clickToAdvance, step.targetId, activeView, handleNext]);
+  }, [showOnboarding, step.clickToAdvance, step.targetId, activeView, handleNext]);
 
   // ── Close LoadModal when leaving the load step ───────────────────────────
   // Guard: only run when tour is active AND targetId exists (step 0 has no targetId)
@@ -229,14 +236,15 @@ export function OnboardingTour() {
   }, [showOnboarding, currentStep, showLoadModal, setShowLoadModal, step.targetId]);
 
   // ── Element finder with up to 5 retries (120 ms apart) ──────────────────
+  // Uses effectiveTargetId so during modal phase it spotlights the modal dialog
   const updateTargetRect = useCallback(() => {
     retryRef.current.forEach(clearTimeout);
     retryRef.current = [];
 
-    if (!step?.targetId) { setTargetRect(null); return; }
+    if (!effectiveTargetId) { setTargetRect(null); return; }
 
     const attempt = (n: number) => {
-      const el = document.getElementById(step.targetId!);
+      const el = document.getElementById(effectiveTargetId);
       if (el) {
         const r = el.getBoundingClientRect();
         if (r.width > 0 && r.height > 0) { setTargetRect(r); return; }
@@ -251,7 +259,7 @@ export function OnboardingTour() {
 
     const t0 = setTimeout(() => attempt(0), 100);
     retryRef.current.push(t0);
-  }, [step]);
+  }, [effectiveTargetId]);
 
   useEffect(() => {
     updateTargetRect();
@@ -260,7 +268,7 @@ export function OnboardingTour() {
       window.removeEventListener('resize', updateTargetRect);
       retryRef.current.forEach(clearTimeout);
     };
-  }, [updateTargetRect, activeView]);
+  }, [updateTargetRect, activeView, showLoadModal]);
 
   // ── Early exit ───────────────────────────────────────────────────────────
   if (!showOnboarding) return null;
@@ -285,7 +293,10 @@ export function OnboardingTour() {
     const { top, left, bottom, right, width, height } = tr!;
     let x: number, y: number;
 
-    switch (step.position) {
+    // During modal phase, position card to the side of the dialog
+    const effectivePosition = inModalPhase ? 'right' : step.position;
+
+    switch (effectivePosition) {
       case 'bottom':
         x = left + width / 2 - CARD_W / 2;
         y = bottom + PAD;
@@ -320,9 +331,10 @@ export function OnboardingTour() {
 
   // ── Arrow position ────────────────────────────────────────────────────────
   const getEffectivePos = () => {
-    if (!tr) return step.position ?? 'bottom';
+    const base = inModalPhase ? 'right' : (step.position ?? 'bottom');
+    if (!tr) return base;
     const PAD = 22;
-    let pos = step.position ?? 'bottom';
+    let pos = base;
     if (pos === 'top'   && tr.top - CARD_H - PAD < SAFE_T) pos = 'bottom';
     if (pos === 'right' && cX + CARD_W > VW - SAFE)         pos = 'left';
     if (pos === 'left'  && cX < SAFE)                        pos = 'right';
@@ -428,45 +440,7 @@ export function OnboardingTour() {
         )}
       </AnimatePresence>
 
-      {/* ── Floating chip (waitForLoad step while modal open OR just loaded) ── */}
-      <AnimatePresence>
-        {step.waitForLoad && hideOverlay && (
-          <motion.div
-            key="load-chip"
-            initial={{ opacity: 0, y: -14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-            style={{
-              position: 'absolute', top: 14, left: '50%',
-              transform: 'translateX(-50%)',
-              background: loadCompleted ? '#22c55e' : step.color,
-              color: 'white', fontSize: 12, fontWeight: 700,
-              padding: '8px 20px', borderRadius: 99,
-              pointerEvents: 'none',
-              boxShadow: `0 6px 28px ${loadCompleted ? '#22c55e' : step.color}55, 0 2px 8px rgba(0,0,0,0.28)`,
-              display: 'flex', alignItems: 'center', gap: 8,
-              whiteSpace: 'nowrap', letterSpacing: '-0.1px',
-            }}
-          >
-            {loadCompleted ? (
-              <>
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 18 }}>
-                  <CheckCircle2 size={14} />
-                </motion.div>
-                Template loaded — continuing tour…
-              </>
-            ) : (
-              <>
-                <motion.div animate={{ scale: [1, 1.18, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                  <PlayCircle size={14} />
-                </motion.div>
-                Select a template and click Load to continue
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* No floating chip — modal-phase guidance is shown inside the card */}
 
       {/* ── Tour card ──────────────────────────────────────────────────────── */}
       <AnimatePresence mode="wait">
@@ -567,7 +541,7 @@ export function OnboardingTour() {
                 </motion.div>
               )}
 
-              {/* Load hint */}
+              {/* Load hint — waiting for user to open the modal */}
               {step.waitForLoad && isWaiting && (
                 <motion.div
                   animate={{ opacity: [0.7, 1, 0.7] }}
@@ -582,6 +556,44 @@ export function OnboardingTour() {
                 >
                   <PlayCircle size={12} />
                   Click the button above to load a template…
+                </motion.div>
+              )}
+
+              {/* Modal-phase hint — LoadModal is open, guide user through it */}
+              {inModalPhase && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22 }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '7px 11px',
+                    background: `${step.color}0e`, border: `1px solid ${step.color}20`,
+                    borderRadius: 9, marginBottom: 13,
+                    fontSize: 11.5, fontWeight: 600, color: step.color,
+                  }}
+                >
+                  <MousePointer size={12} />
+                  Pick a sample or paste your template, then click&nbsp;<b>Start Debugging</b>
+                </motion.div>
+              )}
+
+              {/* Success badge — template already loaded, auto-advancing */}
+              {step.waitForLoad && loadCompleted && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '7px 11px',
+                    background: '#22c55e12', border: '1px solid #22c55e30',
+                    borderRadius: 9, marginBottom: 13,
+                    fontSize: 11.5, fontWeight: 600, color: '#22c55e',
+                  }}
+                >
+                  <CheckCircle2 size={12} />
+                  Template loaded — continuing tour…
                 </motion.div>
               )}
 

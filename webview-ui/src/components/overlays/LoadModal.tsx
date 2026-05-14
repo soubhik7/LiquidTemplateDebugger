@@ -122,6 +122,7 @@ export function LoadModal({ open, onClose, onLoad, prefillRef }: LoadModalProps)
           }}
         >
           <motion.div
+            id="load-modal-content"
             variants={modalContent}
             initial="hidden"
             animate="visible"

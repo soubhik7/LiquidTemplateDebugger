@@ -24,8 +24,6 @@ export function WorkspaceLayout() {
   const addToast = useAppStore((s) => s.addToast);
   const setValidationErrors = useAppStore((s) => s.setValidationErrors);
   const setInspectorTab = useAppStore((s) => s.setInspectorTab);
-  const hasSeenOnboarding = useAppStore((s) => s.hasSeenOnboarding);
-  const showOnboarding = useAppStore((s) => s.showOnboarding);
   const setShowOnboarding = useAppStore((s) => s.setShowOnboarding);
 
   const {
@@ -64,18 +62,28 @@ export function WorkspaceLayout() {
     { key: 'F5', ctrl: true, shift: true, action: reset },
   ]);
 
-  // Initialize on mount
+  // Initialize once on mount; check onboarding AFTER init() resolves so we know
+  // whether it opened the LoadModal. Reading showLoadModal via getState() snapshot
+  // keeps it out of the dep array — prevents the modal re-opening loop where
+  // Cancel → showLoadModal=false → effect re-runs → init() → modal reopens.
   useEffect(() => {
-    init();
+    const run = async () => {
+      await init();
+      const { hasSeenOnboarding: seen, showLoadModal: modal, showOnboarding: showing } =
+        useAppStore.getState();
+      if (!seen && !modal && !showing) {
+        setShowOnboarding(true);
+      }
+    };
+    run();
+  }, [init, setShowOnboarding]); // intentionally omit showLoadModal/showOnboarding/hasSeenOnboarding
+
+  // Validate template whenever the source changes (separate from init)
+  useEffect(() => {
     if (debugState?.templateSource) {
       setValidationErrors(validateTemplate(debugState.templateSource));
     }
-
-    // Trigger onboarding for first-time users, but only if no modal is blocking and not already showing
-    if (!hasSeenOnboarding && !showLoadModal && !showOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, [init, debugState?.templateSource, setValidationErrors, hasSeenOnboarding, setShowOnboarding, showLoadModal, showOnboarding]);
+  }, [debugState?.templateSource, setValidationErrors]);
 
   const toast = useCallback(
     (message: string, type: 'success' | 'error' | 'info', title?: string, duration = 6000) => {
