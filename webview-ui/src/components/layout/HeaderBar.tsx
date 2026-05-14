@@ -121,7 +121,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
             Liquid Debugger
           </span>
           <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>
-            v1.2.0 Enterprise
+            v2.0 Enterprise
           </span>
         </div>
       </div>

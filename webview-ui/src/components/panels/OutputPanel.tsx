@@ -137,8 +137,8 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         overflow: 'hidden',
       }}
     >
-      {/* Scope breadcrumb */}
-      {scopeStack.length > 0 && (
+      {/* Scope breadcrumb - Filter out 'root' */}
+      {scopeStack.filter(s => s !== 'root').length > 0 && (
         <div
           style={{
             display: 'flex',
@@ -153,7 +153,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             flexShrink: 0,
           }}
         >
-          {scopeStack.map((s, i) => (
+          {scopeStack.filter(s => s !== 'root').map((s, i) => (
             <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               {i > 0 && <span>›</span>}
               <span

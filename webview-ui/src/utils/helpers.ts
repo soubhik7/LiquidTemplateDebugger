@@ -12,21 +12,32 @@ export function highlightSyntax(escapedLine: string): string {
 
   // 1. Handle "key": "{{ expr }}" or "key": {{ expr }} -> Hover on key (virtual)
   result = result.replace(
-    /((?:&quot;|&#039;|["'])?([a-zA-Z0-9_]+)(?:&quot;|&#039;|["'])?)(\s*:\s*(?:&quot;|&#039;|["'])?\s*)(\{\{-?\s*.*?\s*-?\}\})/g,
-    (match, keyPart, keyName, colonPart, exprPart) => {
-      return `<span class="tok-output" data-expr="${keyName}" data-type="virtual">${keyPart}</span>${colonPart}${exprPart}`;
+    /((?:&quot;|&#039;|["'])?([a-zA-Z0-9_.]+)(?:&quot;|&#039;|["'])?)(\s*:\s*(?:&quot;|&#039;|["'])?\s*)(\{\{-?\s*(.*?)\s*-?\}\})/g,
+    (match, keyPart, keyName, colonPart, exprWrapper, exprContent) => {
+      // Use the full expression (post-operation) for the key hover
+      return `<span class="tok-output" data-expr="${exprContent.trim()}" data-type="virtual">${keyPart}</span>${colonPart}${exprWrapper}`;
     }
   );
 
-  // 2. Handle {{ expr }} -> Full hover
+  // 2. Handle {{ expr }} -> Full hover with split pre/post filter zones
   result = result.replace(
     /(\{\{-?\s*)(.*?)(\s*-?\}\})/g,
     (match, p1, p2, p3) => {
-      // Internal highlighting for expressions
-      let expr = p2;
-      // Highlight strings within expressions
-      expr = expr.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>');
-      return `<span class="tok-output" data-expr="${p2}" data-type="output">${p1}${expr}${p3}</span>`;
+      // If this was already processed as a virtual hover by Rule 1, we still want to enhance the expression part
+      let fullExpr = p2;
+      let parts = fullExpr.split('|');
+      let base = parts[0];
+      let filters = parts.slice(1).join('|');
+      
+      let baseHighlighted = base.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>');
+      let filtersHighlighted = filters ? filters.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>') : '';
+      
+      // Wrap base (pre-filter) as 'var' and filters (post-filter) as 'output'
+      let res = `<span class="tok-output" data-expr="${base.trim()}" data-type="var">${p1}${baseHighlighted}${filters ? '' : p3}</span>`;
+      if (filters) {
+        res += `<span class="tok-output" data-expr="${fullExpr.trim()}" data-type="output">|${filtersHighlighted}${p3}</span>`;
+      }
+      return res;
     }
   );
 
