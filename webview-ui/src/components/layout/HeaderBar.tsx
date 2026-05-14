@@ -129,6 +129,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       <div style={{ width: 1, height: 24, background: 'var(--border-primary)', margin: '0 4px' }} />
 
       <AnimatedButton
+        id="btn-load"
         variant="ghost"
         size="sm"
         icon={<FolderOpen size={14} strokeWidth={STROKE_WIDTH} />}
@@ -246,6 +247,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       </div>
 
       <AnimatedButton
+        id="btn-reset"
         variant="ghost"
         size="sm"
         icon={<RotateCcw size={14} strokeWidth={STROKE_WIDTH} />}
@@ -303,6 +305,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
           return (
             <button
               key={v.id}
+              id={`nav-${v.id}`}
               onClick={() => setActiveView(v.id as any)}
               style={{
                 display: 'flex',
@@ -352,6 +355,7 @@ export function HeaderBar({ onLoad, onStep, onReset, onToggleBPAtCurrentLine }: 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         {/* Theme */}
         <motion.button
+          id="nav-theme"
           whileHover={{ scale: 1.05, background: 'var(--bg-hover)' }}
           whileTap={{ scale: 0.95 }}
           onClick={cycleTheme}

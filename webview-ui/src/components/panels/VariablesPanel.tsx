@@ -25,11 +25,32 @@ export function VariablesPanel() {
   const variables = debugState?.state?.variables ?? [];
   const loaded = !!debugState?.isLoaded;
 
+  // Deep search helper
+  const matchesSearch = (obj: any, query: string): boolean => {
+    if (!obj) return false;
+    const q = query.toLowerCase();
+    
+    if (typeof obj === 'string') return obj.toLowerCase().includes(q);
+    if (typeof obj === 'number') return String(obj).includes(q);
+    
+    if (Array.isArray(obj)) {
+      return obj.some(item => matchesSearch(item, query));
+    }
+    
+    if (typeof obj === 'object') {
+      return Object.entries(obj).some(([key, val]) => 
+        key.toLowerCase().includes(q) || matchesSearch(val, query)
+      );
+    }
+    
+    return false;
+  };
+
   const filtered = varFilter
     ? variables.filter(
         (v) =>
           v.name.toLowerCase().includes(varFilter.toLowerCase()) ||
-          (v.currentValue ?? '').toLowerCase().includes(varFilter.toLowerCase())
+          matchesSearch(v.rawValue, varFilter)
       )
     : variables;
 
@@ -66,13 +87,14 @@ export function VariablesPanel() {
                 fontSize: 10,
                 padding: '2px 8px',
                 borderRadius: 20,
-                background: 'var(--accent-soft)',
-                color: 'var(--accent)',
+                background: varFilter ? 'var(--accent)' : 'var(--accent-soft)',
+                color: varFilter ? 'white' : 'var(--accent)',
                 fontWeight: 800,
-                lineHeight: 1
+                lineHeight: 1,
+                boxShadow: varFilter ? '0 0 10px var(--accent-soft)' : 'none'
               }}
             >
-              {variables.length}
+              {varFilter ? `${filtered.length} matches` : variables.length}
             </span>
         )}
         <div style={{ flex: 1 }} />

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useAppStore, getAccentHex } from '../../store/useAppStore';
-import { Palette, Sun, Moon, Info, Github, Sparkles, Check, Monitor, Layout, ExternalLink, Pipette } from 'lucide-react';
+import { Palette, Sun, Moon, Info, Github, Sparkles, Check, Monitor, Layout, ExternalLink, Pipette, PlayCircle } from 'lucide-react';
 import { ACCENT_COLORS } from '../../utils/constants';
 import type { Theme } from '../../types/app';
 import { useRef, useState } from 'react';
@@ -82,6 +82,8 @@ export function SettingsPanel() {
   const setTheme = useAppStore((s) => s.setTheme);
   const accentColor = useAppStore((s) => s.accentColor);
   const setAccentColor = useAppStore((s) => s.setAccentColor);
+  const setShowOnboarding = useAppStore((s) => s.setShowOnboarding);
+  const setActiveView = useAppStore((s) => s.setActiveView);
   const [activeTab, setActiveTab] = useState<TabId>('appearance');
   const colorInputRef = useRef<HTMLInputElement>(null);
 
@@ -368,7 +370,7 @@ export function SettingsPanel() {
                       </div>
                       <div>
                         <h3 style={{ fontSize: 20, fontWeight: 950, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>Liquid Template Debugger</h3>
-                        <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 800, margin: '2px 0 0 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Enterprise • v1.2.5</p>
+                        <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 800, margin: '2px 0 0 0', textTransform: 'uppercase', letterSpacing: '1px' }}>v2.0 Enterprise</p>
                       </div>
                   </div>
 
@@ -415,19 +417,55 @@ export function SettingsPanel() {
                   </div>
                 </section>
                 
-                <div style={{ marginTop: 32, padding: '0 8px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 16 }}>RESOURCES</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {[
-                      { label: 'Documentation', icon: ExternalLink, href: '#' },
-                      { label: 'Sample Templates', icon: Sparkles, href: '#' },
-                      { label: 'Community Support', icon: Github, href: '#' },
-                    ].map((item, i) => (
-                      <a key={i} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
-                        <item.icon size={14} style={{ color: 'var(--accent)' }} />
-                        {item.label}
-                      </a>
-                    ))}
+                <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 16 }}>RESOURCES</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {[
+                        { label: 'Documentation', icon: ExternalLink, href: '#' },
+                        { label: 'Sample Templates', icon: Sparkles, href: '#' },
+                        { label: 'Community Support', icon: Github, href: '#' },
+                      ].map((item, i) => (
+                        <a key={i} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                          <item.icon size={14} style={{ color: 'var(--accent)' }} />
+                          {item.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 16 }}>TUTORIAL</div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setShowOnboarding(true);
+                        setActiveView('debugger');
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '16px 20px',
+                        background: 'var(--accent-bg)',
+                        border: '1px solid var(--accent-soft)',
+                        borderRadius: 16,
+                        color: 'var(--accent)',
+                        fontSize: 14,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left',
+                        boxShadow: 'var(--shadow-md)'
+                      }}
+                    >
+                      <PlayCircle size={20} />
+                      <div>
+                        <div style={{ lineHeight: 1.2 }}>Restart Guide</div>
+                        <div style={{ fontSize: 10, opacity: 0.7, fontWeight: 600, marginTop: 2 }}>Interactive end-to-end tutorial</div>
+                      </div>
+                    </motion.button>
                   </div>
                 </div>
               </>

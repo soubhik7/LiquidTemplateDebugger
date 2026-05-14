@@ -122,7 +122,6 @@ export function AIGeneratorView() {
     }
     const ok = await loadTemplate(generatedTemplate, data, format);
     if (ok) {
-      setActiveView('debugger');
       addToast({
         title: 'Ready',
         message: 'Template loaded into debugger.',

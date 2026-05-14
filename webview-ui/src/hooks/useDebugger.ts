@@ -34,6 +34,7 @@ export function useDebugger() {
   const clearExpanded = useAppStore((s) => s.clearExpandedState);
   const addToast = useAppStore((s) => s.addToast);
   const aiConfig = useAppStore((s) => s.aiConfig);
+  const setActiveView = useAppStore((s) => s.setActiveView);
 
   const tplPrefillRef = useRef<((tpl: string) => void) | null>(null);
 
@@ -73,6 +74,7 @@ export function useDebugger() {
           return false;
         }
         setDebugState(s as WebUIState);
+        setActiveView('debugger');
         return true;
       } finally {
         setLoading(false);
@@ -88,6 +90,7 @@ export function useDebugger() {
       if (s && !(s as WebUIState).error) {
         clearExpanded();
         setDebugState(s as WebUIState);
+        setActiveView('debugger');
         setShowLoadModal(false);
         return true;
       }

@@ -45,6 +45,11 @@ interface AppState {
   setActiveView: (view: 'debugger' | 'settings' | 'guide' | 'generator') => void;
   setValidationErrors: (errors: any[]) => void;
 
+  // Onboarding
+  hasSeenOnboarding: boolean;
+  showOnboarding: boolean;
+  setShowOnboarding: (v: boolean) => void;
+
   // AI Configuration
   aiConfig: AIConfiguration;
   showGenerateModal: boolean;
@@ -102,6 +107,8 @@ export const useAppStore = create<AppState>()(
       dataEditMode: false,
       activeView: 'debugger',
       validationErrors: [],
+      hasSeenOnboarding: false,
+      showOnboarding: false, // Will be set to true on mount if hasSeenOnboarding is false
       
       // AI Configuration
       aiConfig: {
@@ -174,6 +181,7 @@ export const useAppStore = create<AppState>()(
       setShowLoadModal: (v) => set({ showLoadModal: v }),
       setTemplateEditMode: (v) => set({ templateEditMode: v }),
       setDataEditMode: (v) => set({ dataEditMode: v }),
+      setShowOnboarding: (v) => set({ showOnboarding: v, hasSeenOnboarding: v ? false : true }),
       clearExpandedState: () => set({ expandedVars: new Set(), expandedWatches: new Set(), expandedBreakpoints: new Set() }),
     }),
     {
@@ -187,6 +195,7 @@ export const useAppStore = create<AppState>()(
           ...s.aiConfig,
           apiKey: undefined, // Security: Never persist the API key to localStorage
         },
+        hasSeenOnboarding: s.hasSeenOnboarding,
       }),
       merge: (persisted, current) => ({
         ...current,

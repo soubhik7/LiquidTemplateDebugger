@@ -12,6 +12,7 @@ import { GuidePanel } from '../panels/GuidePanel';
 import { LoadModal } from '../overlays/LoadModal';
 import { AIGeneratorView } from '../panels/AIGeneratorView';
 import { ToastContainer } from '../shared/Toast';
+import { OnboardingTour } from '../overlays/OnboardingTour';
 import { useDebugger } from '../../hooks/useDebugger';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { validateTemplate } from '../../utils/validator';
@@ -23,6 +24,9 @@ export function WorkspaceLayout() {
   const addToast = useAppStore((s) => s.addToast);
   const setValidationErrors = useAppStore((s) => s.setValidationErrors);
   const setInspectorTab = useAppStore((s) => s.setInspectorTab);
+  const hasSeenOnboarding = useAppStore((s) => s.hasSeenOnboarding);
+  const showOnboarding = useAppStore((s) => s.showOnboarding);
+  const setShowOnboarding = useAppStore((s) => s.setShowOnboarding);
 
   const {
     init,
@@ -66,7 +70,12 @@ export function WorkspaceLayout() {
     if (debugState?.templateSource) {
       setValidationErrors(validateTemplate(debugState.templateSource));
     }
-  }, [init, debugState?.templateSource, setValidationErrors]);
+
+    // Trigger onboarding for first-time users, but only if no modal is blocking and not already showing
+    if (!hasSeenOnboarding && !showLoadModal && !showOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [init, debugState?.templateSource, setValidationErrors, hasSeenOnboarding, setShowOnboarding, showLoadModal, showOnboarding]);
 
   const toast = useCallback(
     (message: string, type: 'success' | 'error' | 'info', title?: string, duration = 6000) => {
@@ -274,6 +283,8 @@ export function WorkspaceLayout() {
         onLoad={handleLoadTemplate}
         prefillRef={tplPrefillRef}
       />
+
+      <OnboardingTour />
 
       <ToastContainer />
     </motion.div>

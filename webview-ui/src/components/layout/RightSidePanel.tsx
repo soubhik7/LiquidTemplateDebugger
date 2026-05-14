@@ -150,15 +150,17 @@ export function RightSidePanel(props: any) {
   const problemsCount = validationErrors.length;
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100%', 
-      background: 'var(--bg-surface)',
-      borderLeft: '1px solid var(--border-primary)',
-      overflowY: 'auto',
-      overflowX: 'hidden'
-    }}>
+    <div 
+      id="inspector-panel"
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%', 
+        background: 'var(--bg-surface)',
+        borderLeft: '1px solid var(--border-primary)',
+        overflowY: 'auto',
+        overflowX: 'hidden'
+      }}>
       <AccordionSection
         id="variables"
         title="Variables"

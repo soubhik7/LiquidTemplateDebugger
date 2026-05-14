@@ -110,13 +110,15 @@ export function GuidePanel() {
   }, [selectedItem]);
 
   return (
-    <div style={{
-      display: 'flex',
-      height: '100%',
-      background: 'var(--bg-panel)',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
+    <div 
+      id="guide-panel"
+      style={{
+        display: 'flex',
+        height: '100%',
+        background: 'var(--bg-panel)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
       {/* Main List Area */}
       <div style={{
         flex: 1,
