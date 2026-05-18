@@ -6,6 +6,7 @@ import {
   PlayCircle, Settings, BookOpen, Zap, MousePointer,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { apiCall } from '../../hooks/useDebugger';
 
 interface TourStep {
   title: string;
@@ -182,6 +183,13 @@ export function OnboardingTour() {
   }, [showOnboarding]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
+  const completeTour = useCallback(() => {
+    setShowOnboarding(false);
+    apiCall('POST', '/api/onboarding/complete').catch((err) => {
+      console.error('Failed to save onboarding seen state:', err);
+    });
+  }, [setShowOnboarding]);
+
   const handleNext = useCallback(() => {
     if (currentStep < STEPS.length - 1) {
       const next = currentStep + 1;
@@ -190,9 +198,9 @@ export function OnboardingTour() {
       if (ns.view && ns.view !== activeView) setActiveView(ns.view);
     } else {
       setActiveView('debugger');
-      setShowOnboarding(false);
+      completeTour();
     }
-  }, [currentStep, activeView, setActiveView, setShowOnboarding]);
+  }, [currentStep, activeView, setActiveView, completeTour]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) {
@@ -203,7 +211,7 @@ export function OnboardingTour() {
     }
   }, [currentStep, activeView, setActiveView]);
 
-  const handleSkip = useCallback(() => setShowOnboarding(false), [setShowOnboarding]);
+  const handleSkip = useCallback(() => completeTour(), [completeTour]);
 
   // ── Auto-advance: waitForLoad ─────────────────────────────────────────────
   // Fires when template is loaded AND modal closed. No source-comparison needed.

@@ -193,6 +193,34 @@ export class TemplateParser {
 
     async evaluateExpression(expression: string, context: any): Promise<any> {
         try {
+            if (expression.includes('{%') || expression.includes('{{')) {
+                // Try rendering the block directly first
+                try {
+                    const cleanExpr = expression
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .replace(/&#039;/g, "'");
+                    const result = await this.liquid.parseAndRender(cleanExpr, context);
+                    return this.coerce(result);
+                } catch {
+                    // Fallback: extract key expression from the first tag
+                    const match = expression.match(/\{%-?\s*(case|if|unless|elsif)\s+(.*?)\s*-?%\}/);
+                    if (match) {
+                        let innerExpr = match[2].trim();
+                        innerExpr = innerExpr
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#39;/g, "'")
+                            .replace(/&#039;/g, "'");
+                        return await this.liquid.evalValue(innerExpr, context);
+                    }
+                }
+            }
             return await this.liquid.evalValue(expression, context);
         } catch {
             try {

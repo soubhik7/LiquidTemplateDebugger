@@ -4,7 +4,7 @@ import { Wand2, Edit3, Check, ListTree, AlertTriangle, ChevronsUpDown, ChevronsD
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { TreeView } from '../shared/TreeView';
-import { beautifyContent, tryParseJson, xmlToJson, detectFormat, escapeHtml } from '../../utils/helpers';
+import { beautifyContent, tryParseJson, xmlToJson, detectFormat, escapeHtml, highlightDataSyntax } from '../../utils/helpers';
 import { findFoldRanges, type FoldRange } from '../../utils/folding';
 
 interface DataPanelProps {
@@ -319,7 +319,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
 
               const range = foldStartMap.get(ln);
               const isFolded = foldedLines.has(ln);
-              const escaped = escapeHtml(line);
+              const escaped = highlightDataSyntax(escapeHtml(line));
 
               return (
                 <div

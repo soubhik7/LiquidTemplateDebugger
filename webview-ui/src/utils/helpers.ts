@@ -10,12 +10,38 @@ export function escapeHtml(s: string): string {
 export function highlightSyntax(escapedLine: string): string {
   let result = escapedLine;
 
-  // 1. Handle "key": "{{ expr }}" or "key": {{ expr }} -> Hover on key (virtual)
+  // 1. Handle "key": "{{ expr }}" or "key": "{% tag block %}" -> Hover on key (virtual)
   result = result.replace(
-    /((?:&quot;|&#039;|["'])?([a-zA-Z0-9_.]+)(?:&quot;|&#039;|["'])?)(\s*:\s*(?:&quot;|&#039;|["'])?\s*)(\{\{-?\s*(.*?)\s*-?\}\})/g,
-    (match, keyPart, keyName, colonPart, exprWrapper, exprContent) => {
-      // Use the full expression (post-operation) for the key hover
-      return `<span class="tok-output" data-expr="${exprContent.trim()}" data-type="virtual">${keyPart}</span>${colonPart}${exprWrapper}`;
+    /((?:&quot;|&#039;|["'])?([a-zA-Z0-9_.]+)(?:&quot;|&#039;|["'])?)(\s*:\s*)((?:&quot;|&#039;|["'])?\s*.*?(?:{%|{{).*)/g,
+    (match, keyPart, keyName, colonPart, fullValuePart) => {
+      let expr = fullValuePart;
+      
+      // Extract exactly from the first {% or {{ to the last %} or }}
+      let firstIdx = expr.indexOf('{%');
+      if (firstIdx === -1) firstIdx = expr.indexOf('{{');
+      
+      let lastIdx = expr.lastIndexOf('%}');
+      if (lastIdx === -1) lastIdx = expr.lastIndexOf('}}');
+      
+      if (firstIdx !== -1 && lastIdx !== -1 && lastIdx > firstIdx) {
+          expr = expr.substring(firstIdx, lastIdx + 2);
+      }
+      
+      // If it is a simple {{ expr }} without quotes, extract the inside
+      const simpleMatch = expr.match(/^\{\{-?\s*(.*?)\s*-?\}\}$/);
+      if (simpleMatch) {
+         expr = simpleMatch[1];
+      }
+      
+      // Escape braces, percent signs, and quotes to prevent subsequent regex highlighting collisions in data-expr
+      const escapedExprVal = expr.trim()
+        .replace(/{/g, '&#123;')
+        .replace(/}/g, '&#125;')
+        .replace(/%/g, '&#37;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      
+      return `<span class="tok-output" data-expr="${escapedExprVal}" data-type="virtual">${keyPart}</span>${colonPart}${fullValuePart}`;
     }
   );
 
@@ -95,12 +121,27 @@ export function highlightSyntax(escapedLine: string): string {
           return placeholder;
         });
 
+        // Shield HTML entities from being treated as path tokens (e.g. &gt; should not have 'gt' highlighted as a variable)
+        const entities: string[] = [];
+        cleanCondition = cleanCondition.replace(/&[a-zA-Z0-9#]+;/g, (eMatch: string) => {
+          const placeholder = `___ENT_PLACEHOLDER_${entities.length}___`;
+          entities.push(eMatch);
+          return placeholder;
+        });
+
         const keywords = new Set(['if', 'elsif', 'unless', 'true', 'false', 'nil', 'and', 'or', 'contains', 'limit', 'offset', 'empty']);
         let conditionHighlighted = cleanCondition.replace(/\b([a-zA-Z_][a-zA-Z0-9_.]*)\b/g, (wMatch: string, path: string) => {
           if (path.startsWith('___STR_PLACEHOLDER_')) return wMatch;
+          if (path.startsWith('___ENT_PLACEHOLDER_')) return wMatch;
           if (keywords.has(path.toLowerCase())) return `<span class="tok-keyword">${wMatch}</span>`;
           if (/^\d+$/.test(path)) return wMatch; // Ignore numbers
           return `<span class="tok-output" data-expr="${path}" data-type="var">${path}</span>`;
+        });
+
+        // Restore HTML entities
+        entities.forEach((ent, idx) => {
+          const placeholder = `___ENT_PLACEHOLDER_${idx}___`;
+          conditionHighlighted = conditionHighlighted.replace(placeholder, ent);
         });
 
         strings.forEach((str, idx) => {
@@ -327,4 +368,56 @@ export function getScopeColor(scope: string | undefined): string {
     decrement: 'var(--cyan)',
   };
   return scope ? (map[scope] ?? 'var(--text-muted)') : 'var(--text-muted)';
+}
+
+export function highlightDataSyntax(escapedLine: string): string {
+  let result = escapedLine;
+
+  // If it's XML (contains &lt; or &gt;):
+  if (result.includes('&lt;') || result.includes('&gt;')) {
+    result = result.replace(
+      /(&lt;\/?)(\w+)(.*?)(\/?&gt;)/g,
+      (match, p1, tag, attrs, p4) => {
+        const highlightedAttrs = attrs.replace(
+          /(\w+)=(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g,
+          ' <span class="tok-tag">$1</span>=<span class="tok-string">$2</span>'
+        );
+        return `${p1}<span class="tok-keyword">${tag}</span>${highlightedAttrs}${p4}`;
+      }
+    );
+    return result;
+  }
+
+  // Highlight JSON Keys: "key": or &quot;key&quot;:
+  result = result.replace(
+    /((?:&quot;|&#039;|["'])(?:[a-zA-Z0-9_.-]+)(?:&quot;|&#039;|["']))(\s*:\s*)/g,
+    '<span class="tok-tag">$1</span>$2'
+  );
+
+  // Temporarily hide tags to prevent duplicate replacement inside span attributes
+  const tags: string[] = [];
+  result = result.replace(/(<span class="tok-tag">.*?<\/span>)/g, (match) => {
+    const placeholder = `___TAG_PLACEHOLDER_${tags.length}___`;
+    tags.push(match);
+    return placeholder;
+  });
+
+  // Highlight Strings on the right side: &quot;val&quot;
+  result = result.replace(
+    /((?:&quot;|&#039;|["'])(.*?)(?:&quot;|&#039;|["']))/g,
+    '<span class="tok-string">$1</span>'
+  );
+
+  // Highlight keywords (true, false, null, nil)
+  result = result.replace(/\b(true|false|null|nil)\b/gi, '<span class="tok-keyword">$1</span>');
+
+  // Highlight numbers (ignoring characters inside HTML tags/entities)
+  result = result.replace(/(?<![A-Za-z0-9_#&;])\b(\d+(?:\.\d+)?)\b(?![A-Za-z0-9_#&;])/g, '<span class="tok-keyword">$1</span>');
+
+  // Restore hidden tags
+  tags.forEach((tag, idx) => {
+    result = result.replace(`___TAG_PLACEHOLDER_${idx}___`, tag);
+  });
+
+  return result;
 }

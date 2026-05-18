@@ -232,7 +232,10 @@ export function useDebugger() {
   const init = useCallback(async () => {
     const s = await refreshState();
     if (!s || !s.isLoaded) {
-      setShowLoadModal(true);
+      const { hasSeenOnboarding } = useAppStore.getState();
+      if (hasSeenOnboarding) {
+        setShowLoadModal(true);
+      }
     }
     // Restore AI enabled state from SecretStorage
     try {

@@ -771,6 +771,66 @@ public class DebugEngine
         if (string.IsNullOrWhiteSpace(expression))
             return null;
 
+        if (expression.Contains("{%") || expression.Contains("{{"))
+        {
+            try
+            {
+                var cleanExpr = expression
+                    .Replace("&amp;", "&")
+                    .Replace("&lt;", "<")
+                    .Replace("&gt;", ">")
+                    .Replace("&quot;", "\"")
+                    .Replace("&#39;", "'")
+                    .Replace("&#039;", "'");
+                
+                var dict = new Dictionary<string, object?>();
+                foreach (var kvp in _state.Variables)
+                {
+                    dict[kvp.Key] = kvp.Value.CurrentValue;
+                }
+                
+                // Add content implicit fallback just like buildContext
+                if (_state.Variables.TryGetValue("content", out var contentVar) && contentVar.CurrentValue is IDictionary<string, object> contentDict)
+                {
+                    foreach (var kvp in contentDict)
+                    {
+                        if (!dict.ContainsKey(kvp.Key))
+                        {
+                            dict[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+                
+                try
+                {
+                    var template = DotLiquid.Template.Parse(cleanExpr);
+                    var rendered = template.Render(DotLiquid.Hash.FromDictionary(dict));
+                    
+                    var t = rendered.Trim();
+                    if (t.Equals("true", StringComparison.OrdinalIgnoreCase)) return true;
+                    if (t.Equals("false", StringComparison.OrdinalIgnoreCase)) return false;
+                    if (string.IsNullOrEmpty(t) || t.Equals("null", StringComparison.OrdinalIgnoreCase)) return null;
+                    if (long.TryParse(t, out var longVal)) return longVal;
+                    if (double.TryParse(t, out var doubleVal)) return doubleVal;
+                    return t;
+                }
+                catch
+                {
+                    // Tag Fallback: extract condition/variable from unclosed tags
+                    var match = System.Text.RegularExpressions.Regex.Match(cleanExpr, @"\{%-?\s*(case|if|unless|elsif)\s+(.*?)\s*-?%\}");
+                    if (match.Success)
+                    {
+                        var innerExpr = match.Groups[2].Value.Trim();
+                        return EvaluateExpression(innerExpr);
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to default
+            }
+        }
+
         // Handle string literals
         if ((expression.StartsWith('"') && expression.EndsWith('"')) ||
             (expression.StartsWith('\'') && expression.EndsWith('\'')))

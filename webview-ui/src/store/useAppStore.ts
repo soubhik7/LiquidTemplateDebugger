@@ -98,7 +98,7 @@ export const useAppStore = create<AppState>()(
       activeInspectorTab: 'watches',
       varFilter: '',
       toasts: [],
-      theme: 'dark',
+      theme: 'light-cool',
       accentColor: 'indigo',
 
       panelSizes: { col1: 33.33, col2: 33.33, col3: 33.34, inputRatio: 50, varsRatio: 60 },
@@ -107,7 +107,9 @@ export const useAppStore = create<AppState>()(
       dataEditMode: false,
       activeView: 'debugger',
       validationErrors: [],
-      hasSeenOnboarding: false,
+      hasSeenOnboarding: typeof window !== 'undefined' && (window as any).__VSCODE_STATE__
+        ? !!(window as any).__VSCODE_STATE__.hasSeenOnboarding
+        : false,
       showOnboarding: false, // Will be set to true on mount if hasSeenOnboarding is false
       
       // AI Configuration
@@ -197,14 +199,23 @@ export const useAppStore = create<AppState>()(
         },
         hasSeenOnboarding: s.hasSeenOnboarding,
       }),
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<AppState>),
-        // Always start with fresh expanded state and non-serializable Sets
-        expandedVars: new Set(),
-        expandedWatches: new Set(),
-        expandedBreakpoints: new Set(),
-      }),
+      merge: (persisted, current) => {
+        const merged: AppState = {
+          ...current,
+          ...(persisted as Partial<AppState>),
+          expandedVars: new Set<string>(),
+          expandedWatches: new Set<number>(),
+          expandedBreakpoints: new Set<number>(),
+        };
+        // If VS Code globalState explicitly states the user hasn't seen the onboarding,
+        // force hasSeenOnboarding to false, overriding any legacy persisted local storage value!
+        if (typeof window !== 'undefined' && (window as any).__VSCODE_STATE__) {
+          if ((window as any).__VSCODE_STATE__.hasSeenOnboarding === false) {
+            merged.hasSeenOnboarding = false;
+          }
+        }
+        return merged;
+      },
     }
   )
 );

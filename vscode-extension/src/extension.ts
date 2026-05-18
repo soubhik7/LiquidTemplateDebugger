@@ -47,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // ── Command: open/show the Liquid Debugger panel ─────────────────────────
     const openPanelCmd = vscode.commands.registerCommand('liquid-debugger.start', async () => {
-        const panel = DebuggerPanel.createOrShow(context.extensionUri);
+        const panel = DebuggerPanel.createOrShow(context.extensionUri, context);
         wirePanel(panel, context);
 
         // If a .liquid file is active, pre-fill the modal
@@ -228,6 +228,12 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
     if (POST && urlPath === '/api/clipboard/copy') {
         const text = body?.text ?? '';
         await vscode.env.clipboard.writeText(text);
+        return { ok: true };
+    }
+
+    // POST /api/onboarding/complete
+    if (POST && urlPath === '/api/onboarding/complete') {
+        await context.globalState.update('hasSeenOnboarding', true);
         return { ok: true };
     }
 

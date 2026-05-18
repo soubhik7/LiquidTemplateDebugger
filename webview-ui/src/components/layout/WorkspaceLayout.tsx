@@ -69,14 +69,14 @@ export function WorkspaceLayout() {
   useEffect(() => {
     const run = async () => {
       await init();
-      const { hasSeenOnboarding: seen, showLoadModal: modal, showOnboarding: showing } =
+      const { hasSeenOnboarding: seen, showOnboarding: showing } =
         useAppStore.getState();
-      if (!seen && !modal && !showing) {
+      if (!seen && !showing) {
         setShowOnboarding(true);
       }
     };
     run();
-  }, [init, setShowOnboarding]); // intentionally omit showLoadModal/showOnboarding/hasSeenOnboarding
+  }, [init, setShowOnboarding]); // intentionally omit showOnboarding/hasSeenOnboarding
 
   // Validate template whenever the source changes (separate from init)
   useEffect(() => {

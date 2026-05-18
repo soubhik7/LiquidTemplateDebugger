@@ -5,7 +5,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
 import { TreeView } from '../shared/TreeView';
-import { escapeHtml, escapeRegex, detectFormat, beautifyContent, tryParseJson, xmlToJson } from '../../utils/helpers';
+import { escapeHtml, escapeRegex, detectFormat, beautifyContent, tryParseJson, xmlToJson, highlightDataSyntax } from '../../utils/helpers';
 import { findFoldRanges, type FoldRange } from '../../utils/folding';
 
 interface OutputPanelProps {
@@ -499,7 +499,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               const isFolded = foldedLines.has(ln);
 
               // Perform search highlighting or lastChunk highlighting for this line
-              let escaped = escapeHtml(line);
+              let escaped = highlightDataSyntax(escapeHtml(line));
               if (search) {
                 escaped = escaped.replace(
                   new RegExp(escapeRegex(escapeHtml(search)), 'gi'),
@@ -508,9 +508,9 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
               } else if (!beautified && lastChunk) {
                 const idx = line.lastIndexOf(lastChunk);
                 if (idx !== -1) {
-                  const before = escapeHtml(line.substring(0, idx));
-                  const last = `<span class="output-flash-highlight">${escapeHtml(lastChunk)}</span>`;
-                  const after = escapeHtml(line.substring(idx + lastChunk.length));
+                  const before = highlightDataSyntax(escapeHtml(line.substring(0, idx)));
+                  const last = `<span class="output-flash-highlight">${highlightDataSyntax(escapeHtml(lastChunk))}</span>`;
+                  const after = highlightDataSyntax(escapeHtml(line.substring(idx + lastChunk.length)));
                   escaped = before + last + after;
                 }
               }

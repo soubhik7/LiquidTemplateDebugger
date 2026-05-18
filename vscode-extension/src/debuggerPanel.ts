@@ -11,7 +11,7 @@ export class DebuggerPanel {
     private _disposables: vscode.Disposable[] = [];
     private _messageHandler: ((msg: any) => any) | undefined;
 
-    public static createOrShow(extensionUri: vscode.Uri): DebuggerPanel {
+    public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext): DebuggerPanel {
         if (DebuggerPanel.currentPanel) {
             DebuggerPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
             return DebuggerPanel.currentPanel;
@@ -26,13 +26,13 @@ export class DebuggerPanel {
                 ]
             }
         );
-        DebuggerPanel.currentPanel = new DebuggerPanel(panel, extensionUri);
+        DebuggerPanel.currentPanel = new DebuggerPanel(panel, extensionUri, context);
         return DebuggerPanel.currentPanel;
     }
 
-    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
         this._panel = panel;
-        this._panel.webview.html = this._getHtml(this._panel.webview, extensionUri);
+        this._panel.webview.html = this._getHtml(this._panel.webview, extensionUri, context);
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
         this._panel.webview.onDidReceiveMessage(async (msg) => {
             if (this._messageHandler) {
@@ -63,7 +63,7 @@ export class DebuggerPanel {
         }
     }
 
-    private _getHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
+    private _getHtml(webview: vscode.Webview, extensionUri: vscode.Uri, context: vscode.ExtensionContext): string {
         const scriptUri = webview.asWebviewUri(
             vscode.Uri.joinPath(extensionUri, 'webview-ui', 'dist', 'assets', 'index.js')
         );
@@ -71,6 +71,7 @@ export class DebuggerPanel {
             vscode.Uri.joinPath(extensionUri, 'webview-ui', 'dist', 'assets', 'index.css')
         );
         const nonce = getNonce();
+        const hasSeenOnboarding = context.globalState.get<boolean>('hasSeenOnboarding', false);
         
         // Tightened CSP:
         // 1. style-src: Allowed CSP source (fonts/local CSS).
@@ -86,7 +87,7 @@ export class DebuggerPanel {
         ].join('; ');
 
         return `<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light-cool">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -96,6 +97,11 @@ export class DebuggerPanel {
 </head>
 <body>
     <div id="root"></div>
+    <script nonce="${nonce}">
+        window.__VSCODE_STATE__ = {
+            hasSeenOnboarding: ${hasSeenOnboarding}
+        };
+    </script>
     <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
