@@ -3,7 +3,7 @@
   "displayName": "Dot Liquid Template Debugger",
   "description": "Professional Dot Liquid Template Debugger with line-by-line execution, variable transformation history, and multi-format support (JSON, XML, CSV).",
   "icon": "images/ltdlogo2.png",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "publisher": "SoubhikDevTools",
   "repository": {
     "type": "git",
@@ -31,7 +31,6 @@
     "transformation"
   ],
   "activationEvents": [
-    "onCommand:liquid-debugger.start",
     "onLanguage:liquid"
   ],
   "main": "./out/extension.js",
@@ -54,6 +53,10 @@
         "command": "liquid-debugger.start",
         "title": "Liquid: Start Debugging",
         "icon": "$(debug-start)"
+      },
+      {
+        "command": "liquid-debugger.resetOnboarding",
+        "title": "Liquid: Reset Onboarding Tour"
       }
     ],
     "menus": {

@@ -62,6 +62,17 @@ export function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(openPanelCmd);
 
+    // ── Command: reset onboarding tour ──────────────────────────────────────
+    const resetOnboardingCmd = vscode.commands.registerCommand('liquid-debugger.resetOnboarding', async () => {
+        await context.globalState.update('hasSeenOnboarding', false);
+        if (DebuggerPanel.currentPanel) {
+            DebuggerPanel.currentPanel.postMessage({ type: 'resetOnboarding' });
+        } else {
+            vscode.window.showInformationMessage('Onboarding tour will appear next time you open the Liquid Debugger.');
+        }
+    });
+    context.subscriptions.push(resetOnboardingCmd);
+
     // ── Re-wire if panel already exists when extension reloads ───────────────
     if (DebuggerPanel.currentPanel) {
         wirePanel(DebuggerPanel.currentPanel, context);

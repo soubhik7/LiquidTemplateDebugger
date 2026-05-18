@@ -51,6 +51,9 @@ export function useDebugger() {
       if (msg.type === 'prefill' && msg.template) {
         tplPrefillRef.current?.(msg.template as string);
       }
+      if (msg.type === 'resetOnboarding') {
+        useAppStore.getState().setShowOnboarding(true);
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -230,7 +233,12 @@ export function useDebugger() {
   }, []);
 
   const init = useCallback(async () => {
-    const s = await refreshState();
+    let s: WebUIState | undefined;
+    try {
+      s = await refreshState();
+    } catch (err) {
+      console.error('[useDebugger] refreshState failed:', err);
+    }
     if (!s || !s.isLoaded) {
       const { hasSeenOnboarding } = useAppStore.getState();
       if (hasSeenOnboarding) {

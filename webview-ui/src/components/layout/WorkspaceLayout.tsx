@@ -62,13 +62,27 @@ export function WorkspaceLayout() {
     { key: 'F5', ctrl: true, shift: true, action: reset },
   ]);
 
-  // Initialize once on mount; check onboarding AFTER init() resolves so we know
-  // whether it opened the LoadModal. Reading showLoadModal via getState() snapshot
-  // keeps it out of the dep array — prevents the modal re-opening loop where
-  // Cancel → showLoadModal=false → effect re-runs → init() → modal reopens.
+  // Initialize once on mount.
+  // For new users: start the tour immediately so there is no flash of empty UI.
+  // For returning users: wait for init() to resolve (it may open the LoadModal),
+  // then confirm the tour is still not needed.
+  // Reading state via getState() keeps deps stable — prevents the modal re-opening
+  // loop where Cancel → showLoadModal=false → effect re-runs → modal reopens.
   useEffect(() => {
     const run = async () => {
-      await init();
+      const { hasSeenOnboarding: seenAtMount } = useAppStore.getState();
+      if (!seenAtMount) {
+        setShowOnboarding(true);
+      }
+
+      try {
+        await init();
+      } catch (err) {
+        console.error('[WorkspaceLayout] init error:', err);
+      }
+
+      // After init, do a final check in case state changed (e.g. for returning users
+      // whose init() didn't open the modal for some reason).
       const { hasSeenOnboarding: seen, showOnboarding: showing } =
         useAppStore.getState();
       if (!seen && !showing) {
