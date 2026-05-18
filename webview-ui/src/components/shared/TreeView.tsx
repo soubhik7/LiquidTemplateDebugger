@@ -7,10 +7,11 @@ interface TreeViewProps {
   label?: string;
   depth?: number;
   isLast?: boolean;
+  forceExpandAll?: boolean;
 }
 
-export function TreeView({ data, label, depth = 0, isLast = true }: TreeViewProps) {
-  const [isOpen, setIsOpen] = useState(depth < 2); // Auto-open top levels
+export function TreeView({ data, label, depth = 0, isLast = true, forceExpandAll }: TreeViewProps) {
+  const [isOpen, setIsOpen] = useState(forceExpandAll !== undefined ? forceExpandAll : depth < 2);
 
   const isObject = data !== null && typeof data === 'object';
   const isArray = Array.isArray(data);
@@ -69,12 +70,13 @@ export function TreeView({ data, label, depth = 0, isLast = true }: TreeViewProp
             style={{ overflow: 'hidden' }}
           >
             {Object.entries(data).map(([key, val], idx, arr) => (
-              <TreeView 
-                key={key} 
-                label={isArray ? undefined : key} 
-                data={val} 
-                depth={depth + 1} 
+              <TreeView
+                key={key}
+                label={isArray ? undefined : key}
+                data={val}
+                depth={depth + 1}
                 isLast={idx === arr.length - 1}
+                forceExpandAll={forceExpandAll}
               />
             ))}
           </motion.div>

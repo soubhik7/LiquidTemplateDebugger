@@ -205,6 +205,7 @@ export function useDebugger() {
       typeName?: string;
       error?: string;
       transformations?: any[];
+      rawValue?: any;
     };
 
     if (isVirtual && res) {

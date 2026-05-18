@@ -18,11 +18,13 @@ public class DebugEngine
     private readonly List<Breakpoint> _breakpoints = new();
     private readonly List<WatchExpression> _watches = new();
     private readonly Dictionary<string, object?> _localAssignments = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, object?> _lastValuesCache = new(StringComparer.OrdinalIgnoreCase);
     private int _nextBreakpointId = 1;
     private int _nextWatchId = 1;
 
     // For loop state tracking
     private readonly Stack<ForLoopState> _forLoopStack = new();
+    private readonly List<ForLoopState> _allLoopsHistory = new();
 
     // Case/when value tracking
     private readonly Stack<object?> _caseValueStack = new();
@@ -95,6 +97,7 @@ public class DebugEngine
                 ScopeDepth = 0,
                 ScopeTag = "input"
             };
+            _lastValuesCache[key] = value;
         }
     }
 
@@ -333,6 +336,7 @@ public class DebugEngine
             ScopeDepth = _state.ScopeStack.Count - 1,
             ScopeTag = "assign"
         };
+        _lastValuesCache[varName] = value;
 
         _state.Variables[varName].Transformations.Add(new ValueTransformation
         {
@@ -385,6 +389,7 @@ public class DebugEngine
             ScopeDepth = _state.ScopeStack.Count - 1,
             ScopeTag = "capture"
         };
+        _lastValuesCache[varName] = captured;
 
         // Skip forward past the endcapture so elements aren't executed again
         // idx is already 1 past the endcapture element
@@ -576,25 +581,30 @@ public class DebugEngine
         // Find the matching endfor
         int endForIdx = FindMatchingEndTag(_state.CurrentElementIndex, "for", "endfor");
 
-        var loopState = new ForLoopState
-        {
-            VariableName = varName,
-            CollectionExpression = collectionExpr,
-            Items = items,
-            CurrentIndex = 0,
-            LoopStartElementIndex = _state.CurrentElementIndex,
-            LoopEndElementIndex = endForIdx,
-            ExecutionStackDepthAtStart = _executionStack.Count,
-            CaseValueStackDepthAtStart = _caseValueStack.Count,
-            ScopeStackDepthAtStart = _state.ScopeStack.Count
-        };
-
-        _forLoopStack.Push(loopState);
-
         if (items.Count > 0)
         {
+            var loopState = new ForLoopState
+            {
+                VariableName = varName,
+                CollectionExpression = collectionExpr,
+                Items = items,
+                CurrentIndex = 0,
+                LoopStartElementIndex = _state.CurrentElementIndex,
+                LoopEndElementIndex = endForIdx,
+                ExecutionStackDepthAtStart = _executionStack.Count,
+                CaseValueStackDepthAtStart = _caseValueStack.Count,
+                ScopeStackDepthAtStart = _state.ScopeStack.Count
+            };
+
+            _forLoopStack.Push(loopState);
+            _allLoopsHistory.Add(loopState);
             SetForLoopVariable(loopState);
             _state.ScopeStack.Add($"for:{varName}");
+        }
+        else
+        {
+            // If the collection is empty or null, we skip the loop body entirely
+            _state.CurrentElementIndex = endForIdx;
         }
     }
 
@@ -681,6 +691,7 @@ public class DebugEngine
             ScopeDepth = _state.ScopeStack.Count,
             ScopeTag = "for"
         };
+        _lastValuesCache[loopState.VariableName] = currentItem;
 
         // Also add to local assignments so watches can resolve it
         _localAssignments[loopState.VariableName] = currentItem;
@@ -705,6 +716,7 @@ public class DebugEngine
             ScopeDepth = _state.ScopeStack.Count,
             ScopeTag = "for"
         };
+        _lastValuesCache["forloop"] = forloop;
     }
 
     private void ExecuteIncrement(string args, TemplateElement element)
@@ -727,6 +739,7 @@ public class DebugEngine
             ScopeDepth = 0,
             ScopeTag = "increment"
         };
+        _lastValuesCache[varName] = current + 1;
     }
 
     private void ExecuteDecrement(string args, TemplateElement element)
@@ -750,6 +763,7 @@ public class DebugEngine
             ScopeDepth = 0,
             ScopeTag = "decrement"
         };
+        _lastValuesCache[varName] = current;
     }
 
     private object? EvaluateExpression(string expression)
@@ -852,6 +866,24 @@ public class DebugEngine
             current = _localAssignments[rootName];
         else if (_inputData.ContainsKey(rootName))
             current = _inputData[rootName];
+        else if (_state.IsComplete && _lastValuesCache.ContainsKey(rootName))
+            current = _lastValuesCache[rootName];
+        else if (_state.Variables.ContainsKey("content"))
+        {
+            var contentVal = _state.Variables["content"].CurrentValue;
+            if (HasMember(contentVal, rootName))
+            {
+                current = ResolvePathSegment(contentVal, rootName);
+            }
+        }
+        else if (_state.IsComplete && _lastValuesCache.ContainsKey("content"))
+        {
+            var contentVal = _lastValuesCache["content"];
+            if (HasMember(contentVal, rootName))
+            {
+                current = ResolvePathSegment(contentVal, rootName);
+            }
+        }
 
         // Navigate nested paths
         for (int i = 1; i < segments.Length && current != null; i++)
@@ -1022,6 +1054,32 @@ public class DebugEngine
             value = _localAssignments[rootName];
         else if (_inputData.ContainsKey(rootName))
             value = _inputData[rootName];
+        else if (_state.IsComplete && _lastValuesCache.ContainsKey(rootName))
+            value = _lastValuesCache[rootName];
+        else if (_state.Variables.ContainsKey("content"))
+        {
+            var contentVal = _state.Variables["content"].CurrentValue;
+            if (HasMember(contentVal, rootName))
+            {
+                value = ResolvePathSegment(contentVal, rootName);
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else if (_state.IsComplete && _lastValuesCache.ContainsKey("content"))
+        {
+            var contentVal = _lastValuesCache["content"];
+            if (HasMember(contentVal, rootName))
+            {
+                value = ResolvePathSegment(contentVal, rootName);
+            }
+            else
+            {
+                return false;
+            }
+        }
         else
             return false;
 
@@ -1077,18 +1135,81 @@ public class DebugEngine
         return false;
     }
 
+    private static bool HasMember(object? obj, string member)
+    {
+        if (obj == null) return false;
+        
+        string? fallbackMember = null;
+        if (member.StartsWith("attr_", StringComparison.OrdinalIgnoreCase))
+            fallbackMember = "@" + member[5..];
+        else if (member.StartsWith("@"))
+            fallbackMember = "attr_" + member[1..];
+        else if (member.Equals("value", StringComparison.OrdinalIgnoreCase))
+            fallbackMember = "#text";
+        else if (member.Equals("#text", StringComparison.OrdinalIgnoreCase))
+            fallbackMember = "value";
+
+        if (obj is Hash hash)
+        {
+            if (hash.ContainsKey(member)) return true;
+            if (fallbackMember != null && hash.ContainsKey(fallbackMember)) return true;
+        }
+        if (obj is IDictionary<string, object> dict)
+        {
+            if (dict.ContainsKey(member)) return true;
+            if (fallbackMember != null && dict.ContainsKey(fallbackMember)) return true;
+        }
+        if (obj is IDictionary<string, object?> ndict)
+        {
+            if (ndict.ContainsKey(member)) return true;
+            if (fallbackMember != null && ndict.ContainsKey(fallbackMember)) return true;
+        }
+        
+        var prop = obj.GetType().GetProperty(member, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+        if (prop != null) return true;
+        
+        return false;
+    }
+
     private static object? GetMember(object? obj, string member)
     {
         if (obj == null) return null;
 
-        if (obj is Hash hash && hash.ContainsKey(member))
-            return hash[member];
+        string? fallbackMember = null;
+        if (member.StartsWith("attr_", StringComparison.OrdinalIgnoreCase))
+        {
+            fallbackMember = "@" + member[5..];
+        }
+        else if (member.StartsWith("@"))
+        {
+            fallbackMember = "attr_" + member[1..];
+        }
+        else if (member.Equals("value", StringComparison.OrdinalIgnoreCase))
+        {
+            fallbackMember = "#text";
+        }
+        else if (member.Equals("#text", StringComparison.OrdinalIgnoreCase))
+        {
+            fallbackMember = "value";
+        }
 
-        if (obj is IDictionary<string, object> dict && dict.ContainsKey(member))
-            return dict[member];
+        if (obj is Hash hash)
+        {
+            if (hash.ContainsKey(member)) return hash[member];
+            if (fallbackMember != null && hash.ContainsKey(fallbackMember)) return hash[fallbackMember];
+        }
 
-        if (obj is IDictionary<string, object?> ndict && ndict.ContainsKey(member))
-            return ndict[member];
+        if (obj is IDictionary<string, object> dict)
+        {
+            if (dict.ContainsKey(member)) return dict[member];
+            if (fallbackMember != null && dict.ContainsKey(fallbackMember)) return dict[fallbackMember];
+        }
+
+        if (obj is IDictionary<string, object?> ndict)
+        {
+            if (ndict.ContainsKey(member)) return ndict[member];
+            if (fallbackMember != null && ndict.ContainsKey(fallbackMember)) return ndict[fallbackMember];
+        }
 
         // Handle "size" and "first"/"last" on collections
         if (member == "size" && obj is System.Collections.ICollection col)
@@ -1106,6 +1227,16 @@ public class DebugEngine
         {
             try { return prop.GetValue(obj); }
             catch { }
+        }
+
+        if (fallbackMember != null)
+        {
+            var fprop = obj.GetType().GetProperty(fallbackMember, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+            if (fprop != null && fprop.GetIndexParameters().Length == 0)
+            {
+                try { return fprop.GetValue(obj); }
+                catch { }
+            }
         }
 
         return null;
@@ -1781,6 +1912,86 @@ public class DebugEngine
     {
         if (string.IsNullOrWhiteSpace(expression))
             return null;
+            
+        if (_state.IsComplete && _allLoopsHistory.Count > 0)
+        {
+            var segments = expression.Split(new[] { '.', ' ', '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length > 0)
+            {
+                var rootName = segments[0].Trim();
+                
+                // Find a completed loop that matches rootName
+                var matchingLoop = _allLoopsHistory.FindLast(l => l.VariableName.Equals(rootName, StringComparison.OrdinalIgnoreCase));
+                if (matchingLoop != null && matchingLoop.Items.Count > 0)
+                {
+                    var iterationValues = new List<object?>();
+                    
+                    // Back up the variable if it exists in _lastValuesCache or _state.Variables
+                    object? cachedBackup = _lastValuesCache.TryGetValue(rootName, out var cb) ? cb : null;
+                    bool hadInCache = _lastValuesCache.ContainsKey(rootName);
+                    
+                    TrackedVariable? trackedBackup = _state.Variables.TryGetValue(rootName, out var tb) ? tb : null;
+                    bool hadInTracked = _state.Variables.ContainsKey(rootName);
+                    
+                    try
+                    {
+                        for (int i = 0; i < matchingLoop.Items.Count; i++)
+                        {
+                            var item = matchingLoop.Items[i];
+                            
+                            // Set the loop variable temporarily in both cache and state variables
+                            _lastValuesCache[rootName] = item;
+                            _state.Variables[rootName] = new TrackedVariable
+                            {
+                                Name = rootName,
+                                CurrentValue = item,
+                                ScopeTag = "for"
+                            };
+                            
+                            // Set the forloop state temporarily as well
+                            var forloop = DotLiquid.Hash.FromAnonymousObject(new
+                            {
+                                index = i + 1,
+                                index0 = i,
+                                first = i == 0,
+                                last = i == matchingLoop.Items.Count - 1,
+                                length = matchingLoop.Items.Count,
+                                rindex = matchingLoop.Items.Count - i,
+                                rindex0 = matchingLoop.Items.Count - i - 1
+                            });
+                            _lastValuesCache["forloop"] = forloop;
+                            _state.Variables["forloop"] = new TrackedVariable
+                            {
+                                Name = "forloop",
+                                CurrentValue = forloop,
+                                ScopeTag = "for"
+                            };
+                            
+                            var evalVal = EvaluateExpression(expression);
+                            iterationValues.Add(evalVal);
+                        }
+                    }
+                    finally
+                    {
+                        // Restore backup
+                        if (hadInCache)
+                            _lastValuesCache[rootName] = cachedBackup;
+                        else
+                            _lastValuesCache.Remove(rootName);
+                            
+                        if (hadInTracked)
+                            _state.Variables[rootName] = trackedBackup!;
+                        else
+                            _state.Variables.Remove(rootName);
+                            
+                        _lastValuesCache.Remove("forloop");
+                        _state.Variables.Remove("forloop");
+                    }
+                    
+                    return iterationValues;
+                }
+            }
+        }
         
         return EvaluateExpression(expression);
     }
@@ -1818,6 +2029,19 @@ public class DebugEngine
     public string GetFullRender()
     {
         var template = Template.Parse(_templateSource);
-        return template.Render(_inputData);
+        var mergedHash = new Hash();
+        foreach (var key in _inputData.Keys)
+        {
+            mergedHash[key] = _inputData[key];
+        }
+        
+        if (_inputData.ContainsKey("content") && _inputData["content"] is Hash contentHash)
+        {
+            foreach (var key in contentHash.Keys)
+            {
+                mergedHash[key] = contentHash[key];
+            }
+        }
+        return template.Render(mergedHash);
     }
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Wand2, Edit3, Check, ListTree, AlertTriangle } from 'lucide-react';
+import { Wand2, Edit3, Check, ListTree, AlertTriangle, ChevronsUpDown, ChevronsDownUp, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { TreeView } from '../shared/TreeView';
-import { beautifyContent, tryParseJson, xmlToJson, detectFormat } from '../../utils/helpers';
+import { beautifyContent, tryParseJson, xmlToJson, detectFormat, escapeHtml } from '../../utils/helpers';
+import { findFoldRanges, type FoldRange } from '../../utils/folding';
 
 interface DataPanelProps {
   onApplyEdits: (data: string) => void;
@@ -18,6 +19,48 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
 
   const [editContent, setEditContent] = useState('');
   const [showTree, setShowTree] = useState(false);
+  const [treeKey, setTreeKey] = useState(0);
+  const [treeForceExpand, setTreeForceExpand] = useState<boolean | undefined>(undefined);
+  const [foldedLines, setFoldedLines] = useState<Set<number>>(new Set());
+
+  const foldRanges = useMemo(() => findFoldRanges(editContent), [editContent]);
+  const foldStartMap = useMemo(() => {
+    const map = new Map<number, FoldRange>();
+    foldRanges.forEach(r => map.set(r.startLine, r));
+    return map;
+  }, [foldRanges]);
+
+  const isLineFolded = (ln: number) => {
+    for (const range of foldRanges) {
+      if (foldedLines.has(range.startLine) && ln > range.startLine && ln <= range.endLine) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const toggleFold = (ln: number) => {
+    const next = new Set(foldedLines);
+    if (next.has(ln)) next.delete(ln);
+    else next.add(ln);
+    setFoldedLines(next);
+  };
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const ln = e.detail;
+      if (typeof ln === 'number') {
+        const next = new Set(foldedLines);
+        next.delete(ln);
+        setFoldedLines(next);
+      }
+    };
+    window.addEventListener('unfold-line-data', handler);
+    return () => window.removeEventListener('unfold-line-data', handler);
+  }, [foldedLines]);
+
+  const handleExpandAll = useCallback(() => { setTreeForceExpand(true); setTreeKey((k) => k + 1); }, []);
+  const handleCollapseAll = useCallback(() => { setTreeForceExpand(false); setTreeKey((k) => k + 1); }, []);
 
   const dataContent = debugState?.dataContent ?? '';
   const dataFormat = debugState?.dataFormat ?? 'json';
@@ -125,6 +168,25 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
             <ListTree size={12} /> <span style={{ lineHeight: 1 }}>Tree</span>
           </button>
 
+          {showTree && treeData && (
+            <>
+              <button
+                onClick={handleExpandAll}
+                title="Expand All"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px', height: 28, borderRadius: 6, background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <ChevronsUpDown size={12} /> <span style={{ lineHeight: 1 }}>Expand</span>
+              </button>
+              <button
+                onClick={handleCollapseAll}
+                title="Collapse All"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px', height: 28, borderRadius: 6, background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <ChevronsDownUp size={12} /> <span style={{ lineHeight: 1 }}>Collapse</span>
+              </button>
+            </>
+          )}
+
           {!showTree && (
             <button
               disabled={!loaded}
@@ -205,7 +267,7 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
         {showTree ? (
           treeData ? (
             <div style={{ padding: 12, overflowY: 'auto', height: '100%', background: 'var(--bg-surface)' }}>
-              <TreeView data={treeData} />
+              <TreeView key={treeKey} data={treeData} forceExpandAll={treeForceExpand} />
             </div>
           ) : treeError ? (
             <div style={{ 
@@ -238,6 +300,100 @@ export function DataPanel({ onApplyEdits, onToast }: DataPanelProps) {
               </button>
             </div>
           ) : null
+        ) : !dataEditMode && loaded ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflowY: 'auto',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              lineHeight: 1.6,
+              background: 'var(--bg-surface)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            {(editContent ? editContent.split('\n') : []).map((line, i) => {
+              const ln = i + 1;
+              if (isLineFolded(ln)) return null;
+
+              const range = foldStartMap.get(ln);
+              const isFolded = foldedLines.has(ln);
+              const escaped = escapeHtml(line);
+
+              return (
+                <div
+                  key={ln}
+                  className="code-line"
+                  style={{
+                    display: 'flex',
+                    minHeight: 20,
+                    paddingRight: 12,
+                    transition: 'background 0.3s ease',
+                  }}
+                >
+                  {/* Gutter */}
+                  <div
+                    style={{
+                      width: 56,
+                      minWidth: 56,
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingRight: 4,
+                      userSelect: 'none',
+                      flexShrink: 0,
+                      position: 'relative',
+                      zIndex: 1,
+                      borderRight: '1px solid var(--border-primary)',
+                      background: 'var(--bg-panel)',
+                      opacity: 0.8,
+                    }}
+                  >
+                    {/* Line Number */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 4 }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 500 }}>
+                        {ln}
+                      </span>
+                    </div>
+
+                    {/* Folding Slot */}
+                    <div style={{ width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {range && (
+                        <button
+                          onClick={() => toggleFold(ln)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 4,
+                            color: isFolded ? 'var(--accent)' : 'var(--text-muted)',
+                            transition: 'all 0.2s',
+                          }}
+                          className="fold-btn"
+                        >
+                          {isFolded ? <ChevronRight size={12} strokeWidth={2.5} /> : <ChevronDown size={12} strokeWidth={2.5} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Line Content */}
+                  <span
+                    style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 8, position: 'relative', zIndex: 1 }}
+                    dangerouslySetInnerHTML={{
+                      __html: isFolded
+                        ? `${escaped} <span class="fold-placeholder" title="Expand block" onclick="window.dispatchEvent(new CustomEvent('unfold-line-data', {detail: ${ln}}))">...</span>`
+                        : escaped,
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <textarea
             value={editContent}

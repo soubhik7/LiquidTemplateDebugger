@@ -313,7 +313,7 @@ public class DataSanitizer
             @"\b\d{3}-\d{2}-\d{4}\b", // SSN
             @"\b[A-Za-z0-9]{32,}\b", // Long tokens
             @"Bearer\s+[A-Za-z0-9\-._~+/]+=*", // Bearer tokens
-            @"(?i)api[_-]?key['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9]{20,}", // API keys
+            @"(?i)api[_-]?key['""]?\s*[:=]\s*['""]?[A-Za-z0-9]{20,}", // API keys
         };
     }
 }

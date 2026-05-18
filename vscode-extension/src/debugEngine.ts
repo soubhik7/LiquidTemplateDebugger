@@ -25,10 +25,12 @@ export class DebugEngine {
     private previousOutput: string = '';
     private outputMap: { startIndex: number; endIndex: number; line: number }[] = [];
     private lastReloadArgs: { templateContent: string; dataContent: string; format: string } | null = null;
+    private lastValuesCache: Map<string, any> = new Map();
     
     // ── Flow Control Stacks ───────────────────────────────────────────────────
     private executionStack: ExecutionStackEntry[] = [];
     private forLoopStack: ForLoopState[] = [];
+    private allLoopsHistory: ForLoopState[] = [];
     private caseValueStack: any[] = [];
 
     constructor() {
@@ -81,6 +83,7 @@ export class DebugEngine {
         this.outputMap = [];
         this.executionStack = [];
         this.forLoopStack = [];
+        this.allLoopsHistory = [];
         this.caseValueStack = [];
 
         this.templateSource = templateContent;
@@ -295,6 +298,65 @@ export class DebugEngine {
     }
 
     async evaluateExpression(expression: string): Promise<any> {
+        if (this.isExecutionComplete() && this.allLoopsHistory.length > 0) {
+            const segments = expression.split(/[. [\]]+/);
+            const rootName = segments[0]?.trim().toLowerCase();
+            
+            const matchingLoop = this.allLoopsHistory.find(l => l.variableName.toLowerCase() === rootName);
+            if (matchingLoop && matchingLoop.items.length > 0) {
+                const iterationValues: any[] = [];
+                
+                // Back up
+                const cachedBackup = this.lastValuesCache.get(matchingLoop.variableName);
+                const hadInCache = this.lastValuesCache.has(matchingLoop.variableName);
+                
+                const trackedBackup = this.state.variables.get(matchingLoop.variableName);
+                const hadInTracked = this.state.variables.has(matchingLoop.variableName);
+                
+                try {
+                    for (let i = 0; i < matchingLoop.items.length; i++) {
+                        const item = matchingLoop.items[i];
+                        
+                        this.lastValuesCache.set(matchingLoop.variableName, item);
+                        this.trackVariable(matchingLoop.variableName, item, 'for', undefined, matchingLoop.items);
+                        
+                        const forloop = {
+                            index: i + 1,
+                            index0: i,
+                            first: i === 0,
+                            last: i === matchingLoop.items.length - 1,
+                            length: matchingLoop.items.length,
+                            rindex: matchingLoop.items.length - i,
+                            rindex0: matchingLoop.items.length - i - 1
+                        };
+                        this.lastValuesCache.set('forloop', forloop);
+                        this.trackVariable('forloop', forloop, 'for');
+                        
+                        const evalVal = await this.parser.evaluateExpression(expression, this.buildContext());
+                        iterationValues.push(evalVal === undefined ? null : evalVal);
+                    }
+                } finally {
+                    // Restore
+                    if (hadInCache) {
+                        this.lastValuesCache.set(matchingLoop.variableName, cachedBackup);
+                    } else {
+                        this.lastValuesCache.delete(matchingLoop.variableName);
+                    }
+                    
+                    if (hadInTracked) {
+                        this.state.variables.set(matchingLoop.variableName, trackedBackup!);
+                    } else {
+                        this.state.variables.delete(matchingLoop.variableName);
+                    }
+                    
+                    this.lastValuesCache.delete('forloop');
+                    this.state.variables.delete('forloop');
+                }
+                
+                return iterationValues;
+            }
+        }
+
         return this.parser.evaluateExpression(expression, this.buildContext());
     }
 
@@ -395,7 +457,7 @@ export class DebugEngine {
             expression: w.expression,
             displayExpression: w.expression,
             currentValue: this.fmtValue(w.value),
-            rawValue: w.value,
+            rawValue: this.toSerializable(w.value),
             typeName: this.typeOf(w.value),
             hasChanged: false,
             error: w.error,
@@ -460,7 +522,9 @@ export class DebugEngine {
         this.lastReloadArgs = null;
         this.executionStack = [];
         this.forLoopStack = [];
+        this.allLoopsHistory = [];
         this.caseValueStack = [];
+        this.lastValuesCache.clear();
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -477,11 +541,35 @@ export class DebugEngine {
             variable.history.push({ line: this.state.currentLine, oldValue: existing.value, newValue: value });
         }
         this.state.variables.set(name, variable);
+        this.lastValuesCache.set(name, value);
+    }
+
+    public isExecutionComplete(): boolean {
+        return !this.state.isRunning ||
+            (this.parsedTemplate !== null && this.state.currentElement >= this.parsedTemplate.elements.length);
     }
 
     public buildContext(): Record<string, any> {
         const ctx: Record<string, any> = {};
         for (const [name, v] of this.state.variables) { ctx[name] = v.value; }
+
+        if (this.isExecutionComplete()) {
+            for (const [name, value] of this.lastValuesCache.entries()) {
+                if (!(name in ctx)) {
+                    ctx[name] = value;
+                }
+            }
+        }
+
+        const contentVal = ctx['content'];
+        if (contentVal && typeof contentVal === 'object' && !Array.isArray(contentVal)) {
+            for (const [key, val] of Object.entries(contentVal)) {
+                if (!(key in ctx)) {
+                    ctx[key] = val;
+                }
+            }
+        }
+
         return ctx;
     }
 
@@ -873,6 +961,7 @@ export class DebugEngine {
         };
         
         this.forLoopStack.push(loopState);
+        this.allLoopsHistory.push(loopState);
         
         if (items.length > 0) {
             this.setForLoopVariable(loopState);

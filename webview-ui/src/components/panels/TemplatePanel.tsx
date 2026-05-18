@@ -1,12 +1,12 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Copy, Edit3, Check, ChevronRight, ChevronDown, FileCode, Play } from 'lucide-react';
+import { Search, Copy, Edit3, Check, ChevronRight, ChevronDown, FileCode, Play, Replace, ReplaceAll, FoldVertical, UnfoldVertical } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
 import { Tooltip } from '../shared/Tooltip';
 import { useDebugger } from '../../hooks/useDebugger';
-import { escapeHtml, highlightSyntax, escapeRegex } from '../../utils/helpers';
+import { escapeHtml, highlightSyntax, escapeRegex, highlightSearchInHtml, formatRawValue } from '../../utils/helpers';
 import { findFoldRanges, type FoldRange } from '../../utils/folding';
 import type { Breakpoint } from '../../types/app';
 
@@ -28,6 +28,8 @@ export function TemplatePanel({
   const setTemplateEditMode = useAppStore((s) => s.setTemplateEditMode);
 
   const [search, setSearch] = useState('');
+  const [replaceValue, setReplaceValue] = useState('');
+  const [showReplace, setShowReplace] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
@@ -47,6 +49,30 @@ export function TemplatePanel({
     visible: false,
     loading: false,
   });
+
+  const closeTimeoutRef = useRef<any>(null);
+
+  const cancelCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  const hideTooltipWithDelay = useCallback(() => {
+    cancelCloseTimeout();
+    closeTimeoutRef.current = setTimeout(() => {
+      setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+    }, 300);
+  }, [cancelCloseTimeout]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +137,30 @@ export function TemplatePanel({
     setFoldedLines(next);
   };
 
+  const collapseAll = useCallback(() => {
+    setFoldedLines(new Set(foldRanges.map((r) => r.startLine)));
+  }, [foldRanges]);
+
+  const expandAll = useCallback(() => {
+    setFoldedLines(new Set());
+  }, []);
+
+  const handleReplaceFirst = useCallback(() => {
+    if (!search) return;
+    const base = editContent || source;
+    const next = base.replace(new RegExp(escapeRegex(search), 'i'), replaceValue);
+    setEditContent(next);
+    if (!templateEditMode) setTemplateEditMode(true);
+  }, [search, replaceValue, editContent, source, templateEditMode, setTemplateEditMode]);
+
+  const handleReplaceAll = useCallback(() => {
+    if (!search) return;
+    const base = editContent || source;
+    const next = base.replace(new RegExp(escapeRegex(search), 'gi'), replaceValue);
+    setEditContent(next);
+    if (!templateEditMode) setTemplateEditMode(true);
+  }, [search, replaceValue, editContent, source, templateEditMode, setTemplateEditMode]);
+
   const lines = source ? source.split('\n') : [];
 
   // Compute search matches
@@ -140,7 +190,7 @@ export function TemplatePanel({
       const tokOutput = target.closest('.tok-output') as HTMLElement;
 
       if (!tokOutput) {
-        setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        hideTooltipWithDelay();
         return;
       }
 
@@ -151,6 +201,9 @@ export function TemplatePanel({
       const rect = tokOutput.getBoundingClientRect();
       const x = Math.min(rect.left, window.innerWidth - 300);
       const y = rect.bottom + 8;
+
+      // We are over a valid token output! Cancel any scheduled close
+      cancelCloseTimeout();
 
       // Avoid re-evaluating if we are already showing this expression
       if (tooltip.visible && tooltip.content && (tooltip.content as any).key === expr) {
@@ -188,20 +241,112 @@ export function TemplatePanel({
                   {header}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexDirection: (res.rawValue !== undefined && res.rawValue !== null && typeof res.rawValue === 'object') ? 'column' : 'row', width: '100%' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', minWidth: 45 }}>Value</span>
-                    <span style={{ 
-                      color: 'var(--text-primary)', 
-                      wordBreak: 'break-all', 
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      background: 'var(--bg-hover)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      border: '1px solid var(--border-primary)'
-                    }}>
-                      {res.value === '' ? '""' : (res.value ?? 'nil')}
-                    </span>
+                    {res.rawValue !== undefined && res.rawValue !== null && Array.isArray(res.rawValue) ? (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        width: '100%',
+                        maxHeight: 180,
+                        overflowY: 'auto',
+                        paddingRight: 4
+                      }}>
+                        {res.rawValue.map((item: any, idx: number) => {
+                          const isObj = typeof item === 'object' && item !== null;
+                          return (
+                            <div key={idx} style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                              background: 'var(--bg-hover)',
+                              border: '1px solid var(--border-primary)',
+                              borderRadius: 6,
+                              padding: '6px 8px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderBottom: isObj ? '1px dashed var(--border-secondary)' : 'none',
+                                paddingBottom: isObj ? 4 : 0,
+                                width: '100%'
+                              }}>
+                                <span style={{
+                                  fontSize: 9,
+                                  fontWeight: 800,
+                                  color: 'var(--accent)',
+                                  background: 'var(--accent-soft)',
+                                  padding: '1px 6px',
+                                  borderRadius: 10,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px'
+                                }}>
+                                  Iteration {idx + 1}
+                                </span>
+                                {!isObj && (
+                                  <span style={{
+                                    fontFamily: 'var(--font-mono)',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: item === null ? 'var(--text-muted)' : 'var(--text-primary)'
+                                  }}>
+                                    {item === null ? 'nil' : String(item)}
+                                  </span>
+                                )}
+                              </div>
+                              {isObj && (
+                                <pre style={{
+                                  color: 'var(--text-primary)',
+                                  fontFamily: 'var(--font-mono)',
+                                  fontSize: 10,
+                                  margin: 0,
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-all',
+                                  padding: '4px 0',
+                                  background: 'transparent',
+                                  border: 'none'
+                                }} dangerouslySetInnerHTML={{ __html: formatRawValue(item) }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : res.rawValue !== undefined && res.rawValue !== null && typeof res.rawValue === 'object' ? (
+                      <pre style={{
+                        color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 11,
+                        background: 'var(--bg-hover)',
+                        padding: '6px 10px',
+                        borderRadius: 4,
+                        border: '1px solid var(--border-primary)',
+                        margin: '2px 0 0',
+                        maxHeight: 150,
+                        overflowY: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }} dangerouslySetInnerHTML={{ __html: formatRawValue(res.rawValue) }} />
+                    ) : (
+                      <span style={{ 
+                        color: 'var(--text-primary)', 
+                        wordBreak: 'break-all', 
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 12,
+                        background: 'var(--bg-hover)',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        border: '1px solid var(--border-primary)'
+                      }}>
+                        {res.value === '' ? '""' : (res.value ?? 'nil')}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', minWidth: 45 }}>Type</span>
@@ -225,12 +370,12 @@ export function TemplatePanel({
         setTooltip((prev) => ({ ...prev, visible: false }));
       }
     },
-    [evaluate, tooltip.visible, tooltip.content]
+    [evaluate, tooltip.visible, tooltip.content, cancelCloseTimeout, hideTooltipWithDelay]
   );
 
   const handleMouseLeave = useCallback(() => {
-    setTooltip((prev) => ({ ...prev, visible: false }));
-  }, []);
+    hideTooltipWithDelay();
+  }, [hideTooltipWithDelay]);
 
   return (
     <motion.div
@@ -251,133 +396,205 @@ export function TemplatePanel({
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '8px 16px',
+          flexDirection: 'column',
           background: 'var(--bg-panel)',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32 }}>
-          <FileCode size={14} style={{ color: 'var(--accent)' }} />
-          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1 }}>
-            Template
-          </span>
-        </div>
-        
-        <div style={{ flex: 1 }} />
-
-        {/* Integrated Control Group */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1, 
-          background: 'var(--bg-surface)', 
-          border: '1px solid var(--border-primary)', 
-          borderRadius: 8,
-          padding: 2,
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          {/* Search Sub-group */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: 4, height: 28 }}>
-            <Search size={12} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Find in template..."
-              style={{
-                width: 160,
-                height: '100%',
-                padding: '0 8px 0 28px',
-                fontSize: 11,
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                fontWeight: 600,
-                lineHeight: '28px'
-              }}
-            />
-            {matchCount > 0 && (
-              <span style={{ position: 'absolute', right: 8, fontSize: 10, color: 'var(--accent)', fontWeight: 800, lineHeight: 1 }}>
-                {matchCount}
-              </span>
-            )}
+        {/* Main toolbar row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32 }}>
+            <FileCode size={14} style={{ color: 'var(--accent)' }} />
+            <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1 }}>
+              Template
+            </span>
           </div>
 
-          <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
+          <div style={{ flex: 1 }} />
 
-          {templateEditMode ? (
-            <button 
-              onClick={handleApply}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '0 12px',
-                height: 28,
-                borderRadius: 6,
-                background: 'var(--accent)',
-                color: 'white',
-                border: 'none',
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              <Check size={12} strokeWidth={3} /> <span style={{ lineHeight: 1 }}>Save</span>
-            </button>
-          ) : (
-            <button
-              disabled={!loaded}
-              onClick={() => setTemplateEditMode(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '0 10px',
-                height: 28,
-                borderRadius: 6,
-                background: 'transparent',
-                color: 'var(--text-secondary)',
-                border: 'none',
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: loaded ? 'pointer' : 'not-allowed',
-                opacity: loaded ? 1 : 0.5
-              }}
-            >
-              <Edit3 size={12} /> <span style={{ lineHeight: 1 }}>Edit</span>
-            </button>
-          )}
-
-          <button
-            disabled={!loaded}
-            onClick={handleCopy}
-            style={{
+          {/* Fold All / Unfold All */}
+          {loaded && foldRanges.length > 0 && (
+            <div style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '0 10px',
-              height: 28,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-primary)',
               borderRadius: 6,
-              background: copied ? 'var(--green-soft)' : 'transparent',
-              color: copied ? 'var(--green)' : 'var(--text-secondary)',
-              border: 'none',
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: loaded ? 'pointer' : 'not-allowed',
-              opacity: loaded ? 1 : 0.5
-            }}
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            <span style={{ lineHeight: 1 }}>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
+              padding: 2,
+              gap: 1,
+            }}>
+              <button
+                onClick={collapseAll}
+                title="Fold All"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px', height: 24, borderRadius: 4, background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <FoldVertical size={11} /> <span style={{ lineHeight: 1 }}>Fold</span>
+              </button>
+              <button
+                onClick={expandAll}
+                title="Unfold All"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px', height: 24, borderRadius: 4, background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <UnfoldVertical size={11} /> <span style={{ lineHeight: 1 }}>Unfold</span>
+              </button>
+            </div>
+          )}
+
+          {/* Integrated Control Group */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 8,
+            padding: 2,
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            {/* Search */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 28 }}>
+              <Search size={12} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Find in template..."
+                style={{
+                  width: 150,
+                  height: '100%',
+                  padding: '0 8px 0 28px',
+                  fontSize: 11,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  fontWeight: 600,
+                  lineHeight: '28px'
+                }}
+              />
+              {matchCount > 0 && (
+                <span style={{ position: 'absolute', right: 8, fontSize: 10, color: 'var(--accent)', fontWeight: 800, lineHeight: 1 }}>
+                  {matchCount}
+                </span>
+              )}
+            </div>
+
+            {/* Replace toggle */}
+            <button
+              disabled={!loaded}
+              onClick={() => setShowReplace((v) => !v)}
+              title="Toggle Find & Replace"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 8px', height: 28, borderRadius: 6,
+                background: showReplace ? 'var(--accent-soft)' : 'transparent',
+                color: showReplace ? 'var(--accent)' : 'var(--text-secondary)',
+                border: 'none', fontSize: 11, fontWeight: 700,
+                cursor: loaded ? 'pointer' : 'not-allowed', opacity: loaded ? 1 : 0.5
+              }}
+            >
+              <Replace size={12} />
+            </button>
+
+            <div style={{ width: 1, height: 16, background: 'var(--border-primary)', margin: '0 4px' }} />
+
+            {templateEditMode ? (
+              <button
+                onClick={handleApply}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '0 12px', height: 28, borderRadius: 6,
+                  background: 'var(--accent)', color: 'white', border: 'none',
+                  fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                }}
+              >
+                <Check size={12} strokeWidth={3} /> <span style={{ lineHeight: 1 }}>Save</span>
+              </button>
+            ) : (
+              <button
+                disabled={!loaded}
+                onClick={() => setTemplateEditMode(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '0 10px', height: 28, borderRadius: 6,
+                  background: 'transparent', color: 'var(--text-secondary)', border: 'none',
+                  fontSize: 11, fontWeight: 700,
+                  cursor: loaded ? 'pointer' : 'not-allowed', opacity: loaded ? 1 : 0.5
+                }}
+              >
+                <Edit3 size={12} /> <span style={{ lineHeight: 1 }}>Edit</span>
+              </button>
+            )}
+
+            <button
+              disabled={!loaded}
+              onClick={handleCopy}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '0 10px', height: 28, borderRadius: 6,
+                background: copied ? 'var(--green-soft)' : 'transparent',
+                color: copied ? 'var(--green)' : 'var(--text-secondary)',
+                border: 'none', fontSize: 11, fontWeight: 700,
+                cursor: loaded ? 'pointer' : 'not-allowed', opacity: loaded ? 1 : 0.5
+              }}
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              <span style={{ lineHeight: 1 }}>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Replace bar — visible when showReplace is toggled */}
+        {showReplace && loaded && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '4px 16px 8px',
+          }}>
+            <Replace size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <input
+              value={replaceValue}
+              onChange={(e) => setReplaceValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleReplaceFirst(); }}
+              placeholder="Replace with…"
+              style={{
+                flex: 1, maxWidth: 200, height: 26,
+                padding: '0 8px', fontSize: 11,
+                background: 'var(--bg-surface)', border: '1px solid var(--border-primary)',
+                borderRadius: 6, color: 'var(--text-primary)', outline: 'none', fontWeight: 600,
+              }}
+            />
+            <button
+              disabled={!search}
+              onClick={handleReplaceFirst}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '0 10px', height: 26,
+                borderRadius: 6, background: 'var(--bg-surface)', border: '1px solid var(--border-primary)',
+                color: search ? 'var(--text-primary)' : 'var(--text-muted)',
+                fontSize: 11, fontWeight: 700, cursor: search ? 'pointer' : 'not-allowed',
+                opacity: search ? 1 : 0.5
+              }}
+            >
+              <Replace size={11} /> Replace
+            </button>
+            <button
+              disabled={!search}
+              onClick={handleReplaceAll}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '0 10px', height: 26,
+                borderRadius: 6, background: search ? 'var(--accent-soft)' : 'var(--bg-surface)',
+                border: `1px solid ${search ? 'var(--accent)' : 'var(--border-primary)'}`,
+                color: search ? 'var(--accent)' : 'var(--text-muted)',
+                fontSize: 11, fontWeight: 700, cursor: search ? 'pointer' : 'not-allowed',
+                opacity: search ? 1 : 0.5
+              }}
+            >
+              <ReplaceAll size={11} /> Replace All
+              {matchCount > 0 && (
+                <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 800 }}>({matchCount})</span>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Body */}
@@ -445,10 +662,7 @@ export function TemplatePanel({
                   const bp = bpMap[ln];
                   const rawLine = escapeHtml(line);
                   const highlighted = search
-                    ? (highlightSyntax(rawLine)).replace(
-                        new RegExp(escapeRegex(escapeHtml(search)), 'gi'),
-                        (m) => `<span class="search-highlight">${m}</span>`
-                      )
+                    ? highlightSearchInHtml(highlightSyntax(rawLine), search)
                     : highlightSyntax(rawLine);
 
                   if (isLineFolded(ln)) return null;
@@ -473,8 +687,8 @@ export function TemplatePanel({
                       {/* Gutter */}
                       <div
                         style={{
-                          width: 44,
-                          minWidth: 44,
+                          width: 56,
+                          minWidth: 56,
                           display: 'flex',
                           alignItems: 'center',
                           paddingRight: 4,
@@ -517,28 +731,35 @@ export function TemplatePanel({
                           )}
                         </div>
 
-                        {/* Line Number & Folding Combined Slot */}
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
+                        {/* Line Number */}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 4 }}>
                           <span style={{ fontSize: 10, color: isCur ? 'var(--accent)' : 'var(--text-muted)', fontWeight: isCur ? 800 : 500 }}>
                             {ln}
                           </span>
-                          <div style={{ width: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {range && (
-                              <button
-                                onClick={() => toggleFold(ln)}
-                                style={{ 
-                                  background: 'none', 
-                                  border: 'none', 
-                                  cursor: 'pointer', 
-                                  padding: 0, 
-                                  display: 'flex',
-                                  color: isCur ? 'var(--accent)' : 'var(--text-muted)',
-                                }}
-                              >
-                                {isFolded ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
-                              </button>
-                            )}
-                          </div>
+                        </div>
+
+                        {/* Folding Slot */}
+                        <div style={{ width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {range && (
+                            <button
+                              onClick={() => toggleFold(ln)}
+                              style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                cursor: 'pointer', 
+                                padding: 2, 
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 4,
+                                color: isFolded ? 'var(--accent)' : 'var(--text-muted)',
+                                transition: 'all 0.2s',
+                              }}
+                              className="fold-btn"
+                            >
+                              {isFolded ? <ChevronRight size={12} strokeWidth={2.5} /> : <ChevronDown size={12} strokeWidth={2.5} />}
+                            </button>
+                          )}
                         </div>
 
                         {/* Current Line Indicator (overlay or tiny arrow) */}
@@ -562,7 +783,11 @@ export function TemplatePanel({
           )}
         </AnimatePresence>
       </div>
-      <Tooltip {...tooltip} />
+      <Tooltip 
+        {...tooltip} 
+        onMouseEnter={cancelCloseTimeout}
+        onMouseLeave={hideTooltipWithDelay}
+      />
     </motion.div>
   );
 }

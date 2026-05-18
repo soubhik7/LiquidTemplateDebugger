@@ -157,14 +157,18 @@ async function handleApiCall(method: string, urlPath: string, body: any, context
         }
         const value = await engine.evaluateExpression(expr);
         const transformations = await engine.extractTransformationsFromExpression(expr, engine.buildContext());
-        const fmtValue = value === null || value === undefined ? 'nil' : String(value);
+        const fmtValue = value === null || value === undefined ? 'nil'
+            : Array.isArray(value) ? `[Array: ${value.length} items]`
+            : typeof value === 'object' ? `{Hash: ${Object.keys(value).length} keys}`
+            : String(value);
         const typeName = value === null || value === undefined ? 'Null'
             : Array.isArray(value) ? 'Array'
             : typeof value === 'object' ? 'Hash'
             : typeof value === 'boolean' ? 'Boolean'
             : typeof value === 'number' ? (Number.isInteger(value) ? 'Integer' : 'Double')
             : 'String';
-        return { value: fmtValue, typeName, transformations };
+        const rawValue = value === null || value === undefined ? null : JSON.parse(JSON.stringify(value));
+        return { value: fmtValue, typeName, transformations, rawValue };
     }
 
     // POST /api/validate  { format }

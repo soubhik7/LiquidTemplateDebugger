@@ -165,6 +165,57 @@ Total: ${{ total }}
 Shipping: {{ shipping | capitalize }}",
             @"{""customer"":{""name"":""Alice Johnson"",""email"":""alice@example.com"",""tier"":""gold""},""items"":[{""name"":""Widget A"",""price"":29.99,""quantity"":2},{""name"":""Widget B"",""price"":49.99,""quantity"":1},{""name"":""Gadget C"",""price"":15.50,""quantity"":3}],""discount_percent"":10,""shipping"":""express""}");
 
+        // Test 15: Nested loop evaluation debugging
+        Console.WriteLine("\n--- Loop Nested Evaluation Debugging ---");
+        {
+            var template = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<Batch id=""{{ content.batchId }}"" status=""{{ content.status | Capitalize }}"">
+  <Items>
+    {% for rec in content.records -%}
+    <Item id=""{{ rec.id }}"" category=""{{ rec.type | Downcase }}"">
+      {% if rec.type == 'USER' -%}
+      <UserProfile>
+        <Name>{{ rec.payload.name | Upcase }}</Name>
+        <Grade>{% if rec.payload.score > 80 %}A{% else %}B{% endif %}</Grade>
+      </UserProfile>
+      {% endif -%}
+    </Item>
+    {% endfor -%}
+  </Items>
+</Batch>";
+            var jsonInput = @"{
+  ""batchId"": ""BT-772"",
+  ""status"": ""PROCESSED"",
+  ""records"": [
+    { ""id"": 1, ""type"": ""USER"", ""payload"": { ""name"": ""Soubhik Mukherjee"", ""score"": 88 } }
+  ]
+}";
+            var loader = new InputDataLoader();
+            var (hash, origins) = loader.LoadFromString(jsonInput, "json");
+            var engine = new DebugEngine(template, hash, origins);
+            
+            while (!engine.State.IsComplete)
+            {
+                engine.Step(StepAction.StepNext);
+                if (engine.State.CurrentElementIndex >= engine.Elements.Count) break;
+                var elem = engine.Elements[engine.State.CurrentElementIndex];
+                Console.WriteLine($"Step: ElementIndex={engine.State.CurrentElementIndex}, Line={elem.LineNumber}, Type={elem.ElementType}, Tag={elem.TagName}, Raw=[{elem.RawText.Replace("\r","").Replace("\n","\\n")}]");
+                
+                if (elem.RawText.Contains("rec.payload.score"))
+                {
+                    Console.WriteLine($"\n[PAUSED ON SCORE TAG - Line {elem.LineNumber}]");
+                    Console.WriteLine($"Variables Keys in Scope: {string.Join(", ", engine.State.Variables.Keys)}");
+                    var recVal = engine.Evaluate("rec");
+                    Console.WriteLine($"Evaluate(\"rec\") Type: {recVal?.GetType().Name}, Value: {recVal}");
+                    var recPayload = engine.Evaluate("rec.payload");
+                    Console.WriteLine($"Evaluate(\"rec.payload\") Type: {recPayload?.GetType().Name}, Value: {recPayload}");
+                    var recScore = engine.Evaluate("rec.payload.score");
+                    Console.WriteLine($"Evaluate(\"rec.payload.score\") Type: {recScore?.GetType().Name}, Value: {recScore}");
+                    Console.WriteLine("[END PAUSED]\n");
+                }
+            }
+        }
+
         // Summary
         Console.WriteLine("\n" + new string('=', 40));
         Console.WriteLine($"Results: {passed} passed, {failed} failed, {passed + failed} total");

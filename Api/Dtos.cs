@@ -88,7 +88,8 @@ public record EvalResultDto(
     string Expression,
     string? Value,
     string? TypeName,
-    string? Error
+    string? Error,
+    object? RawValue = null
 );
 
 public record InspectResultDto(

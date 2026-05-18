@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Wand2, Copy, Check, CheckCircle, ListTree, X, AlertTriangle, FileText } from 'lucide-react';
+import { Search, Wand2, Copy, Check, CheckCircle, ListTree, X, AlertTriangle, FileText, ChevronsUpDown, ChevronsDownUp, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { AnimatedButton } from '../shared/AnimatedButton';
 import { EmptyState } from '../shared/EmptyState';
 import { TreeView } from '../shared/TreeView';
 import { escapeHtml, escapeRegex, detectFormat, beautifyContent, tryParseJson, xmlToJson } from '../../utils/helpers';
+import { findFoldRanges, type FoldRange } from '../../utils/folding';
 
 interface OutputPanelProps {
   onValidate: (format: string) => Promise<{ isValid?: boolean; errorMessage?: string; sourceLineNumber?: number; error?: string }>;
@@ -22,12 +23,62 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
   const [beautified, setBeautified] = useState<string | null>(null);
   const [showTree, setShowTree] = useState(false);
   const [lastValidation, setLastValidation] = useState<{ format: string; isValid: boolean } | null>(null);
+  const [treeKey, setTreeKey] = useState(0);
+  const [treeForceExpand, setTreeForceExpand] = useState<boolean | undefined>(undefined);
+
+  const handleExpandAll = useCallback(() => { setTreeForceExpand(true); setTreeKey((k) => k + 1); }, []);
+  const handleCollapseAll = useCallback(() => { setTreeForceExpand(false); setTreeKey((k) => k + 1); }, []);
 
   const state = debugState?.state;
   const loaded = !!debugState?.isLoaded;
   const outputRaw = state?.outputSoFar ?? '';
   const lastChunk = state?.lastOutputChunk;
   const scopeStack = state?.scopeStack ?? [];
+
+  const [foldedLines, setFoldedLines] = useState<Set<number>>(new Set());
+
+  const outputSrc = beautified ?? outputRaw;
+
+  // Reset folding when the source output changes dramatically (e.g. empty or beautified toggles)
+  useEffect(() => {
+    setFoldedLines(new Set());
+  }, [beautified, outputRaw]);
+
+  const foldRanges = useMemo(() => findFoldRanges(outputSrc), [outputSrc]);
+  const foldStartMap = useMemo(() => {
+    const map = new Map<number, FoldRange>();
+    foldRanges.forEach(r => map.set(r.startLine, r));
+    return map;
+  }, [foldRanges]);
+
+  const isLineFolded = (ln: number) => {
+    for (const range of foldRanges) {
+      if (foldedLines.has(range.startLine) && ln > range.startLine && ln <= range.endLine) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const toggleFold = (ln: number) => {
+    const next = new Set(foldedLines);
+    if (next.has(ln)) next.delete(ln);
+    else next.add(ln);
+    setFoldedLines(next);
+  };
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const ln = e.detail;
+      if (typeof ln === 'number') {
+        const next = new Set(foldedLines);
+        next.delete(ln);
+        setFoldedLines(next);
+      }
+    };
+    window.addEventListener('unfold-line-output', handler);
+    return () => window.removeEventListener('unfold-line-output', handler);
+  }, [foldedLines]);
 
   // Reset local panel state when a new session is loaded
   useEffect(() => {
@@ -247,6 +298,25 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             <ListTree size={12} /> <span style={{ lineHeight: 1 }}>Tree</span>
           </button>
 
+          {showTree && treeData && (
+            <>
+              <button
+                onClick={handleExpandAll}
+                title="Expand All"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px', height: 28, borderRadius: 6, background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <ChevronsUpDown size={12} /> <span style={{ lineHeight: 1 }}>Expand</span>
+              </button>
+              <button
+                onClick={handleCollapseAll}
+                title="Collapse All"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px', height: 28, borderRadius: 6, background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <ChevronsDownUp size={12} /> <span style={{ lineHeight: 1 }}>Collapse</span>
+              </button>
+            </>
+          )}
+
           {!showTree && (
             <button
               disabled={!loaded || !outputRaw}
@@ -375,7 +445,7 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
         ) : showTree ? (
           treeData ? (
             <div style={{ padding: 12, background: 'var(--bg-surface)', minHeight: '100%' }}>
-               <TreeView data={treeData} />
+              <TreeView key={treeKey} data={treeData} forceExpandAll={treeForceExpand} />
             </div>
           ) : treeError ? (
             <div style={{ 
@@ -409,19 +479,115 @@ export function OutputPanel({ onValidate, onCopy, onToast }: OutputPanelProps) {
             </div>
           ) : null
         ) : (
-          <pre
+          <div
             style={{
+              position: 'absolute',
+              inset: 0,
+              overflowY: 'auto',
               fontFamily: 'var(--font-mono)',
               fontSize: 12,
               lineHeight: 1.6,
-              padding: '10px 14px',
-              margin: 0,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
+              background: 'var(--bg-surface)',
               color: 'var(--text-primary)',
             }}
-            dangerouslySetInnerHTML={{ __html: htmlContent ?? '' }}
-          />
+          >
+            {(outputSrc ? outputSrc.split('\n') : []).map((line, i) => {
+              const ln = i + 1;
+              if (isLineFolded(ln)) return null;
+
+              const range = foldStartMap.get(ln);
+              const isFolded = foldedLines.has(ln);
+
+              // Perform search highlighting or lastChunk highlighting for this line
+              let escaped = escapeHtml(line);
+              if (search) {
+                escaped = escaped.replace(
+                  new RegExp(escapeRegex(escapeHtml(search)), 'gi'),
+                  (m) => `<span class="search-highlight">${m}</span>`
+                );
+              } else if (!beautified && lastChunk) {
+                const idx = line.lastIndexOf(lastChunk);
+                if (idx !== -1) {
+                  const before = escapeHtml(line.substring(0, idx));
+                  const last = `<span class="output-flash-highlight">${escapeHtml(lastChunk)}</span>`;
+                  const after = escapeHtml(line.substring(idx + lastChunk.length));
+                  escaped = before + last + after;
+                }
+              }
+
+              return (
+                <div
+                  key={ln}
+                  className="code-line"
+                  style={{
+                    display: 'flex',
+                    minHeight: 20,
+                    paddingRight: 12,
+                    transition: 'background 0.3s ease',
+                  }}
+                >
+                  {/* Gutter */}
+                  <div
+                    style={{
+                      width: 56,
+                      minWidth: 56,
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingRight: 4,
+                      userSelect: 'none',
+                      flexShrink: 0,
+                      position: 'relative',
+                      zIndex: 1,
+                      borderRight: '1px solid var(--border-primary)',
+                      background: 'var(--bg-panel)',
+                      opacity: 0.8,
+                    }}
+                  >
+                    {/* Line Number */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 4 }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 500 }}>
+                        {ln}
+                      </span>
+                    </div>
+
+                    {/* Folding Slot */}
+                    <div style={{ width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {range && (
+                        <button
+                          onClick={() => toggleFold(ln)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 4,
+                            color: isFolded ? 'var(--accent)' : 'var(--text-muted)',
+                            transition: 'all 0.2s',
+                          }}
+                          className="fold-btn"
+                        >
+                          {isFolded ? <ChevronRight size={12} strokeWidth={2.5} /> : <ChevronDown size={12} strokeWidth={2.5} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Line Content */}
+                  <span
+                    style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 8, position: 'relative', zIndex: 1 }}
+                    dangerouslySetInnerHTML={{
+                      __html: isFolded
+                        ? `${escaped} <span class="fold-placeholder" title="Expand block" onclick="window.dispatchEvent(new CustomEvent('unfold-line-output', {detail: ${ln}}))">...</span>`
+                        : escaped,
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </motion.div>

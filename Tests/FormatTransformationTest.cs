@@ -56,7 +56,7 @@ public static class FormatTransformationTest
         var xml = """
         <catalog generated="2026-04-03">
           <product id="1">
-            <name>Widget & Gear</name>
+            <name>Widget &amp; Gear</name>
             <price>29.99</price>
             <active>true</active>
           </product>
@@ -89,9 +89,11 @@ public static class FormatTransformationTest
         {
             var (hash, origins) = loader.LoadFromString(csv, "CSV");
             Assert(hash != null, "Hash is not null");
-            Assert(hash != null && hash.ContainsKey("rows"), "Hash contains 'rows' key");
+            Assert(hash != null && hash.ContainsKey("content"), "Hash contains 'content' wrapper");
+            var content = hash?["content"] as Hash;
+            Assert(content != null && content.ContainsKey("rows"), "Content contains 'rows' key");
 
-            var rows = hash?["rows"] as List<object>;
+            var rows = content?["rows"] as List<object>;
             Assert(rows != null, "Rows is not null");
             Assert(rows?.Count == 2, "Has 2 rows");
         }
@@ -101,9 +103,11 @@ public static class FormatTransformationTest
         Console.WriteLine("[Test 2] JSON Input Loading");
         {
             var (hash, origins) = loader.LoadFromString(json, "JSON");
-            Assert(hash != null && hash.ContainsKey("order"), "Hash contains root object");
-            Assert(origins.ContainsKey("order.items"), "Origins track arrays");
-            Assert(origins.ContainsKey("order.customer.name"), "Origins track nested values");
+            Assert(hash != null && hash.ContainsKey("content"), "Hash contains 'content' wrapper");
+            var content = hash?["content"] as Hash;
+            Assert(content != null && content.ContainsKey("order"), "Content contains root object");
+            Assert(origins.ContainsKey("content.order.items"), "Origins track arrays");
+            Assert(origins.ContainsKey("content.order.customer.name"), "Origins track nested values");
         }
         Console.WriteLine();
 
@@ -111,9 +115,11 @@ public static class FormatTransformationTest
         Console.WriteLine("[Test 3] XML Input Loading");
         {
             var (hash, origins) = loader.LoadFromString(xml, "XML");
-            Assert(hash != null && hash.ContainsKey("catalog"), "XML root preserved");
-            Assert(origins.ContainsKey("catalog.@generated"), "XML attribute tracked");
-            Assert(origins.ContainsKey("catalog.product"), "Repeated XML elements tracked as array");
+            Assert(hash != null && hash.ContainsKey("content"), "Hash contains 'content' wrapper");
+            var content = hash?["content"] as Hash;
+            Assert(content != null && content.ContainsKey("catalog"), "XML root preserved");
+            Assert(origins.ContainsKey("content.catalog.@generated"), "XML attribute tracked");
+            Assert(origins.ContainsKey("content.catalog.product"), "Repeated XML elements tracked as array");
         }
         Console.WriteLine();
 
@@ -121,9 +127,11 @@ public static class FormatTransformationTest
         Console.WriteLine("[Test 4] TEXT Input Loading");
         {
             var (hash, origins) = loader.LoadFromString(text, "TEXT");
-            Assert(hash != null && hash.ContainsKey("title"), "Key=value field loaded");
-            Assert(hash != null && hash.ContainsKey("value"), "Freeform text preserved under value");
-            Assert(origins.ContainsKey("value"), "Origin tracked for freeform value");
+            Assert(hash != null && hash.ContainsKey("content"), "Hash contains 'content' wrapper");
+            var content = hash?["content"] as Hash;
+            Assert(content != null && content.ContainsKey("title"), "Key=value field loaded");
+            Assert(content != null && content.ContainsKey("value"), "Freeform text preserved under value");
+            Assert(origins.ContainsKey("content.value"), "Origin tracked for freeform value");
         }
         Console.WriteLine();
 

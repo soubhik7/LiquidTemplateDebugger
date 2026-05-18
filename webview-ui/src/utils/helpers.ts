@@ -51,16 +51,69 @@ export function highlightSyntax(escapedLine: string): string {
     }
   );
 
-  // 4. Handle other tags with keyword highlighting
+  // 4. Handle other tags with keyword highlighting and hover mappings for loop/condition
   result = result.replace(
     /(\{%-?\s*)(.*?)(\s*-?%\})/g,
     (match, p1, p2, p3) => {
       if (match.includes('<span')) return match; // Already processed
       let inner = p2;
-      // Highlight keywords
+
+      // 4a. Check for 'for' loop: {% for rec in content.records %}
+      const forMatch = inner.match(/^\s*for\s+([a-zA-Z_]\w*)\s+in\s+([a-zA-Z0-9_.]+)(.*)$/);
+      if (forMatch) {
+        const loopVar = forMatch[1];
+        const collection = forMatch[2];
+        const rest = forMatch[3];
+
+        const strings: string[] = [];
+        let cleanRest = rest.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|&#39;.*?&#39;|'.*?'|".*?")/g, (sMatch: string) => {
+          const placeholder = `___STR_PLACEHOLDER_${strings.length}___`;
+          strings.push(sMatch);
+          return placeholder;
+        });
+
+        let restHighlighted = cleanRest.replace(/\b(limit|offset|reversed)\b/g, '<span class="tok-keyword">$1</span>');
+
+        strings.forEach((str, idx) => {
+          const placeholder = `___STR_PLACEHOLDER_${idx}___`;
+          restHighlighted = restHighlighted.replace(placeholder, `<span class="tok-string">${str}</span>`);
+        });
+
+        return `<span class="tok-tag">${p1}<span class="tok-keyword">for</span> <span class="tok-output" data-expr="${loopVar}" data-type="var">${loopVar}</span> <span class="tok-keyword">in</span> <span class="tok-output" data-expr="${collection}" data-type="expr">${collection}</span>${restHighlighted}${p3}</span>`;
+      }
+
+      // 4b. Check for condition tags: {% if / elsif / unless condition %}
+      const ifMatch = inner.match(/^\s*(if|elsif|unless)\s+(.*)$/);
+      if (ifMatch) {
+        const tag = ifMatch[1];
+        const condition = ifMatch[2];
+
+        const strings: string[] = [];
+        let cleanCondition = condition.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|&#39;.*?&#39;|'.*?'|".*?")/g, (sMatch: string) => {
+          const placeholder = `___STR_PLACEHOLDER_${strings.length}___`;
+          strings.push(sMatch);
+          return placeholder;
+        });
+
+        const keywords = new Set(['if', 'elsif', 'unless', 'true', 'false', 'nil', 'and', 'or', 'contains', 'limit', 'offset', 'empty']);
+        let conditionHighlighted = cleanCondition.replace(/\b([a-zA-Z_][a-zA-Z0-9_.]*)\b/g, (wMatch: string, path: string) => {
+          if (path.startsWith('___STR_PLACEHOLDER_')) return wMatch;
+          if (keywords.has(path.toLowerCase())) return `<span class="tok-keyword">${wMatch}</span>`;
+          if (/^\d+$/.test(path)) return wMatch; // Ignore numbers
+          return `<span class="tok-output" data-expr="${path}" data-type="var">${path}</span>`;
+        });
+
+        strings.forEach((str, idx) => {
+          const placeholder = `___STR_PLACEHOLDER_${idx}___`;
+          conditionHighlighted = conditionHighlighted.replace(placeholder, `<span class="tok-string">${str}</span>`);
+        });
+
+        return `<span class="tok-tag">${p1}<span class="tok-keyword">${tag}</span> ${conditionHighlighted}${p3}</span>`;
+      }
+
+      // 4c. General Tag highlighting
+      inner = inner.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|&#39;.*?&#39;)/g, '<span class="tok-string">$1</span>');
       inner = inner.replace(/\b(if|else|elsif|endif|unless|endunless|case|when|endcase|for|endfor|capture|endcapture|increment|decrement|in|with|reversed|limit|offset)\b/g, '<span class="tok-keyword">$1</span>');
-      // Highlight strings
-      inner = inner.replace(/(&quot;.*?&quot;|&#039;.*?&#039;|'.*?'|".*?")/g, '<span class="tok-string">$1</span>');
       return `<span class="tok-tag">${p1}${inner}${p3}</span>`;
     }
   );
@@ -245,6 +298,17 @@ export function tryParseJson(content: string): any {
 
 export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^=!:{}()|[\]\\]/g, '\\$&');
+}
+
+export function highlightSearchInHtml(html: string, search: string): string {
+  if (!search) return html;
+  const escaped = escapeHtml(search);
+  const pattern = new RegExp('(' + escapeRegex(escaped) + ')', 'gi');
+  // Only replace in text nodes — never inside HTML tag attributes or tag names
+  return html.replace(/(<[^>]*>)|([^<]+)/g, (_, tag, text) => {
+    if (tag) return tag;
+    return text ? text.replace(pattern, '<span class="search-highlight">$1</span>') : '';
+  });
 }
 
 export function nanoid(): string {

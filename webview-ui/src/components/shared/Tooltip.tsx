@@ -6,9 +6,11 @@ interface TooltipProps {
   y: number;
   content: React.ReactNode;
   loading?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
-export function Tooltip({ visible, x, y, content, loading }: TooltipProps) {
+export function Tooltip({ visible, x, y, content, loading, onMouseEnter, onMouseLeave }: TooltipProps) {
   return (
     <AnimatePresence>
       {visible && (
@@ -16,12 +18,14 @@ export function Tooltip({ visible, x, y, content, loading }: TooltipProps) {
           initial={{ opacity: 0, scale: 0.95, y: 5 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 5 }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
           style={{
             position: 'fixed',
             left: x,
             top: y,
             zIndex: 1000,
-            pointerEvents: 'none',
+            pointerEvents: 'auto',
             maxWidth: 400,
             background: 'var(--bg-panel)',
             border: '1px solid var(--border-secondary)',

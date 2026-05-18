@@ -165,7 +165,8 @@ public static class DebugApiEndpoints
                     Expression: request.Expression,
                     Value: DtoConverter.FormatValue(result),
                     TypeName: result?.GetType().Name ?? "null",
-                    Error: null
+                    Error: null,
+                    RawValue: DtoConverter.SerializeRawValue(result, 0)
                 ));
             }
             catch (Exception ex)
@@ -174,7 +175,8 @@ public static class DebugApiEndpoints
                     Expression: request.Expression,
                     Value: null,
                     TypeName: null,
-                    Error: ex.Message
+                    Error: ex.Message,
+                    RawValue: null
                 ));
             }
         });
